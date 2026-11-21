@@ -97,12 +97,9 @@ export type Series = {
   source?: string
 }
 
-// Google is the only search engine. The previous build exposed five engines
-// but silently served DuckDuckGo for all of them (Google answers plain HTTP
-// clients with a JavaScript-only shell that has no result markup, so the
-// server-side scraper found nothing and fell back). Search is now rendered by
-// the browser's own engine, so one engine is all the app needs.
-export type BrowserEngineId = 'google'
+// Each provider has its own real search URL. Results are never silently
+// replaced by another provider.
+export type BrowserEngineId = 'google' | 'bing' | 'duckduckgo' | 'yahoo' | 'brave'
 
 
 export type Lang = 'en' | 'ur'
