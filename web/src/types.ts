@@ -5,6 +5,8 @@ export type Stream = {
   label: string
   referer?: string
   ua?: string
+  /** Original source position before network/health sorting. */
+  sourceIndex?: number
   /** true when the source is an HLS playlist */
   hls?: boolean
   /** true when the source is an MPEG-DASH manifest */
