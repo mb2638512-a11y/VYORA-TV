@@ -930,20 +930,30 @@ export default function ChromiumBrowser({
       setSuggestIndex(-1)
       return
     }
+
+    // Abort the previous request when the query or search engine changes.
+    // Without this, a slow response for an older query can arrive last and
+    // replace the suggestions for the text currently in the omnibox.
+    const controller = new AbortController()
     suggestTimer.current = window.setTimeout(async () => {
       try {
-        const res = await fetch(`${API}/suggest?q=${encodeURIComponent(q)}`)
+        const res = await fetch(
+          `${API}/suggest?q=${encodeURIComponent(q)}`,
+          { signal: controller.signal },
+        )
         if (!res.ok) throw new Error(`Suggestions failed: ${res.status}`)
         const data = await res.json()
+        if (controller.signal.aborted) return
         const list: string[] = Array.isArray(data?.suggestions) ? data.suggestions : []
         setSuggestions(list.slice(0, 8))
         setSuggestIndex(-1)
       } catch {
-        setSuggestions([])
+        if (!controller.signal.aborted) setSuggestions([])
       }
     }, 220)
     return () => {
       if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
+      controller.abort()
     }
   }, [inputUrl, activeTab?.engine])
 
