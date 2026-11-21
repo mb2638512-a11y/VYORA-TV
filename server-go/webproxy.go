@@ -602,8 +602,8 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 					if (manifest && typeof manifest === 'object') { manifest.__url = manifestUrl; syncState(manifest); }
 				}).catch(function() {});
 			}
-			if (document.readyState === 'complete') syncState();
-			else window.addEventListener('load', syncState);
+			if (document.readyState === 'complete') { syncState(); loadAppManifest(); }
+			else window.addEventListener('load', function() { syncState(); loadAppManifest(); });
 
 			// 2. Intercept clicks: keep navigation inside proxy, unpack redirects, and notify parent
 			document.addEventListener('click', function(e) {
