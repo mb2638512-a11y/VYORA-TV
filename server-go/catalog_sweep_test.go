@@ -123,3 +123,24 @@ func TestHealthGetReturnsIndependentSourceMap(t *testing.T) {
 		t.Fatalf("mutating returned health snapshot changed stored state: %#v", stored.Sources[0])
 	}
 }
+
+
+func TestMarkChannelOfflineRequiresExplicitFullExhaustion(t *testing.T) {
+	health := &HealthStore{status: make(map[string]*HealthRecord)}
+	health.ReportSource("sports", true, 240, 0)
+	health.ReportSource("sports", false, 900, 1)
+
+	before := health.Get("sports")
+	if before.Status != "online" {
+		t.Fatalf("one failed alternate must not mark channel offline: %#v", before)
+	}
+
+	health.MarkChannelOffline("sports", 12000)
+	after := health.Get("sports")
+	if after.Status != "offline" || after.Source != "playback-exhausted" {
+		t.Fatalf("explicit exhaustion should mark channel offline: %#v", after)
+	}
+	if len(after.Sources) != 2 {
+		t.Fatalf("channel-level exhaustion must preserve per-source evidence: %#v", after.Sources)
+	}
+}
