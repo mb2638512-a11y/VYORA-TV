@@ -540,6 +540,7 @@ export async function loadFavorites(ids: string[]): Promise<Channel[]> {
 
 let cachedMovies: Movie[] | null = null
 let cachedSeries: Series[] | null = null
+let cachedSongs: Channel[] | null = null
 
 export async function loadMovies(): Promise<Movie[]> {
   if (cachedMovies) return cachedMovies
@@ -563,6 +564,23 @@ export async function loadSeries(): Promise<Series[]> {
   } catch {
     const list = await getJSON<Series[]>('./data/vod/series.json')
     cachedSeries = list
+    return list
+  }
+}
+
+export async function loadSongs(genre?: string, q?: string): Promise<Channel[]> {
+  if (cachedSongs && !genre && !q) return cachedSongs
+  const params = new URLSearchParams()
+  if (genre && genre !== 'all') params.set('genre', genre)
+  if (q && q.trim()) params.set('q', q.trim())
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  try {
+    const list = await getJSON<Channel[]>(`${API}/vod/songs${qs}`)
+    if (!genre && !q) cachedSongs = list
+    return list
+  } catch {
+    const list = await getJSON<Channel[]>('./data/vod/songs.json')
+    if (!genre && !q) cachedSongs = list
     return list
   }
 }

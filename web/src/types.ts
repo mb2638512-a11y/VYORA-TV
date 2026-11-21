@@ -75,6 +75,8 @@ export type Movie = {
   description?: string
   url: string
   source?: string
+  streams?: Stream[]
+  tmdbId?: number
 }
 
 export type Episode = {
@@ -85,14 +87,18 @@ export type Episode = {
   duration?: number
   url: string
   logo?: string
+  quality?: string
 }
 
 export type Series = {
   id: string
   title: string
   logo: string
+  backdrop?: string
   genre: string
   year?: number | string
+  rating?: number | string
+  description?: string
   episodes: Episode[]
   source?: string
 }
@@ -142,8 +148,9 @@ export type View =
   | { name: 'favorites' }
   | { name: 'settings' }
   | { name: 'moviebox'; genre?: string }
-  | { name: 'movies' }
-  | { name: 'series' }
+  | { name: 'movies'; genre?: string }
+  | { name: 'series'; genre?: string }
+  | { name: 'songs'; genre?: string }
   | { name: 'global' }
   | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId }
   | { name: 'apps' }
