@@ -78,6 +78,46 @@ func browserProxyRedirectPolicy(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
+// safeBrowserDialContext pins the actual TCP connection to an IP that was
+// checked as globally routable. This closes the DNS-rebinding gap between URL
+// validation and the transport's own hostname resolution.
+func safeBrowserDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, ErrUnsafeProxyTarget
+	}
+	host = strings.TrimSuffix(strings.ToLower(host), ".")
+	var ips []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		ips = []net.IP{ip}
+	} else {
+		resolved, lookupErr := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if lookupErr != nil || len(resolved) == 0 {
+			return nil, ErrUnsafeProxyTarget
+		}
+		for _, item := range resolved {
+			ips = append(ips, item.IP)
+		}
+	}
+	dialer := &net.Dialer{Timeout: 8 * time.Second, KeepAlive: 30 * time.Second}
+	var lastErr error
+	for _, ip := range ips {
+		if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
+			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+			return nil, ErrUnsafeProxyTarget
+		}
+		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if dialErr == nil {
+			return conn, nil
+		}
+		lastErr = dialErr
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, ErrUnsafeProxyTarget
+}
+
 func getCachedAsset(u string) (CachedAsset, bool) {
 	proxyAssetCacheMu.RLock()
 	defer proxyAssetCacheMu.RUnlock()
@@ -113,10 +153,7 @@ var (
 	// Dedicated high-performance browser web client with direct internet connection (bypassing dead 8080 proxy)
 	browserTransport = &http.Transport{
 		Proxy: nil, // DIRECT INTERNET: never route through local 8080 proxy
-		DialContext: (&net.Dialer{
-			Timeout:   8 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		DialContext: safeBrowserDialContext,
 		MaxIdleConns:          200,
 		MaxIdleConnsPerHost:   30,
 		IdleConnTimeout:       90 * time.Second,
