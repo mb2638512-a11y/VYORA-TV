@@ -5,6 +5,18 @@ const baseURL = process.env.VYORA_BASE_URL || 'http://127.0.0.1:5173'
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const pageErrors = []
+const suggestionEngines = []
+
+await page.route('**/api/suggest?*', async (route) => {
+  const requestUrl = new URL(route.request().url())
+  const engine = requestUrl.searchParams.get('engine') || ''
+  suggestionEngines.push(engine)
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ engine, suggestions: [`${engine} suggestion result`] }),
+  })
+})
 
 await page.addInitScript(() => {
   window.__vyoraModes = []
@@ -31,6 +43,21 @@ try {
 
   await browserRegion.waitFor({ state: 'visible', timeout: 15000 })
   await page.locator('button[title*="Responsive View"], button[title*="Desktop 1080p View"]').first().waitFor({ state: 'visible', timeout: 10000 })
+
+  // Verify autocomplete uses the active search provider, not Google's list
+  // under every engine. The API is stubbed so CI never depends on third parties.
+  const engineTrigger = page.locator('.chromium-engine-trigger')
+  const omnibox = page.locator('.chromium-omnibox-input')
+  for (const engine of ['bing', 'duckduckgo']) {
+    await engineTrigger.click()
+    await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click()
+    await omnibox.fill('vyora browser')
+    await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
+    if (!suggestionEngines.includes(engine)) {
+      throw new Error(`${engine} autocomplete request did not include the selected provider`)
+    }
+  }
+
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/browser-before.png', fullPage: true })
 
