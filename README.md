@@ -187,3 +187,23 @@ Catalogue sirf **publicly published free-to-air streams** ka reference hai
 (iptv-org ka open directory). Kuch streams broadcaster ki side se geo-blocked ya
 offline hote hain — app unhe "source unavailable" dikhata hai aur agla source
 try karta hai. Apni licensed playlist (M3U) use karna ho to usse import karein.
+
+## Stream source audit (opt-in)
+
+The audit checks HTTP reachability and bounded HLS/DASH manifest shape. It does **not**
+prove that a device can decode a stream or render its first frame. Network checks contact
+third-party providers, so the command requires explicit confirmation and uses conservative
+global request pacing.
+
+```bash
+# Small sample first
+npm run audit:streams -- --confirm-network --country PK --limit 50
+
+# Full catalogue audit; safely resume an interrupted run
+npm run audit:streams -- --confirm-network --resume
+```
+
+Partial progress is checkpointed every 25 completed sources under
+`reports/stream-audit/`. Checkpoints contain result metadata and provider origins only;
+the catalogue URL set is fingerprinted for matching on resume. The report CSV/JSON
+never stores URL paths, query strings, fragments, or playback tokens.
