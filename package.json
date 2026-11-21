@@ -15,7 +15,8 @@
     "build": "npm run data && npm --workspace web run build && npm run build:go",
     "start": "server-go\\vyora-tv.exe -port 8787 -data server/data -web web/dist",
     "start:node": "node server/src/index.js",
-    "apk": "powershell -ExecutionPolicy Bypass -File android/build-apk.ps1"
+    "apk": "powershell -ExecutionPolicy Bypass -File android/build-apk.ps1",
+    "audit:streams": "node scripts/audit-streams.mjs"
   },
   "engines": {
     "node": ">=20"
