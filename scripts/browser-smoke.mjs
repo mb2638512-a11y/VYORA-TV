@@ -7,19 +7,23 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const pageErrors = []
 const suggestionEngines = []
 
-await page.route('**/api/suggest**', async (route) => {
-  const requestUrl = new URL(route.request().url())
-  const engine = requestUrl.searchParams.get('engine') || ''
-  suggestionEngines.push(engine)
-  await route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({ engine, suggestions: [`${engine} suggestion result`] }),
-  })
-})
-
 await page.addInitScript(() => {
   window.__vyoraModes = []
+  window.__vyoraSuggestionEngines = []
+  const originalFetch = window.fetch.bind(window)
+  window.fetch = (input, init) => {
+    const raw = typeof input === 'string' ? input : input?.url || ''
+    if (raw.includes('/api/suggest')) {
+      const requestUrl = new URL(raw, window.location.href)
+      const engine = requestUrl.searchParams.get('engine') || ''
+      window.__vyoraSuggestionEngines.push(engine)
+      return Promise.resolve(new Response(JSON.stringify({
+        engine,
+        suggestions: [`${engine} suggestion result`],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    }
+    return originalFetch(input, init)
+  }
   window.VyoraBridge = {
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
@@ -50,11 +54,16 @@ try {
   const omnibox = page.locator('.chromium-omnibox-input')
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
-    await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click({ force: true })
-    await page.waitForTimeout(100)
+    await page.locator('.chromium-engine-menu .chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).click({ force: true })
+    await page.locator('.chromium-engine-menu').waitFor({ state: 'hidden', timeout: 3000 })
+    const selectedEngine = await page.locator('.chromium-engine-trigger-name').textContent()
+    if (!selectedEngine?.toLowerCase().includes(engine === 'bing' ? 'bing' : 'duckduckgo')) {
+      throw new Error(`Expected ${engine} to be selected, got: ${selectedEngine}`)
+    }
     await omnibox.fill('vyora browser')
     await page.waitForTimeout(350)
-    if (!suggestionEngines.includes(engine)) {
+    const observedEngines = await page.evaluate(() => window.__vyoraSuggestionEngines || [])
+    if (!observedEngines.includes(engine)) {
       throw new Error(`${engine} autocomplete request did not include the selected provider`)
     }
     await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
