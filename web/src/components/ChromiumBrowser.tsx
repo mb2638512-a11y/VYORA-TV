@@ -520,6 +520,7 @@ export default function ChromiumBrowser({
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
   const [tabs, setTabs] = useState<Tab[]>(() => initialSession.tabs)
   const [activeTabId, setActiveTabId] = useState<string>(() => initialSession.activeTabId)
+  const [closedTabs, setClosedTabs] = useState<Tab[]>([])
   const [inputUrl, setInputUrl] = useState<string>(() => {
     const active = initialSession.tabs.find((tab) => tab.id === initialSession.activeTabId)
     return initialUrl?.trim() || active?.displayUrl || ''
@@ -1101,6 +1102,8 @@ export default function ChromiumBrowser({
 
   const closeTab = (idToClose: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
+    const closing = tabs.find((tab) => tab.id === idToClose)
+    if (closing) setClosedTabs((previous) => [...previous, closing].slice(-10))
     if (tabs.length === 1) {
       const newId = `tab-${Date.now()}`
       setTabs([
@@ -1133,6 +1136,25 @@ export default function ChromiumBrowser({
       setActiveTabId(nextTab.id)
       setInputUrl(nextTab.displayUrl || '')
     }
+  }
+
+  const restoreClosedTab = () => {
+    const previous = closedTabs[closedTabs.length - 1]
+    if (!previous) {
+      showToast('No recently closed tabs')
+      return
+    }
+    const restored: Tab = {
+      ...previous,
+      id: `restored-tab-${Date.now()}`,
+      isLoading: Boolean(previous.url),
+      navKey: (previous.navKey || 0) + 1,
+    }
+    setClosedTabs((items) => items.slice(0, -1))
+    setTabs((items) => [...items, restored].slice(-8))
+    setActiveTabId(restored.id)
+    setInputUrl(restored.displayUrl || '')
+    showToast('Tab restored')
   }
 
   const goBack = () => {
@@ -1310,7 +1332,10 @@ export default function ChromiumBrowser({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.ctrlKey || event.metaKey
-      if (mod && event.key.toLowerCase() === 'l') {
+      if (mod && event.shiftKey && event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        restoreClosedTab()
+      } else if (mod && event.key.toLowerCase() === 'l') {
         event.preventDefault()
         omniboxRef.current?.focus()
         omniboxRef.current?.select()
@@ -1342,7 +1367,7 @@ export default function ChromiumBrowser({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTab?.isLoading, activeTabId, addTab, closeTab, goBack, goForward, isFindOpen, reloadTab, stopLoading])
+  }, [activeTab?.isLoading, activeTabId, addTab, closeTab, goBack, goForward, isFindOpen, reloadTab, restoreClosedTab, stopLoading])
 
   // INSTALL WEB APP TO PLATFORM (WITH REAL LOGO)
   const installCurrentAsWebApp = (overrideUrl?: string, overrideTitle?: string) => {
