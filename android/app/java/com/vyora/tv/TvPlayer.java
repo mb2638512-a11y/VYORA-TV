@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -20,8 +21,10 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.security.MessageDigest;
 
 /**
  * Media3 live-TV player with bounded parallel source selection.
@@ -55,6 +58,8 @@ public class TvPlayer {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final DefaultBandwidthMeter bandwidthMeter;
+    private final SharedPreferences streamPreferences;
+    private String candidateSetKey = "";
     private volatile long lastBandwidthSampleAt;
     private final Map<Integer, ExoPlayer> pendingPlayers = new HashMap<>();
     private final Map<Integer, Runnable> readyWatchdogs = new HashMap<>();
@@ -63,6 +68,7 @@ public class TvPlayer {
         this.ctx = ctx;
         this.surfaceView = surfaceView;
         this.bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(ctx);
+        this.streamPreferences = ctx.getApplicationContext().getSharedPreferences("vyora_stream_health", Context.MODE_PRIVATE);
         this.bandwidthMeter.addEventListener(main, (elapsedMs, bytes, bitrate) -> {
             lastBandwidthSampleAt = SystemClock.elapsedRealtime();
             Log.d(TAG, "bandwidth sample kbps=" + (bitrate / 1000));
@@ -114,12 +120,66 @@ public class TvPlayer {
         urls = candidateUrls.clone();
         referers = candidateReferers != null ? candidateReferers.clone() : new String[0];
         uas = candidateUas != null ? candidateUas.clone() : new String[0];
+        candidateSetKey = buildCandidateSetKey(urls);
+        applyRememberedSourceOrder();
         nextCandidateIndex = 0;
         activeAttempts = 0;
         winnerChosen = false;
         active = false;
         playbackStartedAt = SystemClock.elapsedRealtime();
         startMoreCandidates();
+    }
+
+    private String buildCandidateSetKey(String[] candidateUrls) {
+        try {
+            String[] stable = candidateUrls.clone();
+            Arrays.sort(stable);
+            StringBuilder joined = new StringBuilder();
+            for (String value : stable) {
+                if (value != null) joined.append(value).append('\n');
+            }
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(joined.toString().getBytes("UTF-8"));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest) hex.append(String.format("%02x", b & 0xff));
+            return "source-set-" + hex.toString();
+        } catch (Throwable ignored) {
+            return "source-set-" + Integer.toHexString(Arrays.hashCode(candidateUrls));
+        }
+    }
+
+    private void applyRememberedSourceOrder() {
+        if (candidateSetKey.isEmpty()) return;
+        long savedAt = streamPreferences.getLong(candidateSetKey + "-time", 0L);
+        String remembered = streamPreferences.getString(candidateSetKey + "-url", null);
+        if (remembered == null || savedAt == 0L ||
+                System.currentTimeMillis() - savedAt > 6L * 60L * 60L * 1000L) return;
+        int preferred = -1;
+        for (int i = 0; i < urls.length; i++) {
+            if (remembered.equals(urls[i])) {
+                preferred = i;
+                break;
+            }
+        }
+        if (preferred <= 0) return;
+        rotateToFront(urls, preferred);
+        rotateToFront(referers, preferred);
+        rotateToFront(uas, preferred);
+        Log.i(TAG, "remembered healthy source promoted to first position");
+    }
+
+    private void rotateToFront(String[] values, int index) {
+        if (values == null || index <= 0 || index >= values.length) return;
+        String first = values[index];
+        System.arraycopy(values, 0, values, 1, index);
+        values[0] = first;
+    }
+
+    private void rememberSuccessfulSource(int index) {
+        if (candidateSetKey.isEmpty() || index < 0 || index >= urls.length) return;
+        streamPreferences.edit()
+                .putString(candidateSetKey + "-url", urls[index])
+                .putLong(candidateSetKey + "-time", System.currentTimeMillis())
+                .apply();
     }
 
     private void startMoreCandidates() {
@@ -261,6 +321,7 @@ public class TvPlayer {
                 public void onRenderedFirstFrame() {
                     if (player == candidatePlayer) {
                         cancelFirstFrameWatchdog();
+                        rememberSuccessfulSource(index);
                         Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" +
                                 (SystemClock.elapsedRealtime() - playbackStartedAt));
                     }
