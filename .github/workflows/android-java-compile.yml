@@ -1,0 +1,66 @@
+name: Android Java compile check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "android/app/java/**"
+      - "android/libs/**"
+      - ".github/workflows/android-java-compile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile Android Java sources (no APK)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-36"
+
+      - name: Extract bundled AAR class libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/vyora-aar-jars"
+          for aar in android/libs/*.aar; do
+            [ -f "$aar" ] || continue
+            name="$(basename "$aar" .aar)"
+            target="$RUNNER_TEMP/vyora-aar-jars/$name.jar"
+            unzip -p "$aar" classes.jar > "$target" || true
+            if [ ! -s "$target" ]; then
+              rm -f "$target"
+            fi
+          done
+
+      - name: Compile Java sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-36/android.jar"
+          LIB_CP="$(find android/libs -maxdepth 1 -name '*.jar' -print | paste -sd: -)"
+          AAR_CP="$(find "$RUNNER_TEMP/vyora-aar-jars" -name '*.jar' -print | paste -sd: -)"
+          CP="$ANDROID_JAR"
+          [ -z "$LIB_CP" ] || CP="$CP:$LIB_CP"
+          [ -z "$AAR_CP" ] || CP="$CP:$AAR_CP"
+          mkdir -p "$RUNNER_TEMP/vyora-classes"
+          mapfile -t SOURCES < <(find android/app/java -name '*.java' -print)
+          javac -encoding UTF-8 -source 8 -target 8 -Xlint:none \
+            -classpath "$CP" \
+            -d "$RUNNER_TEMP/vyora-classes" \
+            "${SOURCES[@]}"
+          echo "Compiled ${#SOURCES[@]} Android Java source files. APK was not built."
