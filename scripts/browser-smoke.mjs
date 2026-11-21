@@ -67,6 +67,23 @@ try {
     await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
   }
 
+  // Bookmark JSON backup and restore must work without a backend.
+  const exportPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  const exported = await exportPromise
+  if (exported.suggestedFilename() !== 'vyora-bookmarks.json') {
+    throw new Error('Bookmark export did not create the expected JSON file')
+  }
+  await page.locator('input[aria-label="Import bookmarks file"]').setInputFiles({
+    name: 'vyora-smoke-bookmarks.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      version: 1,
+      bookmarks: [{ title: 'Smoke Bookmark', url: 'https://example.com/', color: '#123456' }],
+    })),
+  })
+  await page.locator('.chromium-bookmarks-bar').getByText('Smoke Bookmark').waitFor({ state: 'visible', timeout: 5000 })
+
   // Closing the only tab must create and activate a fresh New Tab instead
   // of leaving the browser with an activeTabId that no longer exists.
   await page.getByRole('button', { name: 'Close Tab' }).click()
