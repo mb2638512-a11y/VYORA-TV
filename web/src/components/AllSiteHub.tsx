@@ -205,6 +205,7 @@ const CARTOONS_SITES: Site[] = [
 ]
 const ALL_IN_ONE_SITES: Site[] = [
   { id: "dmasti.pk", title: "DMasti", url: "https://www.dmasti.pk/", domain: "dmasti.pk", category: 'All in One' },
+  { id: "allsitehub.site", title: "AllSiteHub", url: "https://www.allsitehub.site/", domain: "allsitehub.site", category: 'All in One' },
 ]
 const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES, ...GAMES_SITES, ...CARTOONS_SITES, ...ALL_IN_ONE_SITES]
 export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports', 'Games', 'Cartoons', 'All in One'] as const
