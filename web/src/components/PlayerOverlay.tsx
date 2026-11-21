@@ -313,6 +313,46 @@ export function PlayerOverlay({
     setMessage(t('offlineHint'))
   }, [stream, tryNextStream, channel.id, streamIndex, t])
 
+  // Native Media3 reports the real first frame rather than pretending that
+  // calling play() means the stream is already visible.
+  useEffect(() => {
+    if (!isNative) return
+
+    const onFirstFrame = (event: Event) => {
+      const detail = (event as CustomEvent<{ url?: string; startupMs?: number }>).detail
+      const url = detail?.url || ''
+      const sourceIndex = channel.streams.findIndex((item) => item.url === url)
+      if (sourceIndex < 0) return
+      const source = channel.streams[sourceIndex]
+      hasPlayedRef.current = true
+      setStatus('playing')
+      setBuffering(false)
+      setOffline(false)
+      markStream(url, true)
+      void reportStreamPlayback(
+        channel.id,
+        true,
+        Number(detail.startupMs || 0),
+        source.sourceIndex ?? sourceIndex,
+      )
+    }
+
+    const onAllSourcesFailed = () => {
+      setBuffering(false)
+      setStatus('error')
+      setOffline(true)
+      setMessage(t('offlineHint'))
+      void reportStreamPlayback(channel.id, false, 0, stream?.sourceIndex ?? streamIndex)
+    }
+
+    window.addEventListener('vyora-native-first-frame', onFirstFrame)
+    window.addEventListener('vyora-native-sources-failed', onAllSourcesFailed)
+    return () => {
+      window.removeEventListener('vyora-native-first-frame', onFirstFrame)
+      window.removeEventListener('vyora-native-sources-failed', onAllSourcesFailed)
+    }
+  }, [channel.id, channel.streams, stream, streamIndex, t])
+
   /* Main stream loading and playback engine */
   useEffect(() => {
     if (!stream) {
@@ -371,7 +411,8 @@ export function PlayerOverlay({
           .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
         nativePlayMulti(candidates, channel.name, channel.logo)
       }
-      setStatus('playing')
+      setStatus('loading')
+      setBuffering(true)
       return
     }
 
