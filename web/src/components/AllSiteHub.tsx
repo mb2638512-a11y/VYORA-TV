@@ -184,8 +184,21 @@ const MANGA_SITES: Site[] = [
   { id: "m.webtoons.com", title: "WEBTOON", url: "https://m.webtoons.com/en/?webtoon-platform-redirect=true", domain: "m.webtoons.com", category: 'Manga' },
   { id: "anireads.cc", title: "AniReads", url: "https://anireads.cc/", domain: "anireads.cc", category: 'Manga' },
 ]
-const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES]
-export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga'] as const
+
+const LIVE_TV_SPORTS_SITES: Site[] = [
+  { id: "cinevid.sbs", title: "Cinevid", url: "https://cinevid.sbs/", domain: "cinevid.sbs", category: 'Live TV & Sports' },
+  { id: "fancode.com", title: "FanCode", url: "https://www.fancode.com/", domain: "fancode.com", category: 'Live TV & Sports' },
+  { id: "ondemand.st", title: "OnDemand", url: "https://ondemand.st/", domain: "ondemand.st", category: 'Live TV & Sports' },
+  { id: "streameast.cool", title: "StreamEast", url: "https://streameast.cool/", domain: "streameast.cool", category: 'Live TV & Sports' },
+  { id: "bhoomtv.net", title: "Bhoom TV", url: "https://bhoomtv.net/", domain: "bhoomtv.net", category: 'Live TV & Sports' },
+  { id: "stmify.com", title: "Stmify", url: "https://stmify.com/", domain: "stmify.com", category: 'Live TV & Sports' },
+  { id: "famelack.com", title: "Famelack", url: "https://famelack.com/", domain: "famelack.com", category: 'Live TV & Sports' },
+  { id: "publiciptv.com", title: "Public IPTV", url: "https://publiciptv.com/?country=US", domain: "publiciptv.com", category: 'Live TV & Sports' },
+  { id: "sportplus.watch", title: "SportPlus", url: "https://en97.sportplus.watch/", domain: "sportplus.watch", category: 'Live TV & Sports' },
+  { id: "streamking.cx", title: "StreamKing", url: "https://streamking.cx/", domain: "streamking.cx", category: 'Live TV & Sports' },
+]
+const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES]
+export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports'] as const
 export const ALLSITEHUB_SITE_COUNT = ALL_SITES.length
 export function AllSiteHub({ onOpenSite }: { onOpenSite: (url: string) => void }) {
  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All'); const [sort,setSort]=useState<'az'|'za'>('az')
