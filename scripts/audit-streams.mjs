@@ -202,12 +202,82 @@ async function main() {
     concurrency, timeoutMs, delayMs, country: countryFilter || null,
     note: 'Reachability/manifest-shape audit only; not a decoder or first-frame test.',
     summary: results.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {}),
+    analytics: (() => {
+      const percentile = (values, p) => {
+        if (!values.length) return null
+        const sorted = [...values].sort((a, b) => a - b)
+        return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]
+      }
+      const latencies = results.map((r) => r.elapsedMs).filter((n) => Number.isFinite(n) && n >= 0)
+      const hosts = new Map()
+      for (const r of results) {
+        const key = r.host || 'unknown'
+        const g = hosts.get(key) || { host: key, total: 0, failures: 0, latencies: [] }
+        g.total++
+        if (r.status !== 'reachable') g.failures++
+        if (Number.isFinite(r.elapsedMs)) g.latencies.push(r.elapsedMs)
+        hosts.set(key, g)
+      }
+      return {
+        latencyMs: {
+          average: latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null,
+          p50: percentile(latencies, 50), p95: percentile(latencies, 95),
+          max: latencies.length ? Math.max(...latencies) : null,
+        },
+        manifests: {
+          valid: results.filter((r) => r.manifestValid === true).length,
+          invalidOrEmpty: results.filter((r) => r.manifestValid === false).length,
+          notApplicable: results.filter((r) => r.manifestValid === null).length,
+        },
+        slowestHosts: [...hosts.values()].map((g) => ({
+          host: g.host, total: g.total, failures: g.failures,
+          failureRate: Number((g.failures / g.total).toFixed(4)),
+          avgMs: g.latencies.length ? Math.round(g.latencies.reduce((a, b) => a + b, 0) / g.latencies.length) : null,
+          p95Ms: percentile(g.latencies, 95),
+        })).sort((a, b) => b.failureRate - a.failureRate || (b.p95Ms || 0) - (a.p95Ms || 0)).slice(0, 30),
+      }
+    })(),
     results,
   }, null, 2))
   const columns = ['channelId','channel','country','streamId','sourceIndex','url','host','status','httpStatus','kind','manifestValid','elapsedMs','bytesRead','contentType','reason']
   fs.writeFileSync(csvPath, [columns.join(','), ...results.map(r => columns.map(k => csvCell(r[k])).join(','))].join('\n'))
   const counts = results.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {})
-  console.log('Summary:', JSON.stringify(counts))
+  const percentile = (values, p) => {
+    if (!values.length) return null
+    const sorted = [...values].sort((a, b) => a - b)
+    return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]
+  }
+  const latencies = results.map((r) => r.elapsedMs).filter((n) => Number.isFinite(n) && n >= 0)
+  const validManifests = results.filter((r) => r.manifestValid === true).length
+  const invalidManifests = results.filter((r) => r.manifestValid === false).length
+  const hostMap = new Map()
+  for (const result of results) {
+    const key = result.host || 'unknown'
+    const group = hostMap.get(key) || { host: key, total: 0, failures: 0, latencies: [] }
+    group.total++
+    if (result.status !== 'reachable') group.failures++
+    if (Number.isFinite(result.elapsedMs)) group.latencies.push(result.elapsedMs)
+    hostMap.set(key, group)
+  }
+  const hostSummary = [...hostMap.values()].map((group) => ({
+    host: group.host,
+    total: group.total,
+    failures: group.failures,
+    failureRate: Number((group.failures / group.total).toFixed(4)),
+    avgMs: group.latencies.length ? Math.round(group.latencies.reduce((a, b) => a + b, 0) / group.latencies.length) : null,
+    p95Ms: percentile(group.latencies, 95),
+  })).sort((a, b) => b.failureRate - a.failureRate || (b.p95Ms || 0) - (a.p95Ms || 0)).slice(0, 30)
+  const analytics = {
+    latencyMs: {
+      average: latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null,
+      p50: percentile(latencies, 50),
+      p95: percentile(latencies, 95),
+      max: latencies.length ? Math.max(...latencies) : null,
+    },
+    manifests: { valid: validManifests, invalidOrEmpty: invalidManifests, notApplicable: results.length - validManifests - invalidManifests },
+    slowestHosts: hostSummary,
+  }
+  console.log('Summary:', JSON.stringify({ statuses: counts, analytics }, null, 2))
   console.log('JSON:', path.relative(ROOT, jsonPath))
   console.log('CSV: ', path.relative(ROOT, csvPath))
 }
