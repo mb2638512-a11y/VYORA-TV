@@ -46,12 +46,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install Android platform
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-36"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36"
+          accept-android-sdk-licenses: true
       - name: Extract AAR class libraries
         shell: bash
         run: |
