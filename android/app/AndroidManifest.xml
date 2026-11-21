@@ -7,6 +7,7 @@
     <queries>
         <package android:name="org.videolan.vlc" />
         <package android:name="com.mxtech.videoplayer.ad" />
+        <package android:name="com.mxtech.videoplayer.pro" />
         <package android:name="is.xyz.mpv" />
         <package android:name="org.xbmc.kodi" />
         <package android:name="org.courville.nova" />
