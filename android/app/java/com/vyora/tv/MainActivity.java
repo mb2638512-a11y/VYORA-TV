@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
          * bundle over http://127.0.0.1:<port> and implements the API, so the UI
          * is same-origin with the engine and everything works.
          */
-        localServer = new LocalServer(this);
+        localServer = new LocalServer(this, player);
         int port = localServer.start();
         if (port > 0) {
             web.loadUrl("http://127.0.0.1:" + port + "/index.html");
