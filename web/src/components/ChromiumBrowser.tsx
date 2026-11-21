@@ -531,11 +531,14 @@ export default function ChromiumBrowser({
 
   const [appDisplayMode, setAppDisplayMode] = useState<'auto' | 'mobile' | 'desktop'>(initialDisplayMode)
   useEffect(() => {
-    if (!standalone) return
+    if (!standalone) {
+      setBrowserDisplayMode(desktopMode ? 'desktop' : 'auto')
+      return
+    }
     setAppDisplayMode(initialDisplayMode)
     setDesktopMode(initialDisplayMode === 'desktop')
     setBrowserDisplayMode(initialDisplayMode)
-  }, [standalone, initialDisplayMode])
+  }, [standalone, initialDisplayMode, desktopMode])
 
   const reloadActiveTabForUserAgent = () => {
     setTabs((prev) => prev.map((tab) => tab.id === activeTabId
@@ -1336,7 +1339,7 @@ export default function ChromiumBrowser({
   const getProxySrc = (tab: Tab): string => {
     const target = tab.frameUrl !== undefined ? tab.frameUrl : tab.url
     if (!target) return 'about:blank'
-    const mode = desktopMode || appDisplayMode === 'desktop' ? 'desktop' : 'mobile'
+    const mode = standalone ? appDisplayMode : desktopMode ? 'desktop' : 'auto'
     return `${API}/webproxy?u=${encodeURIComponent(target)}&mode=${mode}`
   }
 
