@@ -570,10 +570,16 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 
 			// Synchronize page title & URL with parent
 			function syncState() {
+				var iconLink = document.querySelector('link[rel~="icon"], link[rel="apple-touch-icon"]');
+				var iconUrl = '';
+				try { iconUrl = iconLink ? new URL(iconLink.getAttribute('href') || '', document.baseURI).href : ''; } catch (e) {}
+				var themeMeta = document.querySelector('meta[name="theme-color"]');
 				sendToHost({
 					type: 'VYORA_PAGE_SYNC',
 					url: window.__VYORA_CURRENT_URL__,
-					title: document.title || window.location.hostname
+					title: document.title || window.location.hostname,
+					icon: iconUrl,
+					themeColor: themeMeta ? themeMeta.getAttribute('content') || '' : ''
 				});
 			}
 			if (document.readyState === 'complete') syncState();
