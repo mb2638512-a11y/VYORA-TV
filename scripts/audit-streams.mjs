@@ -241,7 +241,7 @@ async function main() {
     })(),
     results,
   }, null, 2))
-  const columns = ['channelId','channel','country','streamId','sourceIndex','url','host','status','httpStatus','kind','manifestValid','elapsedMs','bytesRead','contentType','reason']
+  const columns = ['channelId','channel','country','streamId','sourceIndex','urlOrigin','host','status','httpStatus','kind','manifestValid','elapsedMs','bytesRead','contentType','reason']
   fs.writeFileSync(csvPath, [columns.join(','), ...results.map(r => columns.map(k => csvCell(r[k])).join(','))].join('\n'))
   const counts = results.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {})
   const percentile = (values, p) => {
