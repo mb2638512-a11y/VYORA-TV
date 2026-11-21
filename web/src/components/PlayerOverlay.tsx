@@ -322,9 +322,26 @@ export function PlayerOverlay({
     setOffline(false)
     networkFailsRef.current = 0
 
-    if (isNative) {
-      // Hand over every source: the native player races them and shows the
-      // first one that works (no black screen on a dead CDN).
+    const externalPlayer = ['vlc', 'mx', 'mpv', 'kodi', 'nova', 'just'].includes(activeEngineId)
+    if (externalPlayer) {
+      if (isNative) {
+        const result = launchExternalStream(activeEngineId, stream.url, channel.name)
+        if (result.launched) {
+          nativeStop()
+          setStatus('playing')
+          setToast(`Opened in ${currentEngine.name}`)
+          return
+        }
+        setToast(`${currentEngine.name} is not installed. Using VYORA Player instead.`)
+      } else {
+        setToast('External Android players are available in the Android TV app. Using VYORA Player here.')
+      }
+      setActiveEngineId('internal')
+      return
+    }
+
+    if (isNative && activeEngineId !== 'hlsjs' && activeEngineId !== 'html5') {
+      // VYORA Player and ExoPlayer both use the native Media3 playback surface.
       const candidates = (channel.streams || [])
         .slice(0, 4)
         .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
@@ -509,7 +526,7 @@ export function PlayerOverlay({
       }
     }
 
-    if (isHls && Hls.isSupported()) {
+    if (isHls && Hls.isSupported() && activeEngineId !== 'html5') {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
@@ -654,7 +671,7 @@ export function PlayerOverlay({
       video.removeEventListener('error', onError)
       video.pause()
     }
-  }, [channel.id, streamIndex, t, tryNextStream, retryNonce, resolvedIdx])
+  }, [channel.id, streamIndex, t, tryNextStream, retryNonce, resolvedIdx, activeEngineId])
 
   /* Auto quality: re-cap the ABR when the measured bandwidth changes
      (without restarting the stream). */
@@ -1270,8 +1287,46 @@ export function PlayerOverlay({
                   <Icon name="list" size={16} />
                   <span>Channels</span>
                 </button>
+                <button
+                  className="hud-action-btn hud-btn-player"
+                  onClick={() => setShowPlayerPicker((open) => !open)}
+                  data-focusable
+                  aria-expanded={showPlayerPicker}
+                  title="Choose playback engine"
+                >
+                  <Icon name="play-circle" size={16} />
+                  <span>Player</span>
+                </button>
               </div>
 
+              {showPlayerPicker ? (
+                <div className="player-engine-picker" role="dialog" aria-label="Choose player">
+                  <div className="player-engine-picker-head">
+                    <strong>Choose Player</strong>
+                    <button type="button" data-focusable onClick={() => setShowPlayerPicker(false)} aria-label="Close player picker">×</button>
+                  </div>
+                  <div className="player-engine-picker-list">
+                    {TOP_STREAMING_PLAYERS.map((player) => (
+                      <button
+                        key={player.id}
+                        type="button"
+                        data-focusable
+                        className={`player-engine-picker-item ${activeEngineId === player.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setActiveEngineId(player.id)
+                          onSelectPlayer?.(player.id)
+                          setShowPlayerPicker(false)
+                          setToast(`Player preference set to ${player.name}`)
+                        }}
+                      >
+                        <span>{player.name}</span>
+                        <small>{player.badge}</small>
+                        {activeEngineId === player.id ? <b>✓</b> : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="player-clock">{new Date().toLocaleTimeString()}</div>
               {nowPlaying ? (
                 <div className="player-now">
