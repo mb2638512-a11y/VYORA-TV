@@ -388,6 +388,10 @@ public class TvPlayer {
                 safeRelease(pending);
             }
             cancelWatchdog(index);
+            if (playbackListener != null && index >= 0 && index < urls.length) {
+                playbackListener.onSourceFailed(urls[index],
+                        SystemClock.elapsedRealtime() - candidateStartedAt);
+            }
             startMoreCandidates();
         }
     }
