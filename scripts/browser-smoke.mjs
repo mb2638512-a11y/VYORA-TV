@@ -52,7 +52,7 @@ try {
   const omnibox = page.locator('.chromium-omnibox-input')
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
-    await page.locator('.chromium-engine-menu button.chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).first().evaluate((element) => (element as HTMLButtonElement).click())
+    await page.locator('.chromium-engine-menu button.chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).first().evaluate((element) => element.click())
     await page.locator('.chromium-engine-menu').waitFor({ state: 'hidden', timeout: 3000 })
     const selectedEngine = await page.locator('.chromium-engine-trigger-name').textContent()
     if (!selectedEngine?.toLowerCase().includes(engine === 'bing' ? 'bing' : 'duckduckgo')) {
