@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { createHash } from 'node:crypto'
 
 const ROOT = process.cwd()
 const DATA_DIR = path.resolve(ROOT, process.env.VYORA_DATA_DIR || 'server/data')
@@ -176,23 +177,52 @@ async function main() {
   if (!targets.length) throw new Error('No stream URLs found for the selected catalogue/filter.')
   console.log(`VYORA audit: ${targets.length} source URLs | concurrency=${concurrency} | timeout=${timeoutMs}ms | global min request gap=${delayMs}ms`)
   console.log('This checks reachability and manifest shape only; it does not decode video or prove first-frame playback.')
+  const fingerprint = createHash('sha256')
+    .update(targets.map((item) => `${item.channelId}|${item.sourceIndex}|${item.url}`).join('\\n'))
+    .digest('hex')
+  const checkpointDir = path.join(ROOT, 'reports', 'stream-audit')
+  fs.mkdirSync(checkpointDir, { recursive: true })
+  const checkpointPath = path.join(checkpointDir, `checkpoint-${countryFilter || 'all'}-${fingerprint.slice(0, 16)}.json`)
   const results = new Array(targets.length)
+  if (has('--resume') && fs.existsSync(checkpointPath)) {
+    const saved = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'))
+    if (saved.fingerprint !== fingerprint || saved.targetCount !== targets.length || !Array.isArray(saved.results)) {
+      throw new Error('Checkpoint does not match this catalogue/filter; refusing unsafe resume.')
+    }
+    saved.results.forEach((result, index) => { if (result && index < results.length) results[index] = result })
+  }
   let cursor = 0
-  let completed = 0
+  let completed = results.filter(Boolean).length
+  let sinceCheckpoint = 0
+  const saveCheckpoint = () => {
+    const tmp = checkpointPath + '.tmp'
+    fs.writeFileSync(tmp, JSON.stringify({
+      fingerprint, targetCount: targets.length, country: countryFilter || null,
+      updatedAt: new Date().toISOString(), results,
+    }))
+    fs.renameSync(tmp, checkpointPath)
+  }
   const workers = Array.from({ length: concurrency }, async () => {
     while (true) {
       const index = cursor++
       if (index >= targets.length) return
+      if (results[index]) continue
       await waitForGlobalRequestSlot()
       results[index] = await probe(targets[index])
       completed++
+      sinceCheckpoint++
+      if (sinceCheckpoint >= 25 || completed === targets.length) {
+        saveCheckpoint()
+        sinceCheckpoint = 0
+      }
       if (completed % 25 === 0 || completed === targets.length) {
-        process.stdout.write(`\rAudited ${completed}/${targets.length}`)
+        process.stdout.write(`\\rAudited ${completed}/${targets.length}`)
       }
     }
   })
   await Promise.all(workers)
-  process.stdout.write('\n')
+  if (completed === targets.length) saveCheckpoint()
+  process.stdout.write('\\n')
 
   const stamp = new Date().toISOString().replaceAll(':', '-')
   const outDir = path.join(ROOT, 'reports', 'stream-audit')
