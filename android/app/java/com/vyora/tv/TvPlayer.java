@@ -294,14 +294,23 @@ public class TvPlayer {
                 // Slow line: keep a larger reserve after startup to reduce rebuffering.
                 bufferBuilder.setBufferDurationsMs(2500, 30000, 1200, 3000)
                         .setTargetBufferBytes(12 * 1024 * 1024);
+                Log.i(TAG, "buffer profile=slow measured_bps=" + estimatedBps);
             } else if (hasRecentEstimate && estimatedBps < 6000000) {
                 // Mid-range line: balanced startup and rebuffer reserve.
                 bufferBuilder.setBufferDurationsMs(2000, 24000, 1000, 2200)
                         .setTargetBufferBytes(10 * 1024 * 1024);
-            } else {
-                // Fast or not-yet-measured line: favour a quick first frame.
+                Log.i(TAG, "buffer profile=balanced measured_bps=" + estimatedBps);
+            } else if (hasRecentEstimate) {
+                // Only use the quick-start profile when throughput was actually measured.
                 bufferBuilder.setBufferDurationsMs(1500, 18000, 800, 1600)
                         .setTargetBufferBytes(8 * 1024 * 1024);
+                Log.i(TAG, "buffer profile=fast measured_bps=" + estimatedBps);
+            } else {
+                // Unknown is not the same as fast. Use a conservative middle profile
+                // until this device has a fresh throughput sample.
+                bufferBuilder.setBufferDurationsMs(2000, 24000, 1000, 2400)
+                        .setTargetBufferBytes(10 * 1024 * 1024);
+                Log.i(TAG, "buffer profile=unknown-conservative");
             }
             DefaultLoadControl loadControl = bufferBuilder.build();
 
