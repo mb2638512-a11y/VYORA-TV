@@ -1102,9 +1102,10 @@ export default function ChromiumBrowser({
   const closeTab = (idToClose: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     if (tabs.length === 1) {
+      const newId = `tab-${Date.now()}`
       setTabs([
         {
-          id: `tab-${Date.now()}`,
+          id: newId,
           title: 'New Tab',
           url: '',
           displayUrl: '',
@@ -1118,7 +1119,10 @@ export default function ChromiumBrowser({
           navKey: 0,
         },
       ])
+      setActiveTabId(newId)
       setInputUrl('')
+      setSuggestions([])
+      setSuggestIndex(-1)
       return
     }
 
