@@ -59,9 +59,20 @@ func googleSearchURL(query string) string {
 	return "https://www.google.com/search?igu=1&q=" + url.QueryEscape(query)
 }
 
-// googleSuggestURL builds the autocomplete endpoint URL.
-func googleSuggestURL(query string) string {
-	return "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=" + url.QueryEscape(query)
+// SuggestURL returns the official lightweight autocomplete endpoint for
+// the selected provider. Only explicitly supported providers are accepted.
+func suggestURL(engine, query string) (string, bool) {
+	q := url.QueryEscape(query)
+	switch strings.ToLower(engine) {
+	case "", "google":
+		return "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=" + q, true
+	case "bing":
+		return "https://api.bing.com/osjson.aspx?query=" + q, true
+	case "duckduckgo":
+		return "https://ac.duckduckgo.com/ac/?q=" + q + "&type=list", true
+	default:
+		return "", false
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -104,22 +115,32 @@ func NewSuggestCache() *SuggestCache {
 	return &SuggestCache{items: map[string]suggestCacheEntry{}}
 }
 
-// Suggestions returns Google's autocomplete suggestions for a query.
-func (c *SuggestCache) Suggestions(r *http.Request, query string) []string {
+// Suggestions returns provider-specific autocomplete suggestions. Queries
+// are sent only to the selected provider; unsupported engines return no list.
+func (c *SuggestCache) Suggestions(r *http.Request, engine, query string) []string {
 	query = strings.TrimSpace(query)
-	if len(query) < 2 {
+	engine = strings.ToLower(strings.TrimSpace(engine))
+	if len(query) < 2 || len(query) > 256 {
 		return []string{}
 	}
-	key := strings.ToLower(query)
+	endpoint, supported := suggestURL(engine, query)
+	if !supported {
+		return []string{}
+	}
+	if engine == "" {
+		engine = "google"
+	}
+	key := engine + "\x00" + strings.ToLower(query)
 
 	c.mu.Lock()
 	if e, ok := c.items[key]; ok && time.Now().Before(e.until) {
+		items := append([]string(nil), e.items...)
 		c.mu.Unlock()
-		return e.items
+		return items
 	}
 	c.mu.Unlock()
 
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, googleSuggestURL(query), nil)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, endpoint, nil)
 	if err != nil {
 		return []string{}
 	}
@@ -140,12 +161,65 @@ func (c *SuggestCache) Suggestions(r *http.Request, query string) []string {
 		return []string{}
 	}
 
-	items := parseGoogleSuggest(string(body))
+	var items []string
+	switch engine {
+	case "google", "bing":
+		items = parseSearchSuggestArray(string(body))
+	case "duckduckgo":
+		items = parseDuckDuckGoSuggest(string(body))
+	}
 
 	c.mu.Lock()
-	c.items[key] = suggestCacheEntry{items: items, until: time.Now().Add(5 * time.Minute)}
+	c.items[key] = suggestCacheEntry{items: append([]string(nil), items...), until: time.Now().Add(5 * time.Minute)}
 	c.mu.Unlock()
 	return items
+}
+
+// parseSearchSuggestArray reads the common Firefox/OSJSON payload:
+// ["query",["suggestion one","suggestion two"],...].
+func parseSearchSuggestArray(body string) []string {
+	var raw []json.RawMessage
+	if err := json.Unmarshal([]byte(body), &raw); err != nil || len(raw) < 2 {
+		return []string{}
+	}
+	var list []string
+	if err := json.Unmarshal(raw[1], &list); err != nil {
+		return []string{}
+	}
+	return cleanSuggestions(list)
+}
+
+// parseDuckDuckGoSuggest reads DuckDuckGo's [{phrase:"..."}] response.
+func parseDuckDuckGoSuggest(body string) []string {
+	var raw []struct {
+		Phrase string `json:"phrase"`
+	}
+	if err := json.Unmarshal([]byte(body), &raw); err != nil {
+		return []string{}
+	}
+	list := make([]string, 0, len(raw))
+	for _, item := range raw {
+		list = append(list, item.Phrase)
+	}
+	return cleanSuggestions(list)
+}
+
+func cleanSuggestions(list []string) []string {
+	out := make([]string, 0, len(list))
+	seen := map[string]bool{}
+	for _, item := range list {
+		item = strings.TrimSpace(item)
+		key := strings.ToLower(item)
+		if item == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, item)
+		if len(out) == 10 {
+			break
+		}
+	}
+	return out
 }
 
 // parseGoogleSuggest reads the Firefox-style autocomplete payload:
