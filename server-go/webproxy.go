@@ -172,33 +172,6 @@ var (
 		CheckRedirect: browserProxyRedirectPolicy,
 	}
 
-	tunnelURL, _ = url.Parse("http://127.0.0.1:8080")
-
-	browserTunnelTransport = &http.Transport{
-		Proxy: http.ProxyURL(tunnelURL),
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DisableCompression:    false,
-	}
-
-	browserTunnelClient = &http.Client{
-		Transport: browserTunnelTransport,
-		Jar:       browserJar,
-		Timeout:   25 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 12 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
-	}
 )
 
 
@@ -358,39 +331,11 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 		upReq.Header.Set("Sec-Fetch-Site", "same-origin")
 	}
 
+	// The browser proxy uses only browserClient: it validates every redirect
+	// and pins DNS results to public IPs. Falling back to the legacy tunnel or
+	// directClient would bypass those SSRF protections (and directClient disables
+	// TLS certificate verification), so failed upstream requests fail closed.
 	resp, doErr := browserClient.Do(upReq)
-	if doErr != nil || (resp != nil && (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden || resp.StatusCode >= 500)) {
-		// Try tunnel client fallback
-		log.Printf("[WEBPROXY] Primary fetch (status=%v, err=%v) for %s. Retrying via tunnel proxy...",
-			func() int {
-				if resp != nil {
-					return resp.StatusCode
-				}
-				return 0
-			}(), doErr, targetURL)
-		upReqTunnel, tErr := http.NewRequestWithContext(ctx, r.Method, targetURL, bytes.NewReader(reqBody))
-		if tErr == nil {
-			upReqTunnel.Header = upReq.Header.Clone()
-			tResp, tErr := browserTunnelClient.Do(upReqTunnel)
-			if tErr == nil && tResp != nil {
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
-				resp = tResp
-				doErr = nil
-				log.Printf("[WEBPROXY] Tunnel succeeded for %s with status %d", targetURL, tResp.StatusCode)
-			}
-		}
-	}
-
-	if doErr != nil && pm.directClient != nil {
-		log.Printf("[WEBPROXY] Primary client failed for %s: %v. Retrying directClient...", targetURL, doErr)
-		upReqDirect, dErr := http.NewRequestWithContext(ctx, r.Method, targetURL, bytes.NewReader(reqBody))
-		if dErr == nil {
-			upReqDirect.Header = upReq.Header.Clone()
-			resp, doErr = pm.directClient.Do(upReqDirect)
-		}
-	}
 
 	// NO SILENT SEARCH-ENGINE FALLBACK.
 	//
