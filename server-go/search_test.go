@@ -1,6 +1,6 @@
 package main
 
-import (
+import (\n\t"context"
 	"encoding/base64"
 	"net/url"
 	"strings"
@@ -116,5 +116,41 @@ func TestParseDuckDuckGoSuggest(t *testing.T) {
 	}
 	if got := parseDuckDuckGoSuggest(`{"phrase":"not an array"}`); len(got) != 0 {
 		t.Fatalf("malformed payload returned suggestions: %v", got)
+	}
+}
+
+func TestValidatePublicProxyURLBlocksInternalTargets(t *testing.T) {
+	blocked := []string{
+		"http://127.0.0.1:8080/",
+		"http://10.0.0.1/",
+		"http://192.168.1.1/",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://[::1]/",
+		"http://localhost/",
+		"http://service.local/",
+		"http://metadata.google.internal/",
+		"file:///etc/passwd",
+		"http://user:pass@example.com/",
+	}
+	for _, raw := range blocked {
+		t.Run(raw, func(t *testing.T) {
+			u, err := url.Parse(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := validatePublicProxyURL(context.Background(), u); err == nil {
+				t.Fatalf("expected unsafe proxy target to be rejected: %s", raw)
+			}
+		})
+	}
+}
+
+func TestValidatePublicProxyURLAllowsPublicLiteralIP(t *testing.T) {
+	u, err := url.Parse("https://8.8.8.8/dns-query")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validatePublicProxyURL(context.Background(), u); err != nil {
+		t.Fatalf("public IP should be allowed: %v", err)
 	}
 }
