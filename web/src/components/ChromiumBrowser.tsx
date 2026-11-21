@@ -9,6 +9,8 @@ export type ChromiumBrowserProps = {
   initialEngine?: BrowserEngineId
   onClose: () => void
   standalone?: boolean
+  initialDisplayMode?: 'auto' | 'mobile' | 'desktop'
+  onDisplayModeChange?: (mode: 'auto' | 'mobile' | 'desktop') => void
   onInstallApp?: (app: InstalledApp) => void
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
@@ -430,6 +432,8 @@ export default function ChromiumBrowser({
   initialEngine = 'google',
   onClose,
   standalone = false,
+  initialDisplayMode = 'auto',
+  onDisplayModeChange,
   onInstallApp,
   onPlayMovie,
   onNavigateToDownloads,
@@ -524,6 +528,20 @@ export default function ChromiumBrowser({
     } catch {}
     return false
   })
+
+  const [appDisplayMode, setAppDisplayMode] = useState<'auto' | 'mobile' | 'desktop'>(initialDisplayMode)
+  useEffect(() => {
+    if (!standalone) return
+    setAppDisplayMode(initialDisplayMode)
+    setDesktopMode(initialDisplayMode === 'desktop')
+  }, [standalone, initialDisplayMode])
+
+  const changeAppDisplayMode = (mode: 'auto' | 'mobile' | 'desktop') => {
+    setAppDisplayMode(mode)
+    setDesktopMode(mode === 'desktop')
+    onDisplayModeChange?.(mode)
+    showToast(mode === 'desktop' ? 'Desktop layout enabled' : mode === 'mobile' ? 'Mobile layout enabled' : 'Automatic layout enabled')
+  }
 
   const [portalCategory, setPortalCategory] = useState<'all' | 'streaming' | 'sports' | 'news' | 'tools' | 'gaming'>('all')
 
@@ -1385,6 +1403,16 @@ export default function ChromiumBrowser({
       {toastMessage ? (
         <div className="chromium-toast" role="alert">
           {toastMessage}
+        </div>
+      ) : null}
+
+      {standalone ? (
+        <div className="webapp-mode-switch" role="group" aria-label="Website display mode">
+          {(['auto', 'mobile', 'desktop'] as const).map((mode) => (
+            <button key={mode} type="button" data-focusable className={appDisplayMode === mode ? 'active' : ''} aria-pressed={appDisplayMode === mode} onClick={() => changeAppDisplayMode(mode)}>
+              {mode === 'auto' ? 'Auto' : mode === 'mobile' ? 'Mobile' : 'Desktop'}
+            </button>
+          ))}
         </div>
       ) : null}
 
@@ -2302,7 +2330,7 @@ export default function ChromiumBrowser({
       <div className="chromium-viewport">
         {activeTab?.url ? (
           /* ACTIVE WEBSITE IFRAME */
-          <div className={`chromium-iframe-wrapper ${darkModeWeb ? 'dark-web-active' : ''} ${desktopMode ? 'desktop-canvas-mode' : ''}`}>
+          <div className={`chromium-iframe-wrapper ${darkModeWeb ? 'dark-web-active' : ''} ${desktopMode ? 'desktop-canvas-mode' : ''} ${standalone ? `webapp-layout-${appDisplayMode}` : ''}`}>
             {activeTab.isLoading ? (
               <div className="chrome-loading-bar">
                 <div className="chrome-loading-indeterminate" />
