@@ -15,7 +15,7 @@ import {
   requestLookahead,
   resolveFastestStream,
 } from '../lib/api'
-import { downloadStreamM3u, isNative, launchExternalStream, nativePlayMulti, nativeStop } from '../lib/bridge'
+import { downloadStreamM3u, isNative, launchExternalStream, nativePlay, nativePlayMulti, nativeStop } from '../lib/bridge'
 import { Icon } from './Icon'
 
 type Props = {
@@ -325,7 +325,7 @@ export function PlayerOverlay({
     const externalPlayer = ['vlc', 'mx', 'mpv', 'kodi', 'nova', 'just'].includes(activeEngineId)
     if (externalPlayer) {
       if (isNative) {
-        const result = launchExternalStream(activeEngineId, stream.url, channel.name)
+        const result = launchExternalStream(activeEngineId, stream.url, channel.name, stream.referer || '', stream.ua || '')
         if (result.launched) {
           nativeStop()
           setStatus('playing')
@@ -346,11 +346,17 @@ export function PlayerOverlay({
     }
 
     if (isNative && activeEngineId !== 'hlsjs' && activeEngineId !== 'html5') {
-      // VYORA Player and ExoPlayer both use the native Media3 playback surface.
-      const candidates = (channel.streams || [])
-        .slice(0, 4)
-        .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
-      nativePlayMulti(candidates, channel.name, channel.logo)
+      if (activeEngineId === 'exoplayer') {
+        // Direct ExoPlayer mode: play only the selected source and let Media3
+        // report/fail this source; VYORA Player retains multi-source racing.
+        nativePlay(stream.url, stream.referer || '', stream.ua || '', channel.name, channel.logo)
+      } else {
+        // VYORA-managed mode races alternate sources and performs automatic failover.
+        const candidates = (channel.streams || [])
+          .slice(0, 4)
+          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
+        nativePlayMulti(candidates, channel.name, channel.logo)
+      }
       setStatus('playing')
       return
     }
