@@ -10,6 +10,7 @@ server-go/tmp*.log
 .kilo/
 scratch/
 test_chunk.ts
+server/data/logos/
 
 # Logs
 *.log
