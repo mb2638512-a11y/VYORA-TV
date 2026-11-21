@@ -23,6 +23,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Validate stream audit script syntax
+        run: node --check scripts/audit-streams.mjs
       - run: npm --workspace web run build
 
   go-tests:
