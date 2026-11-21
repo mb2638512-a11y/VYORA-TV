@@ -170,7 +170,20 @@ func (c *SuggestCache) Suggestions(r *http.Request, engine, query string) []stri
 	}
 
 	c.mu.Lock()
-	c.items[key] = suggestCacheEntry{items: append([]string(nil), items...), until: time.Now().Add(5 * time.Minute)}
+	now := time.Now()
+	// Autocomplete queries are high-cardinality. Expire old entries and cap
+	// the cache so a long-running TV browser cannot grow it without bound.
+	if len(c.items) >= 512 {
+		for cachedKey, entry := range c.items {
+			if !now.Before(entry.until) {
+				delete(c.items, cachedKey)
+			}
+		}
+		if len(c.items) >= 512 {
+			c.items = make(map[string]suggestCacheEntry, 256)
+		}
+	}
+	c.items[key] = suggestCacheEntry{items: append([]string(nil), items...), until: now.Add(5 * time.Minute)}
 	c.mu.Unlock()
 	return items
 }
