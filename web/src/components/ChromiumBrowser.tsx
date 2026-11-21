@@ -608,9 +608,12 @@ export default function ChromiumBrowser({
 
   const clearAllHistory = () => {
     setHistoryItems([])
-    try {
-      localStorage.removeItem(HISTORY_STORAGE_KEY)
-    } catch {}
+    // Private browsing must not modify the persistent profile's history.
+    if (!settings.privateMode) {
+      try {
+        localStorage.removeItem(HISTORY_STORAGE_KEY)
+      } catch {}
+    }
     showToast('✓ Browsing history cleared!')
   }
 
@@ -618,9 +621,11 @@ export default function ChromiumBrowser({
     e.stopPropagation()
     setHistoryItems((prev) => {
       const updated = prev.filter((h) => h.id !== id)
-      try {
-        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
-      } catch {}
+      if (!settings.privateMode) {
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch {}
+      }
       return updated
     })
   }
@@ -757,12 +762,22 @@ export default function ChromiumBrowser({
 
   const saveBookmarks = (items: Bookmark[]) => {
     setBookmarks(items)
+    // Bookmarks edited during a private session are temporary and disappear
+    // when private mode is closed; never write them to the normal profile.
+    if (settings.privateMode) return
     try {
       localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(items))
     } catch (e) {
       // ignore
     }
   }
+
+  useEffect(() => {
+    // Restore the normal bookmark set after leaving private browsing so
+    // temporary private-session edits cannot leak into the regular profile.
+    if (settings.privateMode) return
+    setBookmarks(getInitialBookmarks())
+  }, [settings.privateMode])
 
   // Navigate the active tab
   const navigateActiveTab = useCallback(
