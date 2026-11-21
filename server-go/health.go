@@ -25,6 +25,8 @@ type HealthStore struct {
 	subMu          sync.Mutex
 	priorityQueue  []string
 	priorityMu     sync.Mutex
+	catalogCursor  atomic.Uint64
+	catalogSlots   chan struct{}
 	activePlayback atomic.Bool
 	activeCID      atomic.Value // string
 	statusFile   string
@@ -89,6 +91,7 @@ func NewHealthStore(statusFile string, store *Store) *HealthStore {
 		tunnelClient: tunnelClient,
 		store:        store,
 		stopChan:     make(chan struct{}),
+		catalogSlots: make(chan struct{}, 2),
 	}
 	h.activeCID.Store("")
 
@@ -355,8 +358,31 @@ func (h *HealthStore) workerLoop(workerID int) {
 		h.priorityMu.Unlock()
 
 		if targetID == "" {
-			// Sleep briefly when no priority targets exist
-			time.Sleep(400 * time.Millisecond)
+			// Low-priority rolling catalogue sweep. Only two workers may scan
+			// the public source catalogue at once, and the whole sweep pauses
+			// while a viewer is actively watching a channel.
+			select {
+			case h.catalogSlots <- struct{}{}:
+			default:
+				time.Sleep(300 * time.Millisecond)
+				continue
+			}
+
+			ch := h.nextCatalogChannel()
+			if ch == nil || len(ch.Streams) == 0 {
+				<-h.catalogSlots
+				time.Sleep(250 * time.Millisecond)
+				continue
+			}
+			if h.catalogRecordIsFresh(ch.ID) {
+				<-h.catalogSlots
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			h.probeChannel(ch)
+			<-h.catalogSlots
+			time.Sleep(150 * time.Millisecond)
 			continue
 		}
 
@@ -367,6 +393,40 @@ func (h *HealthStore) workerLoop(workerID int) {
 
 		h.probeChannel(ch)
 		time.Sleep(150 * time.Millisecond)
+	}
+}
+
+// nextCatalogChannel walks every loaded channel in a stable round-robin order.
+// The cursor is process-local; persisted health records prevent needless repeats
+// after a restart.
+func (h *HealthStore) nextCatalogChannel() *Channel {
+	if h.store == nil {
+		return nil
+	}
+	total := h.store.ChannelCount()
+	if total == 0 {
+		return nil
+	}
+	index := int((h.catalogCursor.Add(1) - 1) % uint64(total))
+	return h.store.GetChannelAt(index)
+}
+
+// catalogRecordIsFresh avoids repeatedly probing channels that were recently
+// confirmed. Online records stay fresh for 20 minutes; confirmed offline
+// records for 5 minutes; unknown records for 2 minutes.
+func (h *HealthStore) catalogRecordIsFresh(id string) bool {
+	rec := h.Get(id)
+	if rec == nil {
+		return false
+	}
+	age := time.Since(time.UnixMilli(rec.TS))
+	switch rec.Status {
+	case "online":
+		return age < 20*time.Minute
+	case "offline":
+		return age < 5*time.Minute
+	default:
+		return age < 2*time.Minute
 	}
 }
 
