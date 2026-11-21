@@ -333,7 +333,7 @@ public class TvPlayer {
                     if (player == candidatePlayer && winnerChosen) {
                         activeSourceFailed(index, candidatePlayer, "decoder/network error");
                     } else {
-                        candidateFailed(index, candidatePlayer);
+                        candidateFailed(index, candidatePlayer, candidateStartedAt);
                     }
                 }
 
@@ -448,7 +448,7 @@ public class TvPlayer {
         Log.w(TAG, "active source " + index + " failed: " + reason);
         if (playbackListener != null && index >= 0 && index < urls.length) {
             playbackListener.onSourceFailed(urls[index],
-                    SystemClock.elapsedRealtime() - playbackStartedAt);
+                    SystemClock.elapsedRealtime() - candidateStartedAt);
         }
         cancelFirstFrameWatchdog();
         player = null;
@@ -458,14 +458,13 @@ public class TvPlayer {
         startMoreCandidates();
     }
 
-    private void candidateFailed(int index, ExoPlayer failedPlayer) {
+    private void candidateFailed(int index, ExoPlayer failedPlayer, long candidateStartedAt) {
         if (winnerChosen || pendingPlayers.get(index) != failedPlayer) return;
         pendingPlayers.remove(index);
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index],
-                    SystemClock.elapsedRealtime() - playbackStartedAt);
+            playbackListener.onSourceFailed(urls[index], 0L);
         }
         safeRelease(failedPlayer);
         startMoreCandidates();
