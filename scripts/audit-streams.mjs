@@ -89,6 +89,16 @@ async function readBounded(response) {
   return Buffer.concat(chunks)
 }
 
+// One shared start gate enforces the delay across all workers, not once per worker.
+let nextRequestStartAt = 0
+async function waitForGlobalRequestSlot() {
+  const now = Date.now()
+  const slot = Math.max(now, nextRequestStartAt)
+  nextRequestStartAt = slot + delayMs
+  const waitMs = slot - now
+  if (waitMs > 0) await sleep(waitMs)
+}
+
 async function probe(item) {
   const started = Date.now()
   const controller = new AbortController()
@@ -162,7 +172,7 @@ function loadTargets() {
 async function main() {
   const targets = loadTargets()
   if (!targets.length) throw new Error('No stream URLs found for the selected catalogue/filter.')
-  console.log(`VYORA audit: ${targets.length} source URLs | concurrency=${concurrency} | timeout=${timeoutMs}ms | min delay/worker=${delayMs}ms`)
+  console.log(`VYORA audit: ${targets.length} source URLs | concurrency=${concurrency} | timeout=${timeoutMs}ms | global min request gap=${delayMs}ms`)
   console.log('This checks reachability and manifest shape only; it does not decode video or prove first-frame playback.')
   const results = new Array(targets.length)
   let cursor = 0
@@ -171,7 +181,7 @@ async function main() {
     while (true) {
       const index = cursor++
       if (index >= targets.length) return
-      await sleep(delayMs)
+      await waitForGlobalRequestSlot()
       results[index] = await probe(targets[index])
       completed++
       if (completed % 25 === 0 || completed === targets.length) {
