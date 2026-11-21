@@ -33,7 +33,8 @@ import java.util.Map;
 public class TvPlayer {
 
     private static final String TAG = "VyoraPlayer";
-    private static final long READY_TIMEOUT_MS = 6000;
+    private static final long READY_TIMEOUT_MS = 8000;
+    private static final long FIRST_FRAME_TIMEOUT_MS = 10000;
     private static final int MAX_PARALLEL_CANDIDATES = 2;
 
     private final Context ctx;
@@ -48,6 +49,7 @@ public class TvPlayer {
     private int nextCandidateIndex = 0;
     private int activeAttempts = 0;
     private long playbackStartedAt;
+    private Runnable firstFrameWatchdog;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Map<Integer, ExoPlayer> pendingPlayers = new HashMap<>();
@@ -164,12 +166,17 @@ public class TvPlayer {
                     Log.w(TAG, "source " + index + " failed after " +
                             (SystemClock.elapsedRealtime() - candidateStartedAt) + "ms: " +
                             error.getErrorCodeName());
-                    candidateFailed(index, candidatePlayer);
+                    if (player == candidatePlayer && winnerChosen) {
+                        activeSourceFailed(index, candidatePlayer, "decoder/network error");
+                    } else {
+                        candidateFailed(index, candidatePlayer);
+                    }
                 }
 
                 @Override
                 public void onRenderedFirstFrame() {
                     if (player == candidatePlayer) {
+                        cancelFirstFrameWatchdog();
                         Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" +
                                 (SystemClock.elapsedRealtime() - playbackStartedAt));
                     }
@@ -219,6 +226,7 @@ public class TvPlayer {
             player.setVideoSurfaceView(surfaceView);
             player.setPlayWhenReady(true);
             active = true;
+            armFirstFrameWatchdog(index, player);
             Log.i(TAG, "WINNER source=" + index + " selected_ms=" +
                     (SystemClock.elapsedRealtime() - playbackStartedAt));
         } catch (Throwable t) {
@@ -232,6 +240,39 @@ public class TvPlayer {
         }
 
         releasePendingCandidates();
+    }
+
+    private void armFirstFrameWatchdog(final int index, final ExoPlayer target) {
+        cancelFirstFrameWatchdog();
+        firstFrameWatchdog = new Runnable() {
+            @Override
+            public void run() {
+                if (player == target && winnerChosen) {
+                    Log.w(TAG, "source " + index + " produced no first frame within " +
+                            FIRST_FRAME_TIMEOUT_MS + "ms; failing over");
+                    activeSourceFailed(index, target, "first-frame timeout");
+                }
+            }
+        };
+        main.postDelayed(firstFrameWatchdog, FIRST_FRAME_TIMEOUT_MS);
+    }
+
+    private void cancelFirstFrameWatchdog() {
+        if (firstFrameWatchdog != null) {
+            main.removeCallbacks(firstFrameWatchdog);
+            firstFrameWatchdog = null;
+        }
+    }
+
+    private void activeSourceFailed(int index, ExoPlayer failedPlayer, String reason) {
+        if (player != failedPlayer || !winnerChosen) return;
+        Log.w(TAG, "active source " + index + " failed: " + reason);
+        cancelFirstFrameWatchdog();
+        player = null;
+        active = false;
+        winnerChosen = false;
+        safeRelease(failedPlayer);
+        startMoreCandidates();
     }
 
     private void candidateFailed(int index, ExoPlayer failedPlayer) {
@@ -270,6 +311,7 @@ public class TvPlayer {
     }
 
     private void release() {
+        cancelFirstFrameWatchdog();
         for (Integer index : new ArrayList<>(readyWatchdogs.keySet())) {
             cancelWatchdog(index);
         }
