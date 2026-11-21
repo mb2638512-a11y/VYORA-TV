@@ -50,7 +50,7 @@ try {
   const omnibox = page.locator('.chromium-omnibox-input')
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
-    await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click()
+    await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click({ force: true })
     await omnibox.fill('vyora browser')
     await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
     if (!suggestionEngines.includes(engine)) {
