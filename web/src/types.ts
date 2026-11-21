@@ -111,6 +111,7 @@ export type InstalledApp = {
   icon?: string
   category?: string
   color?: string
+  displayMode?: 'auto' | 'mobile' | 'desktop'
   installedAt: number
 }
 
@@ -142,7 +143,7 @@ export type View =
   | { name: 'movies' }
   | { name: 'series' }
   | { name: 'global' }
-  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId; standalone?: boolean }
+  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId; standalone?: boolean; initialDisplayMode?: 'auto' | 'mobile' | 'desktop' }
   | { name: 'apps' }
   | { name: 'downloads' }
 
