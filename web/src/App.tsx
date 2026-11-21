@@ -652,7 +652,6 @@ export default function App() {
 
   const play = useCallback(
     (ch: Channel) => {
-      const assignedPlayer = settings.channelsPlayer || settings.defaultPlayer || 'internal'
       const ordered = orderStreams(ch, network.quality)
       setRecent((list) => [ch.id, ...list.filter((x) => x !== ch.id)].slice(0, 30))
 
@@ -1056,7 +1055,6 @@ export default function App() {
   }, [series, seriesGenre])
 
   const playMovie = useCallback((m: Movie) => {
-    const assignedPlayer = settings.moviesPlayer || settings.defaultPlayer || 'internal'
     const movieChannel: Channel = {
       id: `movie-${m.id}`,
       name: m.title,
@@ -1084,7 +1082,6 @@ export default function App() {
   }, [])
 
   const playEpisode = useCallback((s: Series, ep: any) => {
-    const assignedPlayer = settings.seriesPlayer || settings.defaultPlayer || 'internal'
     const fullTitle = `${s.title} - S${ep.season}E${ep.episode}: ${ep.title}`
     const episodeChannel: Channel = {
       id: `series-${ep.id}`,
