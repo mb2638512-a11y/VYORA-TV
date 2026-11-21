@@ -318,6 +318,34 @@ export function SettingsOverlay({
                   Click on any engine card below to immediately activate it for all channels and streams.
                 </p>
 
+                <div className="player-category-preferences">
+                  <label>Default player
+                    <select data-focusable value={settings.defaultPlayer || 'internal'} onChange={(e) => handleSetPlayer('defaultPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Live TV channels
+                    <select data-focusable value={settings.channelsPlayer || 'internal'} onChange={(e) => handleSetPlayer('channelsPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Movies
+                    <select data-focusable value={settings.moviesPlayer || 'internal'} onChange={(e) => handleSetPlayer('moviesPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Series
+                    <select data-focusable value={settings.seriesPlayer || 'internal'} onChange={(e) => handleSetPlayer('seriesPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Downloads
+                    <select data-focusable value={settings.downloadsPlayer || 'internal'} onChange={(e) => handleSetPlayer('downloadsPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+
                 <div className="top-players-grid">
                   {TOP_STREAMING_PLAYERS.map((player) => {
                     const isSelected = activePlayerId === player.id
