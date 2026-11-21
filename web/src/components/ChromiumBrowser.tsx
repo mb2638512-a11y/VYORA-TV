@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from './Icon'
-import { nativeInstallApk } from '../lib/bridge'
+import { nativeInstallApk, setBrowserDisplayMode } from '../lib/bridge'
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
 
@@ -534,13 +534,22 @@ export default function ChromiumBrowser({
     if (!standalone) return
     setAppDisplayMode(initialDisplayMode)
     setDesktopMode(initialDisplayMode === 'desktop')
+    setBrowserDisplayMode(initialDisplayMode)
   }, [standalone, initialDisplayMode])
+
+  const reloadActiveTabForUserAgent = () => {
+    setTabs((prev) => prev.map((tab) => tab.id === activeTabId
+      ? { ...tab, isLoading: Boolean(tab.url), navKey: (tab.navKey || 0) + 1 }
+      : tab))
+  }
 
   const changeAppDisplayMode = (mode: 'auto' | 'mobile' | 'desktop') => {
     setAppDisplayMode(mode)
     setDesktopMode(mode === 'desktop')
+    setBrowserDisplayMode(mode)
+    reloadActiveTabForUserAgent()
     onDisplayModeChange?.(mode)
-    showToast(mode === 'desktop' ? 'Desktop layout enabled' : mode === 'mobile' ? 'Mobile layout enabled' : 'Automatic layout enabled')
+    showToast(mode === 'desktop' ? 'Desktop User-Agent enabled' : mode === 'mobile' ? 'Mobile User-Agent enabled' : 'Automatic Android TV User-Agent enabled')
   }
 
   const [portalCategory, setPortalCategory] = useState<'all' | 'streaming' | 'sports' | 'news' | 'tools' | 'gaming'>('all')
@@ -629,14 +638,15 @@ export default function ChromiumBrowser({
   }
 
   const toggleDesktopMode = () => {
-    setDesktopMode((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('vyora_browser_desktop_mode', String(next))
-      } catch {}
-      showToast(next ? '🖥️ Desktop 1080p View ON' : '📱 Responsive Auto View ON')
-      return next
-    })
+    const next = !desktopMode
+    setDesktopMode(next)
+    try {
+      localStorage.setItem('vyora_browser_desktop_mode', String(next))
+    } catch {}
+    const mode = next ? 'desktop' : 'auto'
+    setBrowserDisplayMode(mode)
+    reloadActiveTabForUserAgent()
+    showToast(next ? 'Desktop User-Agent and 1080p layout ON' : 'Automatic Android TV User-Agent ON')
   }
 
   const duplicateTab = (tabId: string, e?: React.MouseEvent) => {
@@ -1326,7 +1336,8 @@ export default function ChromiumBrowser({
   const getProxySrc = (tab: Tab): string => {
     const target = tab.frameUrl !== undefined ? tab.frameUrl : tab.url
     if (!target) return 'about:blank'
-    return `${API}/webproxy?u=${encodeURIComponent(target)}`
+    const mode = desktopMode || appDisplayMode === 'desktop' ? 'desktop' : 'mobile'
+    return `${API}/webproxy?u=${encodeURIComponent(target)}&mode=${mode}`
   }
 
   /**
