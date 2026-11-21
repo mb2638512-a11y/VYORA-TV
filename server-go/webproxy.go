@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"html"
 	"io"
@@ -78,9 +77,6 @@ var (
 		ResponseHeaderTimeout: 18 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableCompression:    false,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
 	}
 
 	browserJar, _ = cookiejar.New(nil)
@@ -111,9 +107,6 @@ var (
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableCompression:    false,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
 	}
 
 	browserTunnelClient = &http.Client{
