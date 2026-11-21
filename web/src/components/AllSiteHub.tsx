@@ -203,8 +203,11 @@ const GAMES_SITES: Site[] = [
 const CARTOONS_SITES: Site[] = [
   { id: "kartoons.me", title: "Kartoons", url: "https://kartoons.me/", domain: "kartoons.me", category: 'Cartoons' },
 ]
-const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES, ...GAMES_SITES, ...CARTOONS_SITES]
-export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports', 'Games', 'Cartoons'] as const
+const ALL_IN_ONE_SITES: Site[] = [
+  { id: "dmasti.pk", title: "DMasti", url: "https://www.dmasti.pk/", domain: "dmasti.pk", category: 'All in One' },
+]
+const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES, ...GAMES_SITES, ...CARTOONS_SITES, ...ALL_IN_ONE_SITES]
+export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports', 'Games', 'Cartoons', 'All in One'] as const
 export const ALLSITEHUB_SITE_COUNT = ALL_SITES.length
 export function AllSiteHub({ onOpenSite }: { onOpenSite: (url: string) => void }) {
  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All'); const [sort,setSort]=useState<'az'|'za'>('az')
