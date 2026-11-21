@@ -620,7 +620,10 @@ export function orderStreams(ch: Channel, maxQuality?: string): Channel {
   const rec = healthRegistry.get(ch.id)
   const bestIdx = typeof rec?.bestStream === 'number' ? rec.bestStream : -1
   const cap = maxQuality && maxQuality !== 'auto' ? qualityRank(maxQuality) : 0
-  const list = [...(ch.streams || [])]
+  const list = (ch.streams || []).map((stream, index) => ({
+    ...stream,
+    sourceIndex: typeof stream.sourceIndex === 'number' ? stream.sourceIndex : index,
+  }))
   list.sort((a, b) => {
     const origIdxA = ch.streams.indexOf(a)
     const origIdxB = ch.streams.indexOf(b)
