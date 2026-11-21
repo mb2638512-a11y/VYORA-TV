@@ -469,7 +469,7 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 						var uParam = parsed.searchParams.get('u');
 						if (uParam && uParam.indexOf('a1') === 0) {
 							var b64 = uParam.slice(2).replace(/-/g, '+').replace(/_/g, '/');
-							while (b64.length % 4 !== 0) b64 += '=';
+							while (b64.length %% 4 !== 0) b64 += '=';
 							try {
 								var decoded = atob(b64);
 								if (decoded) {
