@@ -147,6 +147,7 @@ export type View =
   | { name: 'global' }
   | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId; standalone?: boolean; initialDisplayMode?: 'auto' | 'mobile' | 'desktop' }
   | { name: 'apps' }
+  | { name: 'allsitehub' }
   | { name: 'downloads' }
 
 export type Accessibility = {
