@@ -313,11 +313,11 @@ export function SettingsOverlay({
               {/* Platform Streaming Engines Cards Grid */}
               <section className="settings-section">
                 <div className="section-head-with-badge">
-                  <h3><Icon name="sparkles" size={18} /> Platform Native Streaming Engines ({TOP_STREAMING_PLAYERS.length} Real Cores)</h3>
+                  <h3><Icon name="sparkles" size={18} /> Available Playback Players ({TOP_STREAMING_PLAYERS.length} Options)</h3>
                   <span className="badge-counter">1-Click Selection</span>
                 </div>
                 <p className="settings-hint">
-                  Click on any engine card below to immediately activate it for all channels and streams.
+                  Choose a default player for everything, or set separate players for Live TV, Movies and Series above. External apps must be installed on the Android TV device.
                 </p>
 
                 <div className="player-category-preferences">
