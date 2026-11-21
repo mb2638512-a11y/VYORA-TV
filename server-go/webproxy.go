@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -32,6 +33,45 @@ var (
 )
 
 var ErrUnsafeProxyTarget = fmt.Errorf("proxy target must resolve only to public IP addresses")
+
+// isPublicRoutableIP rejects private, local, and special-use ranges that
+// net.IP.IsGlobalUnicast alone can still classify as unicast.
+func isPublicRoutableIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	addr, err := netip.ParseAddr(ip.String())
+	if err != nil {
+		return false
+	}
+	addr = addr.Unmap()
+	if !addr.IsValid() || !addr.IsGlobalUnicast() || addr.IsPrivate() ||
+		addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() ||
+		addr.IsMulticast() || addr.IsUnspecified() {
+		return false
+	}
+	blocked := []netip.Prefix{
+		netip.MustParsePrefix("0.0.0.0/8"),
+		netip.MustParsePrefix("100.64.0.0/10"),
+		netip.MustParsePrefix("192.0.0.0/24"),
+		netip.MustParsePrefix("192.0.2.0/24"),
+		netip.MustParsePrefix("198.18.0.0/15"),
+		netip.MustParsePrefix("198.51.100.0/24"),
+		netip.MustParsePrefix("203.0.113.0/24"),
+		netip.MustParsePrefix("240.0.0.0/4"),
+		netip.MustParsePrefix("2001:2::/48"),
+		netip.MustParsePrefix("2001:db8::/32"),
+		netip.MustParsePrefix("2001:10::/28"),
+		netip.MustParsePrefix("2001:20::/28"),
+		netip.MustParsePrefix("64:ff9b:1::/48"),
+	}
+	for _, prefix := range blocked {
+		if prefix.Contains(addr) {
+			return false
+		}
+	}
+	return true
+}
 
 // validatePublicProxyURL prevents the browser's server-side fetcher from being
 // used to reach localhost, private LANs, link-local services, or cloud metadata.
@@ -60,8 +100,7 @@ func validatePublicProxyURL(ctx context.Context, target *url.URL) error {
 		}
 	}
 	for _, ip := range ips {
-		if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
-			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		if !isPublicRoutableIP(ip) {
 			return ErrUnsafeProxyTarget
 		}
 	}
@@ -102,8 +141,7 @@ func safeBrowserDialContext(ctx context.Context, network, address string) (net.C
 	dialer := &net.Dialer{Timeout: 8 * time.Second, KeepAlive: 30 * time.Second}
 	var lastErr error
 	for _, ip := range ips {
-		if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
-			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		if !isPublicRoutableIP(ip) {
 			return nil, ErrUnsafeProxyTarget
 		}
 		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
