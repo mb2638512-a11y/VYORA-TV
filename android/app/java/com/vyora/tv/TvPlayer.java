@@ -512,7 +512,10 @@ public class TvPlayer {
     }
 
     private void candidateFailed(int index, ExoPlayer failedPlayer, long candidateStartedAt) {
-        if (winnerChosen || pendingPlayers.get(index) != failedPlayer) return;
+        // A standby can fail while another candidate is already selected as
+        // winner. Always remove/release that failed standby; winnerChosen only
+        // prevents starting another candidate, not cleaning up this one.
+        if (pendingPlayers.get(index) != failedPlayer) return;
         pendingPlayers.remove(index);
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
