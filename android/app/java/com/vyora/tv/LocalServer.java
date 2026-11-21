@@ -236,7 +236,7 @@ public class LocalServer {
                     return;
                 }
                 if (path.equals("/api/network")) {
-                    json("{\"kbps\":0,\"quality\":\"auto\",\"measured\":false}", out, keepAlive);
+                    json(player != null ? player.networkInfoJson() : "{\"kbps\":0,\"quality\":\"auto\",\"measured\":false}", out, keepAlive);
                     return;
                 }
                 if (path.equals("/api/health")) {
