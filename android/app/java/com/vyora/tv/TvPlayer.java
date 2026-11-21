@@ -17,6 +17,7 @@ import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,16 +53,52 @@ public class TvPlayer {
     private Runnable firstFrameWatchdog;
 
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final DefaultBandwidthMeter bandwidthMeter;
+    private volatile long lastBandwidthSampleAt;
     private final Map<Integer, ExoPlayer> pendingPlayers = new HashMap<>();
     private final Map<Integer, Runnable> readyWatchdogs = new HashMap<>();
 
     public TvPlayer(Context ctx, SurfaceView surfaceView) {
         this.ctx = ctx;
         this.surfaceView = surfaceView;
+        this.bandwidthMeter = new DefaultBandwidthMeter.Builder(ctx).build();
+        this.bandwidthMeter.addEventListener(main, (elapsedMs, bytes, bitrate) -> {
+            lastBandwidthSampleAt = SystemClock.elapsedRealtime();
+            Log.d(TAG, "bandwidth sample kbps=" + (bitrate / 1000));
+        });
     }
 
     public boolean isActive() {
         return active;
+    }
+
+    /** Returns a real Media3 throughput estimate; zero until bytes were measured. */
+    public String networkInfoJson() {
+        long now = SystemClock.elapsedRealtime();
+        long sampleAge = lastBandwidthSampleAt == 0 ? Long.MAX_VALUE : now - lastBandwidthSampleAt;
+        long bitsPerSecond = bandwidthMeter.getBitrateEstimate();
+        boolean measured = lastBandwidthSampleAt > 0 && sampleAge < 30000 && bitsPerSecond > 0;
+        int kbps = measured ? (int) Math.min(Integer.MAX_VALUE, bitsPerSecond / 1000) : 0;
+        String quality;
+        int maxLevel;
+        if (!measured) {
+            quality = "auto"; maxLevel = 0;
+        } else if (kbps >= 30000) {
+            quality = "2160p"; maxLevel = 2160;
+        } else if (kbps >= 16000) {
+            quality = "1440p"; maxLevel = 1440;
+        } else if (kbps >= 8000) {
+            quality = "1080p"; maxLevel = 1080;
+        } else if (kbps >= 3500) {
+            quality = "720p"; maxLevel = 720;
+        } else if (kbps >= 1600) {
+            quality = "480p"; maxLevel = 480;
+        } else {
+            quality = "360p"; maxLevel = 360;
+        }
+        return "{\\"kbps\\":" + kbps + ",\\"quality\\":\\"" + quality +
+                "\\",\\"maxLevel\\":" + maxLevel + ",\\"measured\\":" + measured +
+                ",\\"sampleAgeMs\\":" + (sampleAge == Long.MAX_VALUE ? -1 : sampleAge) + "}";
     }
 
     public void play(final String url, final String referer, final String ua) {
@@ -114,7 +151,8 @@ public class TvPlayer {
                     new DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
                             .setConnectTimeoutMs(6000)
-                            .setReadTimeoutMs(12000);
+                            .setReadTimeoutMs(12000)
+                            .setTransferListener(bandwidthMeter);
 
             if (ua != null && !ua.isEmpty()) {
                 httpFactory.setUserAgent(ua);
