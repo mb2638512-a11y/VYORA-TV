@@ -779,6 +779,12 @@ export default function ChromiumBrowser({
   // Listen for iframe postMessage events (downloads, navigation, and page state sync)
   useEffect(() => {
     const handleMsg = (e: MessageEvent) => {
+      // Only trust messages from the browser's own active iframe. Without this
+      // check any unrelated page/window could spoof VYORA_DOWNLOAD or navigation
+      // events and make the TV app fetch arbitrary URLs.
+      const frameWindow = iframeRef.current?.contentWindow
+      if (!frameWindow || e.source !== frameWindow) return
+
       if (e.data?.type === 'VYORA_DOWNLOAD' && e.data?.url) {
         startDownload(e.data.url, e.data.name).then((res) => {
           if (res.ok) {
@@ -1331,19 +1337,24 @@ export default function ChromiumBrowser({
   const handleIframeLoad = () => {
     if (!activeTab) return
     const tabId = activeTab.id
+    const navKey = activeTab.navKey
     const url = activeTab.url
     setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)),
+      prev.map((t) => (t.id === tabId && t.navKey === navKey ? { ...t, isLoading: false } : t)),
     )
 
     // If the frame stayed blank, the site refused to be framed. Retry once
-    // through the Go proxy, which strips X-Frame-Options / CSP.
+    // through the Go proxy, but only if this is still the same active navigation.
+    // A delayed load from a previous tab must never proxy the newly selected tab.
     if (!url) return
     window.setTimeout(() => {
+      if (activeTabId !== tabId) return
+      const current = tabs.find((t) => t.id === tabId)
+      if (!current || current.navKey !== navKey || current.proxyMode || !current.url) return
       if (!detectBlockedFrame(tabId)) return
       setTabs((prev) =>
         prev.map((t) =>
-          t.id === tabId && !t.proxyMode && t.url
+          t.id === tabId && t.navKey === navKey && !t.proxyMode && t.url
             ? { ...t, proxyMode: true, frameUrl: t.url, navKey: (t.navKey || 0) + 1 }
             : t,
         ),
