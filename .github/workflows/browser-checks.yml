@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL 'https://repo.maven.apache.org/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' \
+          curl -fsSL 'https://dl.google.com/dl/android/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' \
             -o android/libs/media3-exoplayer-dash-1.4.1.aar
       - name: Extract AAR class libraries
         shell: bash
