@@ -41,7 +41,7 @@ import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
 import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BrandLogo, faviconFor } from './components/ChromiumBrowser'
-import { AllSiteHub, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
+import { AllSiteHub, ALLSITEHUB_CATEGORIES, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
 
 /**
  * Icon of an installed web app.
@@ -1636,13 +1636,13 @@ export default function App() {
 
             <section className="row allsitehub-featured-row">
               <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-                <h2 className="row-title"><Icon name="grid" size={22}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT} sites · 2 categories)</span></h2>
+                <h2 className="row-title"><Icon name="grid" size={22}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT} sites · {ALLSITEHUB_CATEGORIES.length} categories)</span></h2>
                 <button className="btn btn-primary" data-focusable onClick={() => setView({ name: 'allsitehub' })}>See All <Icon name="arrow-right" size={15}/></button>
               </div>
               <div className="apps-grid">
                 <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
                   <div className="app-card-badge"><Icon name="grid" size={34}/></div>
-                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore Movies & Shows and Anime websites in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">8-category directory</span></div></div>
+                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} of 8 categories</span></div></div>
                   <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
                 </div>
               </div>
