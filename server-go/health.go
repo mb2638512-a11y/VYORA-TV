@@ -331,6 +331,37 @@ func (h *HealthStore) SubscribeSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// isPlayableProbeBody rejects empty responses, generic HTML pages, and
+// malformed HLS/DASH manifests. It is a lightweight source check, not a
+// substitute for opening the stream and decoding its first video frame.
+func isPlayableProbeBody(targetURL, contentType string, body []byte) bool {
+	sample := strings.TrimSpace(string(body))
+	if sample == "" {
+		return false
+	}
+
+	lower := strings.ToLower(sample)
+	ct := strings.ToLower(contentType)
+	if strings.Contains(ct, "text/html") ||
+		strings.Contains(lower, "<html") ||
+		strings.Contains(lower, "<!doctype html") {
+		return false
+	}
+
+	urlLower := strings.ToLower(targetURL)
+	isHLS := strings.Contains(urlLower, ".m3u8") || strings.Contains(ct, "mpegurl")
+	if isHLS && !strings.Contains(sample, "#EXTM3U") && !strings.Contains(sample, "#EXT-X-") {
+		return false
+	}
+
+	isDASH := strings.Contains(urlLower, ".mpd") || strings.Contains(ct, "dash+xml")
+	if isDASH && !strings.Contains(lower, "<mpd") {
+		return false
+	}
+
+	return true
+}
+
 // StartWorkerPool runs concurrent probe goroutines that test channels.
 func (h *HealthStore) StartWorkerPool(numWorkers int) {
 	for i := 0; i < numWorkers; i++ {
@@ -496,23 +527,28 @@ func (h *HealthStore) probeChannel(ch *Channel) {
 		sample := string(buf)
 		cType := strings.ToLower(resp.Header.Get("Content-Type"))
 
-		// Detect definite HTML error/blocking pages
-		isHtml := strings.Contains(cType, "text/html") || strings.Contains(sample, "<html") || strings.Contains(sample, "<!doctype") || strings.Contains(sample, "<!DOCTYPE")
-		isBlockedOrError := strings.Contains(sample, "404 Not Found") ||
-			strings.Contains(sample, "403 Forbidden") ||
-			strings.Contains(sample, "Access Denied") ||
-			strings.Contains(sample, "Attention Required! | Cloudflare") ||
-			strings.Contains(sample, "Just a moment...") ||
-			strings.Contains(sample, "Domain Default page") ||
-			strings.Contains(sample, "Account Suspended")
+		// Count explicit dead pages separately; transient HTML/CAPTCHA pages
+		// remain unknown rather than poisoning the channel's offline status.
+		lowerSample := strings.ToLower(sample)
+		isHtml := strings.Contains(cType, "text/html") ||
+			strings.Contains(lowerSample, "<html") ||
+			strings.Contains(lowerSample, "<!doctype")
+		isBlockedOrError := strings.Contains(lowerSample, "404 not found") ||
+			strings.Contains(lowerSample, "403 forbidden") ||
+			strings.Contains(lowerSample, "access denied") ||
+			strings.Contains(lowerSample, "attention required! | cloudflare") ||
+			strings.Contains(lowerSample, "just a moment...") ||
+			strings.Contains(lowerSample, "domain default page") ||
+			strings.Contains(lowerSample, "account suspended")
 
 		if isHtml && isBlockedOrError {
 			explicitDeadCount++
 			continue
 		}
 
-		// Valid stream returning 200..399
-		if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		// A 200 HTML page or malformed/empty manifest is not a playable source.
+		if resp.StatusCode >= 200 && resp.StatusCode < 400 &&
+			isPlayableProbeBody(s.URL, cType, buf) {
 			h.Set(ch.ID, "online", ms, "probe", idx)
 			return
 		}
