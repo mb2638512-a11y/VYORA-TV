@@ -804,7 +804,7 @@ func writeBrowserError(w http.ResponseWriter, title, detail, target string) {
 		<code>%s</code>
 		<div class="row">
 			<button class="primary" onclick="location.reload()">Retry</button>
-			<button onclick="try{parent.postMessage({type:'VYORA_NAVIGATE',url:'https://html.duckduckgo.com/html/'},'*')}catch(e){}">Back to Search</button>
+			<button onclick="history.back()">Back to Previous Page</button>
 		</div>
 	</div></body></html>`, html.EscapeString(title), html.EscapeString(title), html.EscapeString(detail), html.EscapeString(target))
 }
