@@ -30,7 +30,7 @@ import {
 } from './lib/api'
 import { installNavigation } from './lib/nav'
 import { categoryName, translate } from './lib/i18n'
-import { downloadStreamM3u, isNative, launchExternalStream, nativeInstallApk, speak } from './lib/bridge'
+import { downloadStreamM3u, isNative, nativeInstallApk, speak } from './lib/bridge'
 import { useChannelHealth, statusOf } from './hooks/useChannelHealth'
 import { TopBar } from './components/TopBar'
 import { Icon } from './components/Icon'
@@ -341,10 +341,6 @@ export default function App() {
   }
 
   const handlePlayDownloadedMovie = useCallback((url: string, title: string) => {
-    const assignedPlayer = settings.downloadsPlayer || settings.defaultPlayer || 'internal'
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, url, title)
-    }
     const virtualCh: Channel = {
       id: `download-${Date.now()}`,
       name: title,
@@ -372,7 +368,7 @@ export default function App() {
       ],
     }
     setPlaying(virtualCh)
-  }, [settings.downloadsPlayer, settings.defaultPlayer])
+  }, [])
 
   const handleDeleteDownload = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
@@ -669,14 +665,9 @@ export default function App() {
         )
       }
 
-      if (isNative && assignedPlayer !== 'internal') {
-        const streamUrl = ordered.streams?.[0]?.url || `http://${window.location.host}/api/play?cid=${ch.id}`
-        launchExternalStream(assignedPlayer, streamUrl, ch.name)
-      }
-
       setPlaying(ordered)
     },
-    [settings.channelsPlayer, settings.defaultPlayer, settings.a11y.audioDescription, settings.lang, countryByCode, network.quality],
+    [settings.a11y.audioDescription, settings.lang, countryByCode, network.quality],
   )
 
   const closePlayer = useCallback(() => {
@@ -1066,9 +1057,6 @@ export default function App() {
 
   const playMovie = useCallback((m: Movie) => {
     const assignedPlayer = settings.moviesPlayer || settings.defaultPlayer || 'internal'
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, m.url, m.title)
-    }
     const movieChannel: Channel = {
       id: `movie-${m.id}`,
       name: m.title,
@@ -1093,14 +1081,11 @@ export default function App() {
       ],
     }
     setPlaying(movieChannel)
-  }, [settings.moviesPlayer, settings.defaultPlayer])
+  }, [])
 
   const playEpisode = useCallback((s: Series, ep: any) => {
     const assignedPlayer = settings.seriesPlayer || settings.defaultPlayer || 'internal'
     const fullTitle = `${s.title} - S${ep.season}E${ep.episode}: ${ep.title}`
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, ep.url, fullTitle)
-    }
     const episodeChannel: Channel = {
       id: `series-${ep.id}`,
       name: fullTitle,
@@ -1126,7 +1111,7 @@ export default function App() {
     }
     setPlaying(episodeChannel)
     setSelectedSeries(null)
-  }, [settings.seriesPlayer, settings.defaultPlayer])
+  }, [])
 
   const favouriteChannels = useMemo(
     () => channels.filter((c) => favourites.includes(c.id)),
@@ -2761,30 +2746,42 @@ export default function App() {
           onCycleStream={() => undefined}
           onQueue={addToQueue}
           autoSkipOffline={settings.autoSkipOffline ?? false}
-          assignedPlayerId={settings.channelsPlayer || settings.defaultPlayer || 'internal'}
+          assignedPlayerId={
+            playing.id.startsWith('download-')
+              ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+              : playing.categories?.includes('movies')
+                ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('series')
+                  ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                  : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+          }
           assignedPlayerName={
-            TOP_STREAMING_PLAYERS.find(
-              (p) => p.id === (settings.channelsPlayer || settings.defaultPlayer || 'internal'),
-            )?.name
+            TOP_STREAMING_PLAYERS.find((p) => p.id === (
+              playing.id.startsWith('download-') ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('movies') ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                  : playing.categories?.includes('series') ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                    : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+            ))?.name
           }
           assignedPlayerBadge={
-            TOP_STREAMING_PLAYERS.find(
-              (p) => p.id === (settings.channelsPlayer || settings.defaultPlayer || 'internal'),
-            )?.badge
+            TOP_STREAMING_PLAYERS.find((p) => p.id === (
+              playing.id.startsWith('download-') ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('movies') ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                  : playing.categories?.includes('series') ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                    : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+            ))?.badge
           }
           onSelectPlayer={(playerId) => {
-            const updated: Settings = {
-              ...settings,
-              channelsPlayer: playerId,
-              defaultPlayer: playerId,
-              moviesPlayer: playerId,
-              seriesPlayer: playerId,
-              downloadsPlayer: playerId,
-            }
+            const key = playing.id.startsWith('download-')
+              ? 'downloadsPlayer'
+              : playing.categories?.includes('movies')
+                ? 'moviesPlayer'
+                : playing.categories?.includes('series')
+                  ? 'seriesPlayer'
+                  : 'channelsPlayer'
+            const updated = { ...settings, [key]: playerId }
             setSettings(updated)
-            try {
-              localStorage.setItem('vyora.settings', JSON.stringify(updated))
-            } catch {}
+            try { localStorage.setItem('vyora.settings', JSON.stringify(updated)) } catch {}
           }}
         />
       ) : null}
