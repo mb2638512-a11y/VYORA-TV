@@ -97,6 +97,9 @@ func TestReportSourcePersistsEvidenceAndOrdersFastHealthyStreams(t *testing.T) {
 	if rec.Sources[2].Status != "offline" || rec.Sources[2].FailureCount != 1 {
 		t.Fatalf("failed source evidence not recorded: %#v", rec.Sources[2])
 	}
+	if rec.Status != "online" || rec.BestStream != 1 {
+		t.Fatalf("one failed alternate incorrectly poisoned channel health: status=%q best=%d", rec.Status, rec.BestStream)
+	}
 
 	ordered, original := health.OrderStreams(channel)
 	if len(ordered) != 3 || len(original) != 3 {
