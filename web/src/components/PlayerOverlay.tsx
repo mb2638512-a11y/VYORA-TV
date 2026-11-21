@@ -351,9 +351,18 @@ export function PlayerOverlay({
         // report/fail this source; VYORA Player retains multi-source racing.
         nativePlay(stream.url, stream.referer || '', stream.ua || '', channel.name, channel.logo)
       } else {
-        // VYORA-managed mode races alternate sources and performs automatic failover.
-        const candidates = (channel.streams || [])
-          .slice(0, 4)
+        // VYORA-managed mode starts with the health-preferred source, then
+        // keeps every distinct channel source available for automatic recovery.
+        // The native player staggers retries so this larger candidate list does
+        // not create a burst of parallel traffic on slow connections.
+        const allSources = channel.streams || []
+        const preferredIndex = Math.min(Math.max(streamIndex, 0), Math.max(0, allSources.length - 1))
+        const orderedSources = preferredIndex > 0
+          ? [allSources[preferredIndex], ...allSources.filter((_, i) => i !== preferredIndex)]
+          : allSources
+        const candidates = orderedSources
+          .filter((s) => typeof s?.url === 'string' && s.url.trim().length > 0)
+          .filter((s, i, all) => all.findIndex((item) => item.url === s.url) === i)
           .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
         nativePlayMulti(candidates, channel.name, channel.logo)
       }
