@@ -37,6 +37,11 @@ import java.security.MessageDigest;
  */
 public class TvPlayer {
 
+    public interface PlaybackListener {
+        void onFirstFrame(String url, long startupMs);
+        void onAllSourcesFailed();
+    }
+
     private static final String TAG = "VyoraPlayer";
     private static final long READY_TIMEOUT_MS = 8000;
     private static final long FIRST_FRAME_TIMEOUT_MS = 10000;
@@ -47,6 +52,9 @@ public class TvPlayer {
     private ExoPlayer player;
     private boolean active = false;
     private boolean winnerChosen = false;
+    private boolean firstFrameNotified = false;
+    private boolean failureNotified = false;
+    private PlaybackListener playbackListener;
 
     private String[] urls = new String[0];
     private String[] referers = new String[0];
@@ -78,6 +86,10 @@ public class TvPlayer {
 
     public boolean isActive() {
         return active;
+    }
+
+    public void setPlaybackListener(PlaybackListener listener) {
+        this.playbackListener = listener;
     }
 
     /** Returns a real Media3 throughput estimate; zero until bytes were measured. */
@@ -126,6 +138,8 @@ public class TvPlayer {
         nextCandidateIndex = 0;
         activeAttempts = 0;
         winnerChosen = false;
+        firstFrameNotified = false;
+        failureNotified = false;
         active = false;
         playbackStartedAt = SystemClock.elapsedRealtime();
         startMoreCandidates();
@@ -215,6 +229,10 @@ public class TvPlayer {
             active = false;
             Log.w(TAG, "all sources exhausted after " +
                     (SystemClock.elapsedRealtime() - playbackStartedAt) + "ms");
+            if (!failureNotified && playbackListener != null) {
+                failureNotified = true;
+                playbackListener.onAllSourcesFailed();
+            }
         }
     }
 
@@ -323,8 +341,12 @@ public class TvPlayer {
                     if (player == candidatePlayer) {
                         cancelFirstFrameWatchdog();
                         rememberSuccessfulSource(index);
-                        Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" +
-                                (SystemClock.elapsedRealtime() - playbackStartedAt));
+                        long startupMs = SystemClock.elapsedRealtime() - playbackStartedAt;
+                        Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" + startupMs);
+                        if (!firstFrameNotified && playbackListener != null) {
+                            firstFrameNotified = true;
+                            playbackListener.onFirstFrame(urls[index], startupMs);
+                        }
                     }
                 }
             });
