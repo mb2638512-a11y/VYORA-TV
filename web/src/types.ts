@@ -142,7 +142,7 @@ export type View =
   | { name: 'movies' }
   | { name: 'series' }
   | { name: 'global' }
-  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId }
+  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId; standalone?: boolean }
   | { name: 'apps' }
   | { name: 'downloads' }
 
