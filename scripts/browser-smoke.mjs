@@ -62,6 +62,8 @@ try {
   // of leaving the browser with an activeTabId that no longer exists.
   await page.getByRole('button', { name: 'Close Tab' }).click()
   await page.locator('.chromium-tab-title').getByText('New Tab').waitFor({ state: 'visible', timeout: 5000 })
+  await page.keyboard.press('Control+Shift+T')
+  await page.waitForFunction(() => document.querySelectorAll('.chromium-tab').length === 2, null, { timeout: 5000 })
 
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/browser-before.png', fullPage: true })
