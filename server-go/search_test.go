@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
@@ -153,5 +154,23 @@ func TestValidatePublicProxyURLAllowsPublicLiteralIP(t *testing.T) {
 	}
 	if err := validatePublicProxyURL(context.Background(), u); err != nil {
 		t.Fatalf("public IP should be allowed: %v", err)
+	}
+}
+
+func TestIsPublicRoutableIPRejectsSpecialUseRanges(t *testing.T) {
+	blocked := []string{
+		"100.64.0.1", "192.0.2.10", "198.18.0.1", "198.51.100.8",
+		"203.0.113.9", "240.0.0.1", "2001:db8::1", "2001:2::1",
+		"64:ff9b:1::1", "::ffff:192.168.1.1",
+	}
+	for _, raw := range blocked {
+		if isPublicRoutableIP(net.ParseIP(raw)) {
+			t.Errorf("special-use address unexpectedly allowed: %s", raw)
+		}
+	}
+	for _, raw := range []string{"8.8.8.8", "1.1.1.1", "2606:4700:4700::1111"} {
+		if !isPublicRoutableIP(net.ParseIP(raw)) {
+			t.Errorf("public address unexpectedly blocked: %s", raw)
+		}
 	}
 }
