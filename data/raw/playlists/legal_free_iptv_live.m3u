@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="VoATVChina.cn@SD" tvg-name="VOA Chinese TV" tvg-logo="https://www.voachinese.com/Content/responsive/VOA/img/webApp/ico-192x192.png" tvg-country="CN" tvg-language="Chinese" group-title="CN | News",VOA Chinese TV
+https://voa-ingest.akamaized.net/hls/live/2033878/tvmc08/playlist.m3u8
+#EXTINF:-1 tvg-id="VoATVPersian.us@SD" tvg-name="VOA Persian TV" tvg-logo="https://ir.voanews.com/Content/responsive/VOA/img/webApp/ico-192x192.png" tvg-country="IR" tvg-language="Persian" group-title="IR | News",VOA Persian TV
+https://voa-ingest.akamaized.net/hls/live/2033876/tvmc07/playlist.m3u8
+#EXTINF:-1 tvg-id="DistrictofColumbiaNetwork.us@SD" tvg-name="District of Columbia Network (DCN)" tvg-logo="https://entertainment.dc.gov/sites/default/files/dc/sites/entertainment/featured_content/images/logo.png" tvg-country="US" tvg-language="English" group-title="US | Government",District of Columbia Network (DCN)
+https://video.oct.dc.gov/out/u/DCN.m3u8
