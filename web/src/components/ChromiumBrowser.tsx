@@ -529,6 +529,7 @@ export default function ChromiumBrowser({
   const [engineMenuOpen, setEngineMenuOpen] = useState(false)
   const [showBookmarks, setShowBookmarks] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(getInitialBookmarks)
+  const bookmarkImportRef = useRef<HTMLInputElement | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [settings, setSettings] = useState<BrowserSettings>(getInitialSettings)
 
@@ -1455,6 +1456,68 @@ export default function ChromiumBrowser({
     saveBookmarks(bookmarks.filter((b) => b.id !== id))
   }
 
+  const exportBookmarks = () => {
+    try {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        bookmarks: bookmarks.map(({ title, url, color }) => ({ title, url, color })),
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = 'vyora-bookmarks.json'
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      showToast(`Exported ${bookmarks.length} bookmarks`)
+    } catch {
+      showToast('Could not export bookmarks')
+    }
+  }
+
+  const importBookmarks = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      if (file.size > 1024 * 1024) throw new Error('Bookmark file is too large')
+      const parsed = JSON.parse(await file.text())
+      const rows = Array.isArray(parsed) ? parsed : parsed?.bookmarks
+      if (!Array.isArray(rows)) throw new Error('Invalid bookmark file')
+      const imported: Bookmark[] = []
+      const seen = new Set(bookmarks.map((item) => item.url))
+      for (const row of rows.slice(0, 500)) {
+        if (!row || typeof row.url !== 'string' || row.url.length > 2048) continue
+        let parsedUrl: URL
+        try { parsedUrl = new URL(row.url) } catch { continue }
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') continue
+        const url = parsedUrl.href
+        if (seen.has(url)) continue
+        seen.add(url)
+        const title = typeof row.title === 'string' ? row.title.trim().slice(0, 120) : ''
+        const color = typeof row.color === 'string' && /^#[0-9a-f]{6}$/i.test(row.color) ? row.color : '#64748b'
+        imported.push({
+          id: `bm-import-${Date.now().toString(36)}-${imported.length}`,
+          title: title || parsedUrl.hostname,
+          url,
+          color,
+        })
+      }
+      if (!imported.length) {
+        showToast('No new valid bookmarks found')
+        return
+      }
+      saveBookmarks([...imported, ...bookmarks].slice(0, 500))
+      showToast(`Imported ${imported.length} bookmarks`)
+    } catch {
+      showToast('Invalid bookmark file')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
   const handleStartManualDownload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!manualDownloadUrl.trim()) return
@@ -2182,6 +2245,34 @@ export default function ChromiumBrowser({
           </div>
 
           <div className="chromium-bookmarks-tools">
+            <input
+              ref={bookmarkImportRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={importBookmarks}
+              aria-label="Import bookmarks file"
+            />
+            <button
+              type="button"
+              className="chromium-bm-add-btn"
+              onClick={exportBookmarks}
+              title="Export bookmarks as JSON"
+              data-focusable
+            >
+              <Icon name="download" size={13} />
+              <span>Export</span>
+            </button>
+            <button
+              type="button"
+              className="chromium-bm-add-btn"
+              onClick={() => bookmarkImportRef.current?.click()}
+              title="Import bookmarks from JSON"
+              data-focusable
+            >
+              <Icon name="upload" size={13} />
+              <span>Import</span>
+            </button>
             {activeTab?.url ? (
               <button
                 type="button"
