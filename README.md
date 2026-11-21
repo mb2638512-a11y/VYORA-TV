@@ -3,7 +3,7 @@
 Android TV ke liye production-grade IPTV client — real duniya ke channels, real
 flags, real channel logos, aur D-pad (remote) se poora control.
 
-**10,378 channels • 181 countries • 29 themes • 16,507 streams**
+**14,297 channels • 180 countries • 29 themes • 21,121 stream sources**
 
 ---
 
@@ -15,7 +15,7 @@ flags, real channel logos, aur D-pad (remote) se poora control.
 | Real logos | 98.6% channels ka asli logo (Wikimedia, Pluto, broadcaster CDN, imgur…) |
 | Real flags | 176 country flags **bundled locally** (72 KB) - koi CDN latency nahi |
 | Online / Offline | Har channel ka live status: **ONLINE badge upar**, **OFFLINE badge neeche**, offline cards dim |
-| Status engine | Server actually probes the playlist, proxy reports what really played, sweeper covers all 10k channels |
+| Status engine | Server actually probes the playlist, proxy reports what really played, low-priority catalogue sweeper covers all 14k+ channels |
 | Filters | Country (180), Theme/category (29), search, favourites, Global list |
 | Quality | 720p / 1080p / 1440p (2K) / 2160p (4K) + **auto quality** (network speed ke hisaab se) |
 | Remote first | Spatial D-pad navigation, OK = open, BACK = back, CH± = channel, ◀▶ = quality, **M = channel drawer** |
