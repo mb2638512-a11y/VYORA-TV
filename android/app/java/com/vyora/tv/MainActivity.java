@@ -74,6 +74,30 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         player = new TvPlayer(this, surface);
+        player.setPlaybackListener(new TvPlayer.PlaybackListener() {
+            @Override
+            public void onFirstFrame(String url, long startupMs) {
+                runOnUiThread(() -> {
+                    if (web == null) return;
+                    String safeUrl = org.json.JSONObject.quote(url == null ? "" : url);
+                    web.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('vyora-native-first-frame',{detail:{url:"
+                                    + safeUrl + ",startupMs:" + startupMs + "}}));",
+                            null);
+                });
+            }
+
+            @Override
+            public void onAllSourcesFailed() {
+                runOnUiThread(() -> {
+                    if (web != null) {
+                        web.evaluateJavascript(
+                                "window.dispatchEvent(new Event('vyora-native-sources-failed'));",
+                                null);
+                    }
+                });
+            }
+        });
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
