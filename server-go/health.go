@@ -252,6 +252,25 @@ func (h *HealthStore) Report(id string, ok bool, ms, streamIndex int) {
 	h.ReportSource(id, ok, ms, streamIndex)
 }
 
+// MarkChannelOffline is reserved for a player that has exhausted its complete
+// candidate set. A single source failure must never take a channel offline.
+func (h *HealthStore) MarkChannelOffline(id string, ms int) {
+	if id == "" { return }
+	h.mu.Lock()
+	rec := h.status[id]
+	if rec == nil {
+		rec = &HealthRecord{ID: id, BestStream: -1}
+		h.status[id] = rec
+	}
+	rec.Status = "offline"
+	rec.TS = time.Now().UnixMilli()
+	rec.MS = ms
+	rec.Source = "playback-exhausted"
+	copyRec := cloneHealthRecord(rec)
+	h.mu.Unlock()
+	h.broadcast(copyRec)
+}
+
 // OrderStreams prefers recently proven fast sources and briefly cools down failures.
 func (h *HealthStore) OrderStreams(ch *Channel) ([]Stream, []int) {
 	if ch == nil || len(ch.Streams) == 0 { return nil, nil }
