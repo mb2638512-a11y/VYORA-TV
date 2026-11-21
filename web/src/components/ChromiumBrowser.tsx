@@ -8,6 +8,7 @@ export type ChromiumBrowserProps = {
   initialUrl?: string
   initialEngine?: BrowserEngineId
   onClose: () => void
+  standalone?: boolean
   onInstallApp?: (app: InstalledApp) => void
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
@@ -105,6 +106,8 @@ export type Tab = {
   historyIndex: number
   isLoading: boolean
   navKey: number
+  icon?: string
+  themeColor?: string
 }
 
 type Bookmark = {
@@ -426,6 +429,7 @@ export default function ChromiumBrowser({
   initialUrl,
   initialEngine = 'google',
   onClose,
+  standalone = false,
   onInstallApp,
   onPlayMovie,
   onNavigateToDownloads,
@@ -826,6 +830,8 @@ export default function ChromiumBrowser({
             return {
               ...t,
               title: e.data.title || t.title,
+              icon: typeof e.data.icon === 'string' ? e.data.icon : t.icon,
+              themeColor: typeof e.data.themeColor === 'string' ? e.data.themeColor : t.themeColor,
               displayUrl: unpacked,
               isLoading: false,
             }
@@ -854,7 +860,7 @@ export default function ChromiumBrowser({
         id: `bm-${Date.now()}`,
         title: curTitle,
         url: curUrl,
-        color: currentEngine.color || '#38bdf8',
+        color: activeTab?.themeColor || currentEngine.color || '#38bdf8',
       }
       saveBookmarks([newBm, ...bookmarks])
       showToast('⭐ Saved to TV Bookmarks!')
@@ -1167,7 +1173,7 @@ export default function ChromiumBrowser({
     const domain = getDomainTitle(cleanUrl)
     const pageTitle = cleanUrl === activeTab?.url ? activeTab.title : ''
     const title = overrideTitle?.trim() || prettySiteName(cleanUrl, pageTitle) || domain
-    const icon = faviconFor(cleanUrl)
+    const icon = activeTab?.icon || faviconFor(cleanUrl)
     const newApp: InstalledApp = {
       id: `app-${Date.now()}`,
       title: title || domain,
@@ -1371,7 +1377,7 @@ export default function ChromiumBrowser({
   return (
     <div
       ref={containerRef}
-      className={`chromium-browser ${isFullscreen ? 'chromium-fullscreen' : ''}`}
+      className={`chromium-browser ${isFullscreen ? 'chromium-fullscreen' : ''} ${standalone ? 'chromium-browser-standalone' : ''}`}
       role="region"
       aria-label="Chromium Web Browser"
     >
@@ -1380,6 +1386,12 @@ export default function ChromiumBrowser({
         <div className="chromium-toast" role="alert">
           {toastMessage}
         </div>
+      ) : null}
+
+      {standalone ? (
+        <button type="button" className="webapp-exit" onClick={onClose} data-focusable aria-label="Back to VYORA apps" title="Back to VYORA apps">
+          <Icon name="arrow-left" size={18} />
+        </button>
       ) : null}
 
       {/* 1. TOP TABS STRIP */}
