@@ -117,47 +117,36 @@ public class TvBridge {
     }
 
     @JavascriptInterface
-    public void launchPlayer(final String url, final String title, final String pkg) {
+    public boolean launchPlayer(final String url, final String title, final String pkg) {
+        if (pkg == null || pkg.trim().isEmpty()) return false;
+        try {
+            // Android 11+ package visibility is declared in AndroidManifest.xml.
+            act.getPackageManager().getPackageInfo(pkg.trim(), 0);
+        } catch (Throwable missing) {
+            act.runOnUiThread(() -> Toast.makeText(act,
+                    pkg + " is not installed. VYORA's built-in player will be used.",
+                    Toast.LENGTH_LONG).show());
+            return false;
+        }
         act.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    Intent i = new Intent(Intent.ACTION_VIEW);
-                    i.setDataAndType(Uri.parse(url), "video/*");
-                    if (pkg != null && !pkg.trim().isEmpty()) {
-                        i.setPackage(pkg.trim());
-                    }
-                    if (title != null && !title.trim().isEmpty()) {
-                        i.putExtra("title", title);
-                    }
-                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    act.startActivity(i);
-                } catch (Throwable t) {
-                    Log.e(TAG, "launchPlayer failed, trying pro variant or generic", t);
-                    if ("com.mxtech.videoplayer.ad".equals(pkg)) {
-                        try {
-                            Intent proIntent = new Intent(Intent.ACTION_VIEW);
-                            proIntent.setDataAndType(Uri.parse(url), "video/*");
-                            proIntent.setPackage("com.mxtech.videoplayer.pro");
-                            if (title != null && !title.trim().isEmpty()) {
-                                proIntent.putExtra("title", title);
-                            }
-                            proIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            act.startActivity(proIntent);
-                            return;
-                        } catch (Throwable ignored) {}
-                    }
-                    try {
-                        Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        fallback.setDataAndType(Uri.parse(url), "video/*");
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        act.startActivity(fallback);
-                    } catch (Throwable t2) {
-                        Log.e(TAG, "generic video intent failed", t2);
-                    }
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(Uri.parse(url), "video/*");
+                    intent.setPackage(pkg.trim());
+                    if (title != null && !title.trim().isEmpty()) intent.putExtra("title", title);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    act.startActivity(intent);
+                } catch (Throwable error) {
+                    Log.e(TAG, "External player could not open stream: " + pkg, error);
+                    Toast.makeText(act,
+                            "This player could not open the stream. Try VYORA Player or another player.",
+                            Toast.LENGTH_LONG).show();
                 }
             }
         });
+        return true;
     }
 
     @JavascriptInterface
