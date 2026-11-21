@@ -1748,7 +1748,7 @@ export default function App() {
                       key={app.id}
                       className="app-card installed-app-card"
                       data-focusable
-                      onClick={() => setView({ name: 'browser', initialUrl: app.url })}
+                      onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true })}
                     >
                       <button
                         className="app-del-btn"
@@ -1775,7 +1775,7 @@ export default function App() {
                         data-focusable
                         onClick={(e) => {
                           e.stopPropagation()
-                          setView({ name: 'browser', initialUrl: app.url })
+                          setView({ name: 'browser', initialUrl: app.url, standalone: true })
                         }}
                       >
                         Launch
@@ -2361,6 +2361,7 @@ export default function App() {
           <ChromiumBrowser
             initialUrl={(view as any).initialUrl}
             initialEngine={(view as any).initialEngine}
+            standalone={(view as any).standalone === true}
             onClose={() => setView({ name: 'home' })}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
@@ -2414,7 +2415,7 @@ export default function App() {
                   key={app.id}
                   className="app-card installed-app-card"
                   data-focusable
-                  onClick={() => setView({ name: 'browser', initialUrl: app.url })}
+                  onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true })}
                 >
                   <button
                     className="app-del-btn"
@@ -2441,7 +2442,7 @@ export default function App() {
                     data-focusable
                     onClick={(e) => {
                       e.stopPropagation()
-                      setView({ name: 'browser', initialUrl: app.url })
+                      setView({ name: 'browser', initialUrl: app.url, standalone: true })
                     }}
                   >
                     Launch
