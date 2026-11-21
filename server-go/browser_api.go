@@ -14,7 +14,7 @@ import (
 // ============================================================================
 // GO BROWSER CORE — HTTP SURFACE
 //
-//   GET    /api/suggest?q=<query>            -> Google autocomplete
+//   GET    /api/suggest?engine=<id>&q=<query> -> provider autocomplete
 //   GET    /api/browser/bookmarks            -> bookmark CRUD
 //   GET    /api/browser/history              -> browsing history
 //   GET    /api/browser/settings             -> browser settings
@@ -41,15 +41,17 @@ func NewBrowserAPI() *BrowserAPI {
 	return &BrowserAPI{suggest: NewSuggestCache()}
 }
 
-// HandleSuggest serves GET /api/suggest — Google's autocomplete.
+// HandleSuggest serves provider-specific GET /api/suggest autocomplete.
 func (a *BrowserAPI) HandleSuggest(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	suggestions := a.suggest.Suggestions(r, q)
+	engine := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("engine")))
+	suggestions := a.suggest.Suggestions(r, engine, q)
 	if suggestions == nil {
 		suggestions = []string{}
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"query":       q,
+		"engine":      engine,
 		"suggestions": suggestions,
 	})
 }
