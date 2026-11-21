@@ -62,6 +62,7 @@ public class LocalServer {
     private static final int MAX_BODY = 24 * 1024 * 1024;
 
     private final Context ctx;
+    private final TvPlayer player;
     private final AssetManager assets;
     private final ExecutorService pool = Executors.newFixedThreadPool(16);
     private final Map<String, byte[]> iconCache = new ConcurrentHashMap<String, byte[]>();
@@ -75,8 +76,9 @@ public class LocalServer {
     private volatile boolean running = false;
     private int port = -1;
 
-    public LocalServer(Context ctx) {
+    public LocalServer(Context ctx, TvPlayer player) {
         this.ctx = ctx.getApplicationContext();
+        this.player = player;
         this.assets = this.ctx.getAssets();
         this.bridgeJs = readRaw("vyora_webproxy");
     }
