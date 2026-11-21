@@ -625,8 +625,8 @@ export function orderStreams(ch: Channel, maxQuality?: string): Channel {
     sourceIndex: typeof stream.sourceIndex === 'number' ? stream.sourceIndex : index,
   }))
   list.sort((a, b) => {
-    const origIdxA = ch.streams.indexOf(a)
-    const origIdxB = ch.streams.indexOf(b)
+    const origIdxA = typeof a.sourceIndex === 'number' ? a.sourceIndex : ch.streams.indexOf(a)
+    const origIdxB = typeof b.sourceIndex === 'number' ? b.sourceIndex : ch.streams.indexOf(b)
     const bestBonusA = origIdxA === bestIdx ? 10000 : 0
     const bestBonusB = origIdxB === bestIdx ? 10000 : 0
     const ha = h[a.url]
