@@ -2350,8 +2350,8 @@ export default function ChromiumBrowser({
             </div>
 
             <div className="speeddial-engines-bar" role="radiogroup" aria-label="Choose search engine">
-              {(['google'] as BrowserEngineId[]).map((eId) => {
-                const conf = BROWSER_ENGINES[eId]
+              {BROWSER_ENGINES_LIST.map((conf) => {
+                const eId = conf.id
                 const isSelected = activeTab?.engine === eId
                 return (
                   <button
