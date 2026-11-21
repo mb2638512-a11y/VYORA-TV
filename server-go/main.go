@@ -310,9 +310,9 @@ func main() {
 
 			idx, ok, ms := proxyMgr.RaceStreams(candidates, cid, limit)
 			if !ok {
-				if health != nil {
-					health.Set(cid, "offline", ms, "race", 0)
-				}
+				// RaceStreams only checks the bounded candidate window (default 4),
+				// not necessarily every catalogue source. Do not mark the channel
+				// offline until the player reports full playback exhaustion.
 				writeJSON(w, http.StatusBadGateway, map[string]interface{}{
 					"error": "all-sources-failed",
 					"ms":    ms,
