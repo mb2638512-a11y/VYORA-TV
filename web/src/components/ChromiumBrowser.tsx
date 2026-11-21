@@ -1291,7 +1291,10 @@ export default function ChromiumBrowser({
     try {
       const win = iframeRef.current?.contentWindow as (Window & { find?: FindFn }) | null
       if (!win || typeof win.find !== 'function') return
-      win.find(findQuery, forward, false, true, false, true, false)
+      // window.find() takes caseSensitive second and backwards third.
+      // The old call accidentally toggled case sensitivity and always searched
+      // forward, so the Previous Match control could never move backwards.
+      win.find(findQuery, false, !forward, true, false, true, false)
       setFindMatches((m) => (m > 0 ? m : 0))
     } catch (e) {
       // ignore
