@@ -712,7 +712,7 @@ export default function ChromiumBrowser({
       try {
         localStorage.setItem('vyora_browser_ad_shield', String(next))
       } catch {}
-      showToast(next ? '🛡️ Ad & Popup Shield ACTIVE' : '⚠️ Ad Shield Paused')
+      showToast(next ? '🛡️ Pop-up blocker ON' : '⚠️ Pop-up blocker OFF')
       return next
     })
   }
@@ -1961,7 +1961,7 @@ export default function ChromiumBrowser({
             type="button"
             className={`chromium-tool-btn ${adShield ? 'active' : ''}`}
             onClick={toggleAdShield}
-            title={adShield ? '🛡️ Ad & Pop-up Shield: ON' : '⚠️ Ad Shield: OFF'}
+            title={adShield ? '🛡️ Pop-up blocker: ON' : '⚠️ Pop-up blocker: OFF'}
             data-focusable
           >
             <Icon name="shield" size={15} />
@@ -2533,7 +2533,9 @@ export default function ChromiumBrowser({
                 key={`${activeTab.id}-${activeTab.navKey || 0}`}
                 src={getIframeSrc(activeTab)}
                 className="chromium-iframe"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox"
+                sandbox={adShield
+                  ? "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation"
+                  : "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox"}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 referrerPolicy="origin"
                 onLoad={handleIframeLoad}
