@@ -49,3 +49,28 @@ func TestCatalogRecordFreshnessUsesStatusSpecificWindows(t *testing.T) {
 		t.Fatal("missing record must be probed")
 	}
 }
+
+func TestPlayableProbeBodyValidation(t *testing.T) {
+	cases := []struct {
+		name        string
+		url         string
+		contentType string
+		body        string
+		want        bool
+	}{
+		{"valid HLS manifest", "https://example.test/live.m3u8", "application/vnd.apple.mpegurl", "#EXTM3U\n#EXT-X-VERSION:3\n", true},
+		{"malformed HLS response", "https://example.test/live.m3u8", "application/vnd.apple.mpegurl", "upstream error", false},
+		{"HTML block page", "https://example.test/live.m3u8", "text/html", "<html><body>blocked</body></html>", false},
+		{"valid DASH manifest", "https://example.test/live.mpd", "application/dash+xml", "<MPD><Period/></MPD>", true},
+		{"malformed DASH response", "https://example.test/live.mpd", "application/dash+xml", "not a manifest", false},
+		{"non-empty direct media bytes", "https://example.test/live.ts", "video/mp2t", "GOTMEDIA", true},
+		{"empty response", "https://example.test/live.ts", "video/mp2t", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isPlayableProbeBody(tc.url, tc.contentType, []byte(tc.body)); got != tc.want {
+				t.Fatalf("isPlayableProbeBody() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
