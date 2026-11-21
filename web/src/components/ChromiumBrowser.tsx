@@ -531,14 +531,16 @@ export default function ChromiumBrowser({
 
   const [appDisplayMode, setAppDisplayMode] = useState<'auto' | 'mobile' | 'desktop'>(initialDisplayMode)
   useEffect(() => {
-    if (!standalone) {
-      setBrowserDisplayMode(desktopMode ? 'desktop' : 'auto')
-      return
-    }
+    if (!standalone) return
     setAppDisplayMode(initialDisplayMode)
     setDesktopMode(initialDisplayMode === 'desktop')
     setBrowserDisplayMode(initialDisplayMode)
-  }, [standalone, initialDisplayMode, desktopMode])
+  }, [standalone, initialDisplayMode])
+
+  useEffect(() => {
+    if (standalone) return
+    setBrowserDisplayMode(desktopMode ? 'desktop' : 'auto')
+  }, [standalone, desktopMode])
 
   const reloadActiveTabForUserAgent = () => {
     setTabs((prev) => prev.map((tab) => tab.id === activeTabId
