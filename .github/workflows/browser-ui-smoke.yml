@@ -1,9 +1,6 @@
 name: VYORA browser UI smoke test
 
 on:
-  push:
-    branches:
-      - fix/browser-search-engines
   pull_request:
     branches:
       - main
