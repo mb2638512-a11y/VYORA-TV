@@ -14,7 +14,7 @@ type AndroidBridge = {
   isMuted(): boolean
   toggleMute(): void
   openExternal(url: string): void
-  launchPlayer?(url: string, title: string, pkg: string): void
+  launchPlayer?(url: string, title: string, pkg: string): boolean
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -149,17 +149,17 @@ export function downloadStreamM3u(title: string, streamUrl: string) {
 
 export function launchExternalStream(playerId: PlayerEngineId, streamUrl: string, title = '') {
   const player = TOP_STREAMING_PLAYERS.find((p) => p.id === playerId)
+  if (playerId === 'internal' || playerId === 'exoplayer' || playerId === 'hlsjs' || playerId === 'html5') {
+    return { launched: false, inPlatform: true }
+  }
   if (bridge?.launchPlayer && player?.pkg) {
-    bridge.launchPlayer(streamUrl, title, player.pkg)
-    return { launched: true, method: 'bridge_launch' }
+    const launched = bridge.launchPlayer(streamUrl, title, player.pkg)
+    return launched
+      ? { launched: true, method: 'bridge_launch' }
+      : { launched: false, reason: 'not_installed', inPlatform: true }
   }
-  const target = getPlayerIntentOrUri(playerId, streamUrl, title)
-  if (isNative) {
-    nativeOpenExternal(target)
-    return { launched: true, method: 'native_open' }
-  }
-  // Web: in-platform playback engine runs directly inside Vyora TV
-  return { launched: false, inPlatform: true }
+  // External apps are Android-only. Never claim a launch on desktop/web.
+  return { launched: false, reason: isNative ? 'unsupported_player' : 'android_only', inPlatform: true }
 }
 
 
