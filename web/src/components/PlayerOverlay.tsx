@@ -288,10 +288,15 @@ export function PlayerOverlay({
 
   const handleStreamFailure = useCallback(() => {
     markStream(stream?.url || '', false)
-    if (tryNextStream()) return
+    const failedIndex = stream?.sourceIndex ?? streamIndex
+    if (tryNextStream()) {
+      void reportStreamPlayback(channel.id, false, 0, failedIndex)
+      return
+    }
 
     // Allow multiple retry passes (up to 4 full passes across all streams) before giving up!
     if (cycleCountRef.current < 4) {
+      void reportStreamPlayback(channel.id, false, 0, failedIndex)
       cycleCountRef.current++
       triedRef.current.clear()
       networkFailsRef.current = 0
@@ -306,8 +311,8 @@ export function PlayerOverlay({
       return
     }
 
-    // Only after genuine extensive multi-cycle exhaustion show offline screen
-    void reportStreamPlayback(channel.id, false, 0, stream?.sourceIndex ?? streamIndex)
+    // The last source failed too: only now mark the whole channel offline.
+    void reportStreamPlayback(channel.id, false, 0, failedIndex, true)
     setStatus('error')
     setOffline(true)
     setMessage(t('offlineHint'))
@@ -337,18 +342,36 @@ export function PlayerOverlay({
       )
     }
 
+    const onSourceFailed = (event: Event) => {
+      const detail = (event as CustomEvent<{ url?: string; elapsedMs?: number }>).detail
+      const url = detail?.url || ''
+      const source = channel.streams.find((item) => item.url === url)
+      if (!source) return
+      markStream(url, false)
+      void reportStreamPlayback(
+        channel.id,
+        false,
+        Number(detail?.elapsedMs || 0),
+        source.sourceIndex ?? channel.streams.indexOf(source),
+      )
+    }
+
     const onAllSourcesFailed = () => {
       setBuffering(false)
       setStatus('error')
       setOffline(true)
       setMessage(t('offlineHint'))
-      void reportStreamPlayback(channel.id, false, 0, stream?.sourceIndex ?? streamIndex)
+      // Each native candidate already emitted its own source-failed event.
+      // This final event changes only the channel-level status.
+      void reportStreamPlayback(channel.id, false, 0, -1, true, false)
     }
 
     window.addEventListener('vyora-native-first-frame', onFirstFrame)
+    window.addEventListener('vyora-native-source-failed', onSourceFailed)
     window.addEventListener('vyora-native-sources-failed', onAllSourcesFailed)
     return () => {
       window.removeEventListener('vyora-native-first-frame', onFirstFrame)
+      window.removeEventListener('vyora-native-source-failed', onSourceFailed)
       window.removeEventListener('vyora-native-sources-failed', onAllSourcesFailed)
     }
   }, [channel.id, channel.streams, stream, streamIndex, t])
