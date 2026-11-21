@@ -124,19 +124,33 @@ public class TvBridge {
     public boolean launchPlayer(final String url, final String title, final String pkg,
                                 final String referer, final String ua) {
         if (url == null || url.trim().isEmpty() || pkg == null || pkg.trim().isEmpty()) return false;
+        // MX Player has separate free and Pro package IDs. Prefer the
+        // requested edition, then fall back to the other installed edition.
+        String installedPackage = pkg.trim();
         try {
-            // Android 11+ package visibility is declared in AndroidManifest.xml.
-            act.getPackageManager().getPackageInfo(pkg.trim(), 0);
+            act.getPackageManager().getPackageInfo(installedPackage, 0);
         } catch (Throwable missing) {
-            act.runOnUiThread(() -> Toast.makeText(act,
-                    pkg + " is not installed. VYORA's built-in player will be used.",
-                    Toast.LENGTH_LONG).show());
-            return false;
+            if ("com.mxtech.videoplayer.ad".equals(installedPackage)) {
+                installedPackage = "com.mxtech.videoplayer.pro";
+                try {
+                    act.getPackageManager().getPackageInfo(installedPackage, 0);
+                } catch (Throwable alsoMissing) {
+                    act.runOnUiThread(() -> Toast.makeText(act,
+                            "MX Player is not installed. VYORA's built-in player will be used.",
+                            Toast.LENGTH_LONG).show());
+                    return false;
+                }
+            } else {
+                act.runOnUiThread(() -> Toast.makeText(act,
+                        pkg + " is not installed. VYORA's built-in player will be used.",
+                        Toast.LENGTH_LONG).show());
+                return false;
+            }
         }
 
         final Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(Uri.parse(url), "video/*");
-        intent.setPackage(pkg.trim());
+        intent.setPackage(installedPackage);
         if (title != null && !title.trim().isEmpty()) {
             intent.putExtra("title", title);
             intent.putExtra(Intent.EXTRA_TITLE, title);
