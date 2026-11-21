@@ -216,13 +216,13 @@ async function main() {
         sinceCheckpoint = 0
       }
       if (completed % 25 === 0 || completed === targets.length) {
-        process.stdout.write(`\\rAudited ${completed}/${targets.length}`)
+        process.stdout.write(`\rAudited ${completed}/${targets.length}`)
       }
     }
   })
   await Promise.all(workers)
   if (completed === targets.length) saveCheckpoint()
-  process.stdout.write('\\n')
+  process.stdout.write('\n')
 
   const stamp = new Date().toISOString().replaceAll(':', '-')
   const outDir = path.join(ROOT, 'reports', 'stream-audit')
