@@ -121,7 +121,11 @@ export function SettingsOverlay({
   }
 
   const handleSetPlayer = (key: 'defaultPlayer' | 'channelsPlayer' | 'moviesPlayer' | 'seriesPlayer' | 'downloadsPlayer', val: PlayerEngineId) => {
-    selectActivePlayer(val)
+    const updated = { ...settings, [key]: val }
+    setSettings(updated)
+    try { localStorage.setItem('vyora.settings', JSON.stringify(updated)) } catch {}
+    const player = TOP_STREAMING_PLAYERS.find((item) => item.id === val)
+    showToast(`${key === 'channelsPlayer' ? 'Live channels' : key === 'moviesPlayer' ? 'Movies' : key === 'seriesPlayer' ? 'Series' : key === 'downloadsPlayer' ? 'Downloads' : 'Default'} player: ${player?.name || val}`)
   }
 
   const handleTestPlayer = (playerId: PlayerEngineId) => {
