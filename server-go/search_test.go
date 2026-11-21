@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +54,67 @@ func TestUnwrapRedirectProviders(t *testing.T) {
 				t.Fatalf("UnwrapRedirect() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestSuggestURLUsesSelectedProvider(t *testing.T) {
+	cases := []struct {
+		engine string
+		want   string
+		ok     bool
+	}{
+		{"google", "suggestqueries.google.com", true},
+		{"", "suggestqueries.google.com", true},
+		{"bing", "api.bing.com", true},
+		{"duckduckgo", "ac.duckduckgo.com", true},
+		{"brave", "", false},
+		{"yahoo", "", false},
+		{"unknown", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.engine, func(t *testing.T) {
+			got, ok := suggestURL(tc.engine, "hello world")
+			if ok != tc.ok {
+				t.Fatalf("suggestURL supported = %v, want %v", ok, tc.ok)
+			}
+			if tc.ok && !strings.Contains(got, tc.want) {
+				t.Fatalf("suggestURL = %q, want host containing %q", got, tc.want)
+			}
+			if tc.ok && !strings.Contains(got, "hello+world") {
+				t.Fatalf("suggestURL did not encode query: %q", got)
+			}
+		})
+	}
+}
+
+func TestParseSearchSuggestArray(t *testing.T) {
+	got := parseSearchSuggestArray(`["hello",["hello world"," hello world ","hello tv",""],[],{}]`)
+	want := []string{"hello world", "hello tv"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+	if got := parseSearchSuggestArray(`{"unexpected":"object"}`); len(got) != 0 {
+		t.Fatalf("malformed payload returned suggestions: %v", got)
+	}
+}
+
+func TestParseDuckDuckGoSuggest(t *testing.T) {
+	got := parseDuckDuckGoSuggest(`[{"phrase":"vyora tv"},{"phrase":" VYORA TV "},{"phrase":"browser"}]`)
+	want := []string{"vyora tv", "browser"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+	if got := parseDuckDuckGoSuggest(`{"phrase":"not an array"}`); len(got) != 0 {
+		t.Fatalf("malformed payload returned suggestions: %v", got)
 	}
 }
