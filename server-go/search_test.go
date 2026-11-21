@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -172,5 +173,26 @@ func TestIsPublicRoutableIPRejectsSpecialUseRanges(t *testing.T) {
 		if !isPublicRoutableIP(net.ParseIP(raw)) {
 			t.Errorf("public address unexpectedly blocked: %s", raw)
 		}
+	}
+}
+
+func TestBrowserProxyRedirectPolicyRejectsPrivateRedirect(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:8080/admin", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := browserProxyRedirectPolicy(req, nil); err == nil {
+		t.Fatal("expected redirect policy to reject private destination")
+	}
+}
+
+func TestBrowserProxyRedirectPolicyLimitsRedirectChain(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	via := make([]*http.Request, 12)
+	if err := browserProxyRedirectPolicy(req, via); err != http.ErrUseLastResponse {
+		t.Fatalf("redirect policy = %v, want ErrUseLastResponse", err)
 	}
 }
