@@ -238,7 +238,7 @@ func main() {
 			if ok {
 				realIdx := origIdx[winIdx]
 				winner := ch.Streams[realIdx]
-				health.ReportSource(id, true, ms, realIdx)
+				health.Set(id, "online", ms, "resolve", realIdx)
 				writeJSON(w, http.StatusOK, map[string]interface{}{
 					"ok":          true,
 					"channel":     ch,
@@ -322,7 +322,6 @@ func main() {
 
 			st := candidates[idx]
 			realIndex := originalIndices[idx]
-			health.ReportSource(cid, true, ms, realIndex)
 			w.Header().Set("Location", buildProxyURL(st.URL, st.Referer, st.UA, cid))
 			w.Header().Set("X-Vyora-Stream", strconv.Itoa(realIndex))
 			w.Header().Set("X-Vyora-Ms", strconv.Itoa(ms))
