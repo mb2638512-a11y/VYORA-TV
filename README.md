@@ -26,6 +26,7 @@ flags, real channel logos, aur D-pad (remote) se poora control.
 | Waiting queue | Offline channel queue me daalein - har minute khud check hota hai |
 | Accessibility | Audio description (TTS), focus announcements, large text, high contrast |
 | Android TV | Native app (ExoPlayer/Media3 + WebView), leanback launcher, built without Gradle |
+| Player selection | 10 playback options; VYORA Player is default; independent defaults for Live TV, Movies, Series and Downloads; Android external-player handoff for VLC, MX, mpv, Kodi, Nova and Just Player |
 
 ---
 
@@ -125,7 +126,23 @@ App mein:
 
 ---
 
-## 5. Data pipeline
+## 5. Playback players
+
+VYORA Player is the default in-platform player. Settings lets users choose a default
+player and override it independently for Live TV channels, Movies, Series and
+Downloads. The ten choices are VYORA Player, ExoPlayer/Media3, HLS.js, HTML5,
+VLC, MX Player, mpv, Kodi, Nova Video Player and Just Player.
+
+VLC, MX, mpv, Kodi, Nova and Just Player are external Android apps: the selected
+app must already be installed. VYORA checks package availability and falls back
+to its built-in player with a message when the selected app is unavailable.
+The browser-only HLS.js and HTML5 choices remain in-app. External app support
+depends on the app accepting the stream URL and format; device-level playback
+must be verified on the target Android TV.
+
+---
+ 
+## 6. Data pipeline
 
 `npm run data` yeh karta hai:
 
@@ -146,7 +163,7 @@ curl.exe -L --proxy http://127.0.0.1:8080 -o data\raw\index.m3u https://iptv-org
 
 ---
 
-## 6. Remote (D-pad) map
+## 7. Remote (D-pad) map
 
 | Button | Kaam |
 |---|---|
@@ -161,7 +178,7 @@ curl.exe -L --proxy http://127.0.0.1:8080 -o data\raw\index.m3u https://iptv-org
 
 ---
 
-## 7. Note (legal)
+## 8. Note (legal)
 
 Catalogue sirf **publicly published free-to-air streams** ka reference hai
 (iptv-org ka open directory). Kuch streams broadcaster ki side se geo-blocked ya
