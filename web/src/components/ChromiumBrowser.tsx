@@ -1005,12 +1005,15 @@ export default function ChromiumBrowser({
     setSpeedDialSearch('')
   }
 
-  // Google autocomplete is provider-specific. Never show Google suggestions
-  // while another search engine is selected.
+  // Suggestions are fetched from the selected provider only. Engines without
+  // a verified suggestion endpoint (Yahoo and Brave) keep autocomplete off
+  // rather than showing results from a different search company.
   useEffect(() => {
     const q = inputUrl.trim()
+    const engine = activeTab?.engine || 'google'
+    const supportsSuggestions = engine === 'google' || engine === 'bing' || engine === 'duckduckgo'
     if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
-    if (activeTab?.engine !== 'google' || q.length < 2 || /^https?:\/\//i.test(q)) {
+    if (!supportsSuggestions || q.length < 2 || /^https?:\/\//i.test(q)) {
       setSuggestions([])
       setSuggestIndex(-1)
       return
@@ -1022,13 +1025,13 @@ export default function ChromiumBrowser({
     const controller = new AbortController()
     suggestTimer.current = window.setTimeout(async () => {
       try {
-        const res = await fetch(
-          `${API}/suggest?q=${encodeURIComponent(q)}`,
-          { signal: controller.signal },
-        )
+        const params = new URLSearchParams({ engine, q })
+        const res = await fetch(`${API}/suggest?${params.toString()}`, {
+          signal: controller.signal,
+        })
         if (!res.ok) throw new Error(`Suggestions failed: ${res.status}`)
         const data = await res.json()
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted || data?.engine && data.engine !== engine) return
         const list: string[] = Array.isArray(data?.suggestions) ? data.suggestions : []
         setSuggestions(list.slice(0, 8))
         setSuggestIndex(-1)
