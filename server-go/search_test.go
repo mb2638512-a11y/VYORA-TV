@@ -1,6 +1,7 @@
 package main
 
-import (\n\t"context"
+import (
+	"context"
 	"encoding/base64"
 	"net/url"
 	"strings"
