@@ -180,7 +180,7 @@ func parseGoogleSuggest(body string) []string {
 // ---------------------------------------------------------------------------
 
 var (
-	bingURep = regexp.MustCompile(`(?i)&[a-z_]*u=a1([a-zA-Z0-9_\-=+/%]+)`)
+	bingURep = regexp.MustCompile(`(?i)[?&][a-z_]*u=a1([a-zA-Z0-9_\-=+/%]+)`)
 	base64Re  = regexp.MustCompile(`[^A-Za-z0-9+/=]`)
 )
 
