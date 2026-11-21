@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -17,34 +18,40 @@ import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * ExoPlayer (Media3) wrapper with Turbo start.
+ * Media3 live-TV player with bounded parallel source selection.
  *
- *   - several sources can be handed over at once; the first one that becomes
- *     READY wins. A dead CDN is skipped after 3.5s instead of blocking the
- *     picture for 20+ seconds.
- *   - the buffer is tuned for live TV: playback starts as soon as the first
- *     fragment is available instead of filling a big buffer.
+ * At most two candidates are prepared at once. The first candidate to become
+ * READY wins; the other player is released immediately. This avoids serial
+ * dead-source delays without flooding a constrained connection with every
+ * source in a channel.
  */
 public class TvPlayer {
 
     private static final String TAG = "VyoraPlayer";
-    private static final long READY_TIMEOUT_MS = 3500;
+    private static final long READY_TIMEOUT_MS = 6000;
+    private static final int MAX_PARALLEL_CANDIDATES = 2;
 
     private final Context ctx;
     private final SurfaceView surfaceView;
     private ExoPlayer player;
     private boolean active = false;
+    private boolean winnerChosen = false;
 
     private String[] urls = new String[0];
     private String[] referers = new String[0];
     private String[] uas = new String[0];
-    private int candidate = 0;
+    private int nextCandidateIndex = 0;
+    private int activeAttempts = 0;
+    private long playbackStartedAt;
+
     private final Handler main = new Handler(Looper.getMainLooper());
-    private Runnable readyWatchdog;
+    private final Map<Integer, ExoPlayer> pendingPlayers = new HashMap<>();
+    private final Map<Integer, Runnable> readyWatchdogs = new HashMap<>();
 
     public TvPlayer(Context ctx, SurfaceView surfaceView) {
         this.ctx = ctx;
@@ -60,28 +67,47 @@ public class TvPlayer {
         play(new String[]{url}, new String[]{referer}, new String[]{ua});
     }
 
-    /** Play the first source that answers; the rest are automatic backups. */
+    /** Start up to two sources together; first READY candidate becomes active. */
     public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas) {
         if (candidateUrls == null || candidateUrls.length == 0) return;
         release();
-        urls = candidateUrls;
-        referers = candidateReferers != null ? candidateReferers : new String[0];
-        uas = candidateUas != null ? candidateUas : new String[0];
-        candidate = 0;
-        startCandidate();
+        urls = candidateUrls.clone();
+        referers = candidateReferers != null ? candidateReferers.clone() : new String[0];
+        uas = candidateUas != null ? candidateUas.clone() : new String[0];
+        nextCandidateIndex = 0;
+        activeAttempts = 0;
+        winnerChosen = false;
+        active = false;
+        playbackStartedAt = SystemClock.elapsedRealtime();
+        startMoreCandidates();
     }
 
-    private void startCandidate() {
-        if (candidate >= urls.length) {
-            Log.w(TAG, "every source failed");
+    private void startMoreCandidates() {
+        if (winnerChosen) return;
+        while (activeAttempts < MAX_PARALLEL_CANDIDATES && nextCandidateIndex < urls.length) {
+            final int index = nextCandidateIndex++;
+            startCandidate(index);
+        }
+        if (activeAttempts == 0 && nextCandidateIndex >= urls.length && !winnerChosen) {
             active = false;
+            Log.w(TAG, "all sources exhausted after " +
+                    (SystemClock.elapsedRealtime() - playbackStartedAt) + "ms");
+        }
+    }
+
+    private void startCandidate(final int index) {
+        final String url = urls[index];
+        if (url == null || url.trim().isEmpty()) {
+            Log.w(TAG, "source " + index + " skipped: empty URL");
+            startMoreCandidates();
             return;
         }
-        final String url = urls[candidate];
-        final String referer = candidate < referers.length ? referers[candidate] : "";
-        final String ua = candidate < uas.length ? uas[candidate] : "";
 
+        final long candidateStartedAt = SystemClock.elapsedRealtime();
         try {
+            String referer = index < referers.length ? referers[index] : "";
+            String ua = index < uas.length ? uas[index] : "";
+
             DefaultHttpDataSource.Factory httpFactory =
                     new DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
@@ -97,93 +123,163 @@ public class TvPlayer {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Referer", referer);
                 try {
-                    headers.put("Origin", Uri.parse(referer).getScheme() + "://" + Uri.parse(referer).getAuthority());
+                    Uri parsed = Uri.parse(referer);
+                    if (parsed.getScheme() != null && parsed.getAuthority() != null) {
+                        headers.put("Origin", parsed.getScheme() + "://" + parsed.getAuthority());
+                    }
                 } catch (Exception ignored) {
                 }
                 httpFactory.setDefaultRequestProperties(headers);
             }
 
             DefaultDataSource.Factory dataFactory = new DefaultDataSource.Factory(ctx, httpFactory);
-
-            // Live TV tuning: start playing on the first fragment instead of
-            // waiting for a big buffer to fill up.
             DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                     .setBufferDurationsMs(1500, 15000, 800, 1500)
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .setTargetBufferBytes(8 * 1024 * 1024)
                     .build();
 
-            player = new ExoPlayer.Builder(ctx)
+            final ExoPlayer candidatePlayer = new ExoPlayer.Builder(ctx)
                     .setMediaSourceFactory(new DefaultMediaSourceFactory(dataFactory))
                     .setLoadControl(loadControl)
                     .build();
-            player.setVideoSurfaceView(surfaceView);
-            player.setMediaItem(MediaItem.fromUri(url));
-            player.addListener(new Player.Listener() {
+
+            pendingPlayers.put(index, candidatePlayer);
+            activeAttempts++;
+
+            candidatePlayer.addListener(new Player.Listener() {
                 @Override
                 public void onPlaybackStateChanged(int state) {
                     if (state == Player.STATE_READY) {
-                        cancelWatchdog();
-                        Log.i(TAG, "source " + candidate + " ready");
+                        if (pendingPlayers.get(index) == candidatePlayer) {
+                            Log.i(TAG, "source " + index + " READY in " +
+                                    (SystemClock.elapsedRealtime() - candidateStartedAt) + "ms");
+                            chooseWinner(index, candidatePlayer);
+                        }
                     }
                 }
 
                 @Override
                 public void onPlayerError(PlaybackException error) {
-                    Log.w(TAG, "source " + candidate + " error: " + error.getErrorCodeName());
-                    nextCandidate();
+                    Log.w(TAG, "source " + index + " failed after " +
+                            (SystemClock.elapsedRealtime() - candidateStartedAt) + "ms: " +
+                            error.getErrorCodeName());
+                    candidateFailed(index, candidatePlayer);
+                }
+
+                @Override
+                public void onRenderedFirstFrame() {
+                    if (player == candidatePlayer) {
+                        Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" +
+                                (SystemClock.elapsedRealtime() - playbackStartedAt));
+                    }
                 }
             });
-            player.prepare();
-            player.play();
-            active = true;
 
-            // If this source does not become READY in time, jump to the next.
-            readyWatchdog = new Runnable() {
+            Runnable watchdog = new Runnable() {
                 @Override
                 public void run() {
-                    if (player != null && player.getPlaybackState() != Player.STATE_READY) {
-                        Log.i(TAG, "source " + candidate + " too slow, switching");
-                        nextCandidate();
+                    if (!winnerChosen && pendingPlayers.get(index) == candidatePlayer) {
+                        Log.w(TAG, "source " + index + " READY timeout after " +
+                                READY_TIMEOUT_MS + "ms");
+                        candidateFailed(index, candidatePlayer);
                     }
                 }
             };
-            main.postDelayed(readyWatchdog, READY_TIMEOUT_MS);
+            readyWatchdogs.put(index, watchdog);
+            main.postDelayed(watchdog, READY_TIMEOUT_MS);
+
+            // Prepare in parallel, but do not start audio/video until a winner
+            // is selected and attached to the visible surface.
+            candidatePlayer.setPlayWhenReady(false);
+            candidatePlayer.setMediaItem(MediaItem.fromUri(url));
+            candidatePlayer.prepare();
+            Log.i(TAG, "source " + index + " preparing");
         } catch (Throwable t) {
-            Log.e(TAG, "play failed", t);
-            nextCandidate();
+            Log.e(TAG, "source " + index + " setup failed", t);
+            ExoPlayer pending = pendingPlayers.remove(index);
+            if (pending != null) {
+                activeAttempts = Math.max(0, activeAttempts - 1);
+                safeRelease(pending);
+            }
+            cancelWatchdog(index);
+            startMoreCandidates();
         }
     }
 
-    private void nextCandidate() {
-        cancelWatchdog();
-        release();
-        if (candidate + 1 < urls.length) {
-            candidate++;
-            startCandidate();
-        } else {
-            Log.w(TAG, "all sources exhausted");
+    private void chooseWinner(int index, ExoPlayer winningPlayer) {
+        if (winnerChosen || pendingPlayers.get(index) != winningPlayer) return;
+        winnerChosen = true;
+        cancelWatchdog(index);
+        pendingPlayers.remove(index);
+        activeAttempts = Math.max(0, activeAttempts - 1);
+
+        player = winningPlayer;
+        try {
+            player.setVideoSurfaceView(surfaceView);
+            player.setPlayWhenReady(true);
+            active = true;
+            Log.i(TAG, "WINNER source=" + index + " selected_ms=" +
+                    (SystemClock.elapsedRealtime() - playbackStartedAt));
+        } catch (Throwable t) {
+            Log.e(TAG, "winner attach failed", t);
+            safeRelease(player);
+            player = null;
             active = false;
+            winnerChosen = false;
+            startMoreCandidates();
+            return;
         }
+
+        releasePendingCandidates();
     }
 
-    private void cancelWatchdog() {
-        if (readyWatchdog != null) {
-            main.removeCallbacks(readyWatchdog);
-            readyWatchdog = null;
+    private void candidateFailed(int index, ExoPlayer failedPlayer) {
+        if (winnerChosen || pendingPlayers.get(index) != failedPlayer) return;
+        pendingPlayers.remove(index);
+        activeAttempts = Math.max(0, activeAttempts - 1);
+        cancelWatchdog(index);
+        safeRelease(failedPlayer);
+        startMoreCandidates();
+    }
+
+    private void cancelWatchdog(int index) {
+        Runnable watchdog = readyWatchdogs.remove(index);
+        if (watchdog != null) main.removeCallbacks(watchdog);
+    }
+
+    private void releasePendingCandidates() {
+        for (Integer index : new ArrayList<>(pendingPlayers.keySet())) {
+            cancelWatchdog(index);
+            ExoPlayer pending = pendingPlayers.remove(index);
+            if (pending != null) safeRelease(pending);
+        }
+        activeAttempts = 0;
+    }
+
+    private void safeRelease(ExoPlayer target) {
+        if (target == null) return;
+        try {
+            target.stop();
+        } catch (Throwable ignored) {
+        }
+        try {
+            target.release();
+        } catch (Throwable ignored) {
         }
     }
 
     private void release() {
-        cancelWatchdog();
+        for (Integer index : new ArrayList<>(readyWatchdogs.keySet())) {
+            cancelWatchdog(index);
+        }
+        releasePendingCandidates();
         if (player != null) {
-            try {
-                player.stop();
-                player.release();
-            } catch (Throwable ignored) {
-            }
+            safeRelease(player);
             player = null;
         }
+        active = false;
+        winnerChosen = false;
     }
 
     public void pause() {
@@ -197,7 +293,9 @@ public class TvPlayer {
     public void stop() {
         release();
         urls = new String[0];
-        active = false;
+        referers = new String[0];
+        uas = new String[0];
+        nextCandidateIndex = 0;
     }
 
     public void setVolume(float v) {
