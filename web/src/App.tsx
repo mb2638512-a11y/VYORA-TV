@@ -41,6 +41,7 @@ import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
 import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BrandLogo, faviconFor } from './components/ChromiumBrowser'
+import { AllSiteHub, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
 
 /**
  * Icon of an installed web app.
@@ -1280,6 +1281,13 @@ export default function App() {
               <Icon name="apps" size={16} /> {t('apps')}
             </button>
             <button
+              className={`topnav-btn ${view.name === 'allsitehub' ? 'active' : ''}`}
+              data-focusable
+              onClick={() => { setView({ name: 'allsitehub' }); setMobileNavOpen(false) }}
+            >
+              <Icon name="grid" size={16} /> AllSiteHub
+            </button>
+            <button
               className={`topnav-btn ${view.name === 'downloads' ? 'active' : ''}`}
               data-focusable
               onClick={() => {
@@ -1622,6 +1630,20 @@ export default function App() {
                   >
                     <Icon name="play" size={16} /> {t('openBrowser')}
                   </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="row allsitehub-featured-row">
+              <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                <h2 className="row-title"><Icon name="grid" size={22}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT} sites · Movies & Shows)</span></h2>
+                <button className="btn btn-primary" data-focusable onClick={() => setView({ name: 'allsitehub' })}>See All <Icon name="arrow-right" size={15}/></button>
+              </div>
+              <div className="apps-grid">
+                <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
+                  <div className="app-card-badge"><Icon name="grid" size={34}/></div>
+                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore the first category with 21 movie and show websites. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">21 Sites</span><span className="pill">Search & Filters</span><span className="pill">8-category directory</span></div></div>
+                  <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
                 </div>
               </div>
             </section>
@@ -2369,6 +2391,12 @@ export default function App() {
               </h2>
             </div>
 
+            <div style={{marginBottom:24}}>
+              <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                <div><h3 className="row-title"><Icon name="grid" size={21}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT})</span></h3><p className="muted">Protected built-in platform app · Cannot be uninstalled</p></div>
+                <button className="btn btn-primary" data-focusable onClick={()=>setView({name:'allsitehub'})}>Open AllSiteHub</button>
+              </div>
+            </div>
             <div className="apps-grid">
               <div
                 className="app-card featured-app-card"
@@ -2468,6 +2496,10 @@ export default function App() {
               </div>
             </div>
           </section>
+        ) : null}
+
+        {view.name === 'allsitehub' ? (
+          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url, standalone: true })} />
         ) : null}
 
         {view.name === 'downloads' ? (
