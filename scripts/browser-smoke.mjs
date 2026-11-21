@@ -20,7 +20,6 @@ await page.route('**/api/suggest**', async (route) => {
 
 await page.addInitScript(() => {
   window.__vyoraModes = []
-  window.__vyoraSuggestionEngines = []
   window.VyoraBridge = {
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
@@ -54,7 +53,7 @@ try {
     await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click({ force: true })
     await page.waitForTimeout(100)
     await omnibox.fill('vyora browser')
-    await page.waitForFunction((expected) => window.__vyoraSuggestionEngines?.includes(expected), engine, { timeout: 5000 }).catch(() => {})
+    await page.waitForTimeout(350)
     if (!suggestionEngines.includes(engine)) {
       throw new Error(`${engine} autocomplete request did not include the selected provider`)
     }
