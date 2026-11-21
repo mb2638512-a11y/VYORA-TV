@@ -357,6 +357,10 @@ public class TvPlayer {
                             lastNotifiedSourceIndex = index;
                             playbackListener.onFirstFrame(urls[index], startupMs);
                         }
+                        // Keep a prepared alternate only until the selected source
+                        // proves it can render. Once the first frame is visible,
+                        // release the standby to return bandwidth and decoder resources.
+                        releasePendingCandidates();
                     }
                 }
             });
@@ -431,7 +435,9 @@ public class TvPlayer {
             return;
         }
 
-        releasePendingCandidates();
+        // Do not discard a prepared standby yet. If this source reaches READY
+        // but never renders a frame, the standby can take over without another
+        // network round trip. It is released by onRenderedFirstFrame().
     }
 
     private void armFirstFrameWatchdog(final int index, final ExoPlayer target) {
@@ -467,7 +473,42 @@ public class TvPlayer {
         active = false;
         winnerChosen = false;
         safeRelease(failedPlayer);
+        if (promoteReadyStandby()) return;
         startMoreCandidates();
+    }
+
+    /**
+     * Promote an alternate that already reached READY while the previous
+     * winner was waiting for its first frame. Returns true when promoted.
+     */
+    private boolean promoteReadyStandby() {
+        for (Map.Entry<Integer, ExoPlayer> entry : new ArrayList<>(pendingPlayers.entrySet())) {
+            final int index = entry.getKey();
+            final ExoPlayer standby = entry.getValue();
+            if (standby == null || standby.getPlaybackState() != Player.STATE_READY) continue;
+
+            pendingPlayers.remove(index);
+            activeAttempts = Math.max(0, activeAttempts - 1);
+            cancelWatchdog(index);
+            winnerChosen = true;
+            player = standby;
+            try {
+                player.setVideoSurfaceView(surfaceView);
+                player.setPlayWhenReady(true);
+                active = true;
+                armFirstFrameWatchdog(index, standby);
+                Log.i(TAG, "FAILOVER_READY source=" + index + " promoted without reprepare");
+                return true;
+            } catch (Throwable error) {
+                Log.w(TAG, "ready standby attach failed for source " + index, error);
+                player = null;
+                active = false;
+                winnerChosen = false;
+                safeRelease(standby);
+                return false;
+            }
+        }
+        return false;
     }
 
     private void candidateFailed(int index, ExoPlayer failedPlayer, long candidateStartedAt) {
