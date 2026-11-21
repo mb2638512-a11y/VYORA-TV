@@ -230,6 +230,85 @@ function getInitialSettings(): BrowserSettings {
   return DEFAULT_BROWSER_SETTINGS
 }
 
+type InitialBrowserSession = { tabs: Tab[]; activeTabId: string }
+
+function getInitialBrowserSession(
+  initialUrl?: string,
+  initialEngine: BrowserEngineId = 'google',
+  standalone = false,
+): InitialBrowserSession {
+  const startUrl = initialUrl?.trim() || ''
+  const makeNewTab = (): Tab => ({
+    id: 'tab-1',
+    title: startUrl ? getDomainTitle(startUrl) : 'New Tab',
+    url: startUrl,
+    displayUrl: startUrl,
+    frameUrl: startUrl,
+    engine: initialEngine,
+    proxyMode: false,
+    zoom: 1,
+    history: startUrl ? [startUrl] : [],
+    historyIndex: startUrl ? 0 : -1,
+    isLoading: false,
+    navKey: 0,
+  })
+  if (startUrl || standalone) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+
+  try {
+    if (getInitialSettings().privateMode) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (!raw) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const parsed = JSON.parse(raw)
+    const savedTabs = Array.isArray(parsed) ? parsed : parsed?.tabs
+    if (!Array.isArray(savedTabs)) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+
+    const restored = savedTabs.slice(0, 8).map((saved: any, index: number): Tab | null => {
+      const url = typeof saved?.url === 'string' ? saved.url : ''
+      if (url) {
+        try {
+          const parsedUrl = new URL(url)
+          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return null
+        } catch {
+          return null
+        }
+      }
+      const history = Array.isArray(saved?.history)
+        ? saved.history.filter((item: unknown): item is string => {
+            if (typeof item !== 'string') return false
+            try {
+              const parsedUrl = new URL(item)
+              return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+            } catch {
+              return false
+            }
+          }).slice(-100)
+        : url ? [url] : []
+      const requestedIndex = Number.isInteger(saved?.historyIndex) ? saved.historyIndex : history.length - 1
+      return {
+        id: `session-tab-${index + 1}`,
+        title: typeof saved?.title === 'string' && saved.title ? saved.title.slice(0, 120) : url ? getDomainTitle(url) : 'New Tab',
+        url,
+        displayUrl: url,
+        frameUrl: url,
+        engine: saved?.engine && BROWSER_ENGINES[saved.engine as BrowserEngineId] ? saved.engine : initialEngine,
+        proxyMode: false,
+        zoom: 1,
+        history,
+        historyIndex: Math.max(-1, Math.min(requestedIndex, history.length - 1)),
+        isLoading: false,
+        navKey: 0,
+      }
+    }).filter((tab: Tab | null): tab is Tab => tab !== null)
+
+    if (!restored.length) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const requestedActive = Number.isInteger(parsed?.activeTabIndex) ? parsed.activeTabIndex : restored.length - 1
+    const activeIndex = Math.max(0, Math.min(requestedActive, restored.length - 1))
+    return { tabs: restored, activeTabId: restored[activeIndex].id }
+  } catch {
+    return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+  }
+}
+
 /**
  * Converts any YouTube video link into its embeddable form.
  *
@@ -438,28 +517,13 @@ export default function ChromiumBrowser({
   onPlayMovie,
   onNavigateToDownloads,
 }: ChromiumBrowserProps) {
-  const [tabs, setTabs] = useState<Tab[]>(() => {
-    const startUrl = initialUrl?.trim() || ''
-    return [
-      {
-        id: 'tab-1',
-        title: startUrl ? getDomainTitle(startUrl) : 'New Tab',
-        url: startUrl,
-        displayUrl: startUrl,
-        frameUrl: startUrl,
-        engine: initialEngine,
-        proxyMode: false,
-        zoom: 1.0,
-        history: startUrl ? [startUrl] : [],
-        historyIndex: startUrl ? 0 : -1,
-        isLoading: false,
-        navKey: 0,
-      },
-    ]
+  const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
+  const [tabs, setTabs] = useState<Tab[]>(() => initialSession.tabs)
+  const [activeTabId, setActiveTabId] = useState<string>(() => initialSession.activeTabId)
+  const [inputUrl, setInputUrl] = useState<string>(() => {
+    const active = initialSession.tabs.find((tab) => tab.id === initialSession.activeTabId)
+    return initialUrl?.trim() || active?.displayUrl || ''
   })
-
-  const [activeTabId, setActiveTabId] = useState<string>('tab-1')
-  const [inputUrl, setInputUrl] = useState<string>(initialUrl?.trim() || '')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [engineMenuOpen, setEngineMenuOpen] = useState(false)
   const [showBookmarks, setShowBookmarks] = useState(true)
@@ -750,16 +814,21 @@ export default function ChromiumBrowser({
   useEffect(() => {
     if (settings.privateMode) return
     try {
-      const payload = tabs.map((t) => ({
-        url: t.url,
-        title: t.title,
-        engine: t.engine,
-        history: t.history,
-        historyIndex: t.historyIndex,
-      }))
+      const activeTabIndex = Math.max(0, tabs.findIndex((tab) => tab.id === activeTabId))
+      const payload = {
+        version: 1,
+        activeTabIndex,
+        tabs: tabs.slice(0, 8).map((t) => ({
+          url: t.url,
+          title: t.title,
+          engine: t.engine,
+          history: t.history.slice(-100),
+          historyIndex: t.historyIndex,
+        })),
+      }
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload))
     } catch {}
-  }, [tabs, settings.privateMode])
+  }, [tabs, activeTabId, settings.privateMode])
 
   const saveBookmarks = (items: Bookmark[]) => {
     setBookmarks(items)
