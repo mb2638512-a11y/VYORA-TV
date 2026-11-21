@@ -358,7 +358,7 @@ public class TvPlayer {
                     if (!winnerChosen && pendingPlayers.get(index) == candidatePlayer) {
                         Log.w(TAG, "source " + index + " READY timeout after " +
                                 READY_TIMEOUT_MS + "ms");
-                        candidateFailed(index, candidatePlayer);
+                        candidateFailed(index, candidatePlayer, candidateStartedAt);
                     }
                 }
             };
@@ -451,8 +451,7 @@ public class TvPlayer {
         if (player != failedPlayer || !winnerChosen) return;
         Log.w(TAG, "active source " + index + " failed: " + reason);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index],
-                    SystemClock.elapsedRealtime() - candidateStartedAt);
+            playbackListener.onSourceFailed(urls[index], 0L);
         }
         cancelFirstFrameWatchdog();
         player = null;
@@ -468,7 +467,8 @@ public class TvPlayer {
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index], 0L);
+            playbackListener.onSourceFailed(urls[index],
+                    SystemClock.elapsedRealtime() - candidateStartedAt);
         }
         safeRelease(failedPlayer);
         startMoreCandidates();
