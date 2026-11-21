@@ -97,9 +97,9 @@ public class TvPlayer {
         } else {
             quality = "360p"; maxLevel = 360;
         }
-        return "{\\"kbps\\":" + kbps + ",\\"quality\\":\\"" + quality +
-                "\\",\\"maxLevel\\":" + maxLevel + ",\\"measured\\":" + measured +
-                ",\\"sampleAgeMs\\":" + (sampleAge == Long.MAX_VALUE ? -1 : sampleAge) + "}";
+        return "{\"kbps\":" + kbps + ",\"quality\":\"" + quality +
+                "\",\"maxLevel\":" + maxLevel + ",\"measured\":" + measured +
+                ",\"sampleAgeMs\":" + (sampleAge == Long.MAX_VALUE ? -1 : sampleAge) + "}";
     }
 
     public void play(final String url, final String referer, final String ua) {
