@@ -25,39 +25,60 @@ export type EngineConfig = {
   favicon: string
 }
 
-// ============================================================================
-// GOOGLE IS THE ONLY ENGINE.
-//
-// The previous build listed five engines and silently served DuckDuckGo for
-// all of them. The cause was architectural, not cosmetic: the Go proxy
-// fetched each engine's HTML and scraped result links out of it, and Google
-// answers every plain HTTP client with a JavaScript-only shell that contains
-// no result markup — so the scraper found nothing and fell back to
-// DuckDuckGo while keeping "Google" in the URL.
-//
-// Verified on this host:
-//   * Go/plain-HTTP GET google.com/search  -> 94 KB shell, 0 result anchors,
-//     body contains /httpservice/retry/enablejs.
-//   * A real Chromium engine rendering google.com/search?igu=1 inside an
-//     iframe -> full result list (YouTube, Google Play, Wikipedia + a
-//     knowledge panel), captured via CDP.
-//
-// So search is now rendered by the browser engine itself. One engine, real
-// results, no silent substitution.
-// ============================================================================
-
+// Search results are never scraped or silently substituted. Google is
+// rendered directly with its official iframe flag; other providers use the
+// Go web proxy for result documents so frame-busting headers can be removed
+// and result clicks can be routed back through the browser.
 export const BROWSER_ENGINES: Record<BrowserEngineId, EngineConfig> = {
   google: {
     id: 'google',
-    name: 'Google Engine',
+    name: 'Google',
     short: 'Google',
-    tagline: 'World Wide Web',
-    // igu=1 is Google's own embeddable flag — without it a Google results
-    // page sends X-Frame-Options: SAMEORIGIN and refuses to render in a frame.
+    tagline: 'Google Search',
     searchUrl: (q) => `https://www.google.com/search?igu=1&q=${encodeURIComponent(q)}`,
     homeUrl: 'https://www.google.com/webhp?igu=1',
     color: '#4285F4',
     favicon: 'https://www.google.com/favicon.ico',
+  },
+  bing: {
+    id: 'bing',
+    name: 'Microsoft Bing',
+    short: 'Bing',
+    tagline: 'Microsoft Search',
+    searchUrl: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://www.bing.com/',
+    color: '#008373',
+    favicon: 'https://www.bing.com/sa/simg/favicon-2x.ico',
+  },
+  duckduckgo: {
+    id: 'duckduckgo',
+    name: 'DuckDuckGo',
+    short: 'DuckDuckGo',
+    tagline: 'Private Search',
+    searchUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://duckduckgo.com/',
+    color: '#DE5833',
+    favicon: 'https://duckduckgo.com/favicon.ico',
+  },
+  yahoo: {
+    id: 'yahoo',
+    name: 'Yahoo Search',
+    short: 'Yahoo',
+    tagline: 'Search the Web',
+    searchUrl: (q) => `https://search.yahoo.com/search?p=${encodeURIComponent(q)}`,
+    homeUrl: 'https://search.yahoo.com/',
+    color: '#6001D2',
+    favicon: 'https://s.yimg.com/rz/l/favicon.ico',
+  },
+  brave: {
+    id: 'brave',
+    name: 'Brave Search',
+    short: 'Brave',
+    tagline: 'Independent Search',
+    searchUrl: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://search.brave.com/',
+    color: '#FB542B',
+    favicon: 'https://search.brave.com/favicon.ico',
   },
 }
 
@@ -707,6 +728,20 @@ export default function ChromiumBrowser({
       const normalized = normalizeUrlOrQuery(target, activeTab.engine)
       if (!normalized) return
 
+      // Proxy only the selected provider's result page. Destination websites
+      // still load directly, so normal browsing is not needlessly proxied.
+      const engine = BROWSER_ENGINES[activeTab.engine]
+      let proxySearch = false
+      if (engine && activeTab.engine !== 'google') {
+        try {
+          const targetHost = new URL(normalized).hostname
+          const searchHost = new URL(engine.searchUrl('vyora-smoke-test')).hostname
+          proxySearch = targetHost === searchHost
+        } catch {
+          proxySearch = false
+        }
+      }
+
       const domainTitle = getDomainTitle(normalized)
       recordHistory(normalized, domainTitle, activeTab.engine)
 
@@ -727,7 +762,7 @@ export default function ChromiumBrowser({
             url: normalized,
             displayUrl: normalized,
             frameUrl: normalized,
-            proxyMode: false,
+            proxyMode: proxySearch,
             title: domainTitle,
             history: newHistory,
             historyIndex: newIndex,
@@ -834,11 +869,12 @@ export default function ChromiumBrowser({
     setSpeedDialSearch('')
   }
 
-  // Autocomplete: ask the Go core for Google's suggestions.
+  // Google autocomplete is provider-specific. Never show Google suggestions
+  // while another search engine is selected.
   useEffect(() => {
     const q = inputUrl.trim()
     if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
-    if (q.length < 2 || /^https?:\/\//i.test(q)) {
+    if (activeTab?.engine !== 'google' || q.length < 2 || /^https?:\/\//i.test(q)) {
       setSuggestions([])
       setSuggestIndex(-1)
       return
@@ -846,7 +882,7 @@ export default function ChromiumBrowser({
     suggestTimer.current = window.setTimeout(async () => {
       try {
         const res = await fetch(`${API}/suggest?q=${encodeURIComponent(q)}`)
-        if (!res.ok) return
+        if (!res.ok) throw new Error(`Suggestions failed: ${res.status}`)
         const data = await res.json()
         const list: string[] = Array.isArray(data?.suggestions) ? data.suggestions : []
         setSuggestions(list.slice(0, 8))
@@ -858,7 +894,7 @@ export default function ChromiumBrowser({
     return () => {
       if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
     }
-  }, [inputUrl])
+  }, [inputUrl, activeTab?.engine])
 
   const setTabEngine = (engineId: BrowserEngineId) => {
     setTabs((prev) =>
@@ -2307,7 +2343,7 @@ export default function ChromiumBrowser({
                 </div>
                 <div>
                   <h2>Vyora Browser</h2>
-                  <p className="muted">Search with Google or jump to a favourite</p>
+                  <p className="muted">Choose a search engine or jump to a favourite</p>
                 </div>
               </div>
             </div>
@@ -2472,7 +2508,7 @@ export default function ChromiumBrowser({
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="search" size={16} />
-                <span>Google Autocomplete Suggestions</span>
+                <span>Five independent search engines</span>
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="plus" size={16} />
