@@ -152,6 +152,7 @@ const MOVIES_SHOWS_SITES: Site[] = [
 ]
 
 const ANIME_SITES: Site[] = [
+  { id: "gojolive.site", title: "GojoLive", url: "https://gojolive.site/", domain: "gojolive.site", category: 'Anime' },
   { id: "yenime.net", title: "Yenime", url: "https://yenime.net/", domain: "yenime.net", category: 'Anime' },
   { id: "enma.lol", title: "Enma", url: "https://www.enma.lol/home", domain: "enma.lol", category: 'Anime' },
   { id: "animetsu.site", title: "Animetsu", url: "https://animetsu.site/", domain: "animetsu.site", category: 'Anime' },
