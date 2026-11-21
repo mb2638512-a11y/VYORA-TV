@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-11-14T17:29:05.738Z",
+  "totals": {
+    "movies": 2921,
+    "series": 14,
+    "episodes": 313
+  },
+  "movieGenres": {
+    "Film Noir": 105,
+    "Animation": 508,
+    "Classic": 937,
+    "Comedy": 159,
+    "Movies: shorts": 179,
+    "Documentary": 87,
+    "Movies: world classics": 475,
+    "Western": 78,
+    "Horror": 153,
+    "Sci-Fi": 19,
+    "Drama": 73,
+    "Movies: silent": 52,
+    "Movies: classics": 9,
+    "Adventure": 11,
+    "War": 1,
+    "Romance": 10,
+    "Musical": 13,
+    "Movies: open movies": 10,
+    "Mystery": 23,
+    "Live channels": 15,
+    "Crime": 4
+  },
+  "seriesGenres": {
+    "Adventure": 2,
+    "Bonanza - the abduction ep": 1,
+    "Captain gallant of the foreign legion": 1,
+    "Classic tv": 1,
+    "Compilation of classic tv footage": 1,
+    "Fireball xl5": 1,
+    "Freddy's nightmares": 1,
+    "Garfield and friends": 1,
+    "Steptoe and son": 1,
+    "Taxi": 1,
+    "The beverly hillbillies": 1,
+    "The george burns and gracie allen show": 1,
+    "The hypnotic eye": 1
+  }
+}
