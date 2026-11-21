@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -169,19 +170,27 @@ func (h *HealthStore) Close() {
 	h.Save()
 }
 
+func cloneHealthRecord(rec *HealthRecord) *HealthRecord {
+	if rec == nil { return nil }
+	copyRec := *rec
+	if rec.Sources != nil {
+		copyRec.Sources = make(map[int]SourceHealthRecord, len(rec.Sources))
+		for index, source := range rec.Sources { copyRec.Sources[index] = source }
+	}
+	return &copyRec
+}
+
 func (h *HealthStore) Get(id string) *HealthRecord {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	return h.status[id]
+	return cloneHealthRecord(h.status[id])
 }
 
 func (h *HealthStore) GetAll() map[string]*HealthRecord {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	copyMap := make(map[string]*HealthRecord, len(h.status))
-	for k, v := range h.status {
-		copyMap[k] = v
-	}
+	for k, v := range h.status { copyMap[k] = cloneHealthRecord(v) }
 	return copyMap
 }
 
@@ -196,18 +205,72 @@ func (h *HealthStore) Set(id, status string, ms int, source string, bestStream i
 	}
 
 	h.mu.Lock()
+	if previous := h.status[id]; previous != nil && len(previous.Sources) > 0 {
+		rec.Sources = make(map[int]SourceHealthRecord, len(previous.Sources))
+		for index, source := range previous.Sources { rec.Sources[index] = source }
+	}
 	h.status[id] = rec
 	h.mu.Unlock()
 
-	h.broadcast(rec)
+	h.broadcast(cloneHealthRecord(rec))
+}
+
+// ReportSource records playback evidence against the exact catalogue stream index.
+func (h *HealthStore) ReportSource(id string, ok bool, ms, streamIndex int) {
+	if streamIndex < 0 { return }
+	status := "offline"
+	if ok { status = "online" }
+	h.Set(id, status, ms, "playback", streamIndex)
+
+	h.mu.Lock()
+	rec := h.status[id]
+	if rec == nil { h.mu.Unlock(); return }
+	if rec.Sources == nil { rec.Sources = make(map[int]SourceHealthRecord) }
+	source := rec.Sources[streamIndex]
+	now := time.Now().UnixMilli()
+	source.Status, source.TS, source.MS = status, now, ms
+	if ok { source.SuccessCount++; source.LastSuccessTS = now } else { source.FailureCount++; source.LastFailureTS = now }
+	rec.Sources[streamIndex] = source
+	copyRec := cloneHealthRecord(rec)
+	h.mu.Unlock()
+	h.broadcast(copyRec)
 }
 
 func (h *HealthStore) Report(id string, ok bool, ms, streamIndex int) {
-	status := "offline"
-	if ok {
-		status = "online"
+	h.ReportSource(id, ok, ms, streamIndex)
+}
+
+// OrderStreams prefers recently proven fast sources and briefly cools down failures.
+func (h *HealthStore) OrderStreams(ch *Channel) ([]Stream, []int) {
+	if ch == nil || len(ch.Streams) == 0 { return nil, nil }
+	rec := h.Get(ch.ID)
+	indices := make([]int, len(ch.Streams))
+	for i := range indices { indices[i] = i }
+	now := time.Now().UnixMilli()
+	score := func(index int) int64 {
+		if rec == nil { return 0 }
+		source, ok := rec.Sources[index]
+		if !ok { return 0 }
+		age := now - source.TS
+		if source.Status == "offline" && age >= 0 && age < int64(3*time.Minute/time.Millisecond) {
+			return -1000000 + age/1000
+		}
+		if source.Status == "online" && age >= 0 && age < int64(6*time.Hour/time.Millisecond) {
+			latency := source.MS
+			if latency < 0 { latency = 0 }; if latency > 30000 { latency = 30000 }
+			return 100000 - int64(latency)
+		}
+		if source.LastSuccessTS > 0 && now-source.LastSuccessTS < int64(24*time.Hour/time.Millisecond) {
+			latency := source.MS
+			if latency < 0 { latency = 0 }; if latency > 30000 { latency = 30000 }
+			return 20000 - int64(latency)
+		}
+		return 0
 	}
-	h.Set(id, status, ms, "playback", streamIndex)
+	sort.SliceStable(indices, func(i, j int) bool { return score(indices[i]) > score(indices[j]) })
+	ordered := make([]Stream, 0, len(indices))
+	for _, index := range indices { ordered = append(ordered, ch.Streams[index]) }
+	return ordered, indices
 }
 
 func (h *HealthStore) Track(ids []string) {
