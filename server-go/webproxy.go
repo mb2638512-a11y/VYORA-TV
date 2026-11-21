@@ -31,6 +31,53 @@ var (
 	proxyAssetCacheMu sync.RWMutex
 )
 
+var ErrUnsafeProxyTarget = fmt.Errorf("proxy target must resolve only to public IP addresses")
+
+// validatePublicProxyURL prevents the browser's server-side fetcher from being
+// used to reach localhost, private LANs, link-local services, or cloud metadata.
+// It is applied before the first request and on every redirect.
+func validatePublicProxyURL(ctx context.Context, target *url.URL) error {
+	if target == nil || (target.Scheme != "http" && target.Scheme != "https") || target.Hostname() == "" || target.User != nil {
+		return ErrUnsafeProxyTarget
+	}
+	host := strings.TrimSuffix(strings.ToLower(target.Hostname()), ".")
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") ||
+		host == "metadata.google.internal" || strings.HasSuffix(host, ".local") ||
+		strings.HasSuffix(host, ".internal") {
+		return ErrUnsafeProxyTarget
+	}
+
+	var ips []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		ips = []net.IP{ip}
+	} else {
+		resolved, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil || len(resolved) == 0 {
+			return ErrUnsafeProxyTarget
+		}
+		for _, item := range resolved {
+			ips = append(ips, item.IP)
+		}
+	}
+	for _, ip := range ips {
+		if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
+			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+			return ErrUnsafeProxyTarget
+		}
+	}
+	return nil
+}
+
+func browserProxyRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) >= 12 {
+		return http.ErrUseLastResponse
+	}
+	if err := validatePublicProxyURL(req.Context(), req.URL); err != nil {
+		return err
+	}
+	return nil
+}
+
 func getCachedAsset(u string) (CachedAsset, bool) {
 	proxyAssetCacheMu.RLock()
 	defer proxyAssetCacheMu.RUnlock()
@@ -85,12 +132,7 @@ var (
 		Transport: browserTransport,
 		Jar:       browserJar,
 		Timeout:   25 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 12 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
+		CheckRedirect: browserProxyRedirectPolicy,
 	}
 
 	tunnelURL, _ = url.Parse("http://127.0.0.1:8080")
@@ -199,6 +241,12 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 	parsed, err := url.Parse(targetURL)
 	if err != nil {
 		writeBrowserError(w, "Invalid address", "That address could not be parsed.", targetURL)
+		return
+	}
+
+	if err := validatePublicProxyURL(r.Context(), parsed); err != nil {
+		log.Printf("[WEBPROXY] Rejected non-public destination %q", parsed.Hostname())
+		writeBrowserError(w, "Address blocked for safety", "This browser cannot connect to localhost, private network addresses, or internal services.", targetURL)
 		return
 	}
 
