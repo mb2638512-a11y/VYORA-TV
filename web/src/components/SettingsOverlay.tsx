@@ -121,7 +121,9 @@ export function SettingsOverlay({
   }
 
   const handleSetPlayer = (key: 'defaultPlayer' | 'channelsPlayer' | 'moviesPlayer' | 'seriesPlayer' | 'downloadsPlayer', val: PlayerEngineId) => {
-    const updated = { ...settings, [key]: val }
+    const updated: Settings = key === 'defaultPlayer'
+      ? { ...settings, defaultPlayer: val, channelsPlayer: val, moviesPlayer: val, seriesPlayer: val, downloadsPlayer: val }
+      : { ...settings, [key]: val }
     setSettings(updated)
     try { localStorage.setItem('vyora.settings', JSON.stringify(updated)) } catch {}
     const player = TOP_STREAMING_PLAYERS.find((item) => item.id === val)
