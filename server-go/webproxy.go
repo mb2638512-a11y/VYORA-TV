@@ -569,18 +569,38 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 			} catch(e) {}
 
 			// Synchronize page title & URL with parent
-			function syncState() {
+			function syncState(manifest) {
 				var iconLink = document.querySelector('link[rel~="icon"], link[rel="apple-touch-icon"]');
 				var iconUrl = '';
 				try { iconUrl = iconLink ? new URL(iconLink.getAttribute('href') || '', document.baseURI).href : ''; } catch (e) {}
 				var themeMeta = document.querySelector('meta[name="theme-color"]');
+				var appName = document.title || window.location.hostname;
+				if (manifest && typeof manifest === 'object') {
+					appName = manifest.name || manifest.short_name || appName;
+					if (Array.isArray(manifest.icons) && manifest.icons.length) {
+						var icons = manifest.icons.slice().sort(function(a, b) {
+							var score = function(icon) { return /512/.test(icon.sizes || '') ? 3 : /192/.test(icon.sizes || '') ? 2 : 1; };
+							return score(b) - score(a);
+						});
+						try { iconUrl = new URL(icons[0].src, manifest.__url || document.baseURI).href; } catch (e) {}
+					}
+				}
 				sendToHost({
 					type: 'VYORA_PAGE_SYNC',
 					url: window.__VYORA_CURRENT_URL__,
-					title: document.title || window.location.hostname,
+					title: appName,
 					icon: iconUrl,
-					themeColor: themeMeta ? themeMeta.getAttribute('content') || '' : ''
+					themeColor: themeMeta ? themeMeta.getAttribute('content') || '' : (manifest && manifest.theme_color) || ''
 				});
+			}
+			function loadAppManifest() {
+				var link = document.querySelector('link[rel="manifest"]');
+				if (!link) return;
+				var manifestUrl = '';
+				try { manifestUrl = new URL(link.getAttribute('href') || '', document.baseURI).href; } catch (e) { return; }
+				fetch(manifestUrl).then(function(response) { if (!response.ok) throw new Error('manifest unavailable'); return response.json(); }).then(function(manifest) {
+					if (manifest && typeof manifest === 'object') { manifest.__url = manifestUrl; syncState(manifest); }
+				}).catch(function() {});
 			}
 			if (document.readyState === 'complete') syncState();
 			else window.addEventListener('load', syncState);
