@@ -200,8 +200,11 @@ const LIVE_TV_SPORTS_SITES: Site[] = [
 const GAMES_SITES: Site[] = [
   { id: "crazygames.com", title: "CrazyGames", url: "https://www.crazygames.com/", domain: "crazygames.com", category: 'Games' },
 ]
-const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES, ...GAMES_SITES]
-export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports', 'Games'] as const
+const CARTOONS_SITES: Site[] = [
+  { id: "kartoons.me", title: "Kartoons", url: "https://kartoons.me/", domain: "kartoons.me", category: 'Cartoons' },
+]
+const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES, ...LIVE_TV_SPORTS_SITES, ...GAMES_SITES, ...CARTOONS_SITES]
+export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga', 'Live TV & Sports', 'Games', 'Cartoons'] as const
 export const ALLSITEHUB_SITE_COUNT = ALL_SITES.length
 export function AllSiteHub({ onOpenSite }: { onOpenSite: (url: string) => void }) {
  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All'); const [sort,setSort]=useState<'az'|'za'>('az')
