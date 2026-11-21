@@ -43,8 +43,10 @@ function csvCell(v) {
 }
 function safeUrl(raw) {
   try {
-    const u = new URL(raw)
-    return u.origin + u.pathname // omit query/hash: source URLs may contain access tokens
+    // Reports need provider identity, not a reusable playback URL. Tokens can
+    // appear in query strings, fragments, or opaque path segments, so persist
+    // only the origin and never store the path or credentials.
+    return new URL(raw).origin
   } catch {
     return ''
   }
@@ -126,7 +128,7 @@ async function probe(item) {
     return {
       channelId: item.channelId, channel: item.channel, country: item.country,
       streamId: item.streamId, sourceIndex: item.sourceIndex,
-      url: safeUrl(item.url), host: (() => { try { return new URL(response.url || item.url).host } catch { return '' } })(),
+      urlOrigin: safeUrl(item.url), host: (() => { try { return new URL(response.url || item.url).host } catch { return '' } })(),
       status, httpStatus: response.status, kind: result.kind,
       manifestValid: result.manifestValid, elapsedMs, bytesRead: body.length,
       contentType: response.headers.get('content-type') || '', reason,
