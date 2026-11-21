@@ -217,18 +217,30 @@ func (h *HealthStore) Set(id, status string, ms int, source string, bestStream i
 
 // ReportSource records playback evidence against the exact catalogue stream index.
 func (h *HealthStore) ReportSource(id string, ok bool, ms, streamIndex int) {
-	if streamIndex < 0 { return }
-	status := "offline"
-	if ok { status = "online" }
-	h.Set(id, status, ms, "playback", streamIndex)
+	if streamIndex < 0 || id == "" { return }
+	now := time.Now().UnixMilli()
+	sourceStatus := "offline"
+	if ok { sourceStatus = "online" }
 
 	h.mu.Lock()
 	rec := h.status[id]
-	if rec == nil { h.mu.Unlock(); return }
+	if rec == nil {
+		rec = &HealthRecord{ID: id, Status: "unknown", BestStream: -1}
+		h.status[id] = rec
+	}
+	// A single failed alternate must not mark the entire channel offline.
+	// Channel-level online is promoted only by a successful rendered playback;
+	// channel-level offline remains the responsibility of the all-sources probe.
+	if ok {
+		rec.Status = "online"
+		rec.BestStream = streamIndex
+		rec.MS = ms
+		rec.Source = "playback"
+	}
+	rec.TS = now
 	if rec.Sources == nil { rec.Sources = make(map[int]SourceHealthRecord) }
 	source := rec.Sources[streamIndex]
-	now := time.Now().UnixMilli()
-	source.Status, source.TS, source.MS = status, now, ms
+	source.Status, source.TS, source.MS = sourceStatus, now, ms
 	if ok { source.SuccessCount++; source.LastSuccessTS = now } else { source.FailureCount++; source.LastFailureTS = now }
 	rec.Sources[streamIndex] = source
 	copyRec := cloneHealthRecord(rec)
