@@ -396,7 +396,9 @@ func main() {
 			ms, _ := strconv.Atoi(r.URL.Query().Get("ms"))
 			streamIdx, _ := strconv.Atoi(r.URL.Query().Get("stream"))
 			if id != "" {
-				health.ReportSource(id, ok, ms, streamIdx)
+				if r.URL.Query().Get("record") != "0" {
+					health.ReportSource(id, ok, ms, streamIdx)
+				}
 				if r.URL.Query().Get("exhausted") == "1" || r.URL.Query().Get("exhausted") == "true" {
 					health.MarkChannelOffline(id, ms)
 				}
