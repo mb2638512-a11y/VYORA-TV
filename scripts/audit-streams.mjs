@@ -52,6 +52,14 @@ function safeUrl(raw) {
     return ''
   }
 }
+function safeErrorReason(error) {
+  // Never persist arbitrary fetch error messages: some runtimes include the
+  // requested URL, which may contain signed paths or query tokens.
+  const rawCode = error?.cause?.code || error?.code || ''
+  const code = String(rawCode).replace(/[^a-z0-9_-]/gi, '').slice(0, 48)
+  return code ? `Network error (${code})` : 'Network request failed'
+}
+
 function classify(url, contentType, body) {
   const text = body.toString('utf8').trim()
   const lower = text.toLowerCase()
@@ -142,7 +150,7 @@ async function probe(item) {
       urlOrigin: safeUrl(item.url), host: (() => { try { return new URL(item.url).host } catch { return '' } })(),
       status: aborted ? 'timeout' : 'network_error', httpStatus: 0, kind: 'no_response',
       manifestValid: false, elapsedMs: Date.now() - started, bytesRead: 0,
-      contentType: '', reason: aborted ? `Timeout after ${timeoutMs}ms` : String(error?.message || error).slice(0, 240),
+      contentType: '', reason: aborted ? `Timeout after ${timeoutMs}ms` : safeErrorReason(error),
     }
   } finally {
     clearTimeout(timer)
@@ -186,7 +194,7 @@ async function main() {
   const results = new Array(targets.length)
   if (has('--resume') && fs.existsSync(checkpointPath)) {
     const saved = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'))
-    if (saved.fingerprint !== fingerprint || saved.targetCount !== targets.length || !Array.isArray(saved.results)) {
+    if (saved.checkpointVersion !== 2 || saved.fingerprint !== fingerprint || saved.targetCount !== targets.length || !Array.isArray(saved.results)) {
       throw new Error('Checkpoint does not match this catalogue/filter; refusing unsafe resume.')
     }
     saved.results.forEach((result, index) => { if (result && index < results.length) results[index] = result })
@@ -197,7 +205,7 @@ async function main() {
   const saveCheckpoint = () => {
     const tmp = checkpointPath + '.tmp'
     fs.writeFileSync(tmp, JSON.stringify({
-      fingerprint, targetCount: targets.length, country: countryFilter || null,
+      checkpointVersion: 2, fingerprint, targetCount: targets.length, country: countryFilter || null,
       updatedAt: new Date().toISOString(), results,
     }))
     fs.renameSync(tmp, checkpointPath)
