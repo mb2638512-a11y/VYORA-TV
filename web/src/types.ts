@@ -215,7 +215,7 @@ export type AudioMode = 'standard' | 'night' | 'dialog'
 
 export const TOP_STREAMING_PLAYERS: PlayerInfo[] = [
   { id: 'internal', name: 'VYORA Player', badge: 'Default • Platform built-in', description: 'VYORA’s own player. Default for Live TV, Movies and Series with automatic source recovery.', platforms: 'all', icon: 'play' },
-  { id: 'exoplayer', name: 'ExoPlayer / Media3', badge: 'Native Android TV', description: 'Hardware-accelerated Android playback for HLS, DASH and common video formats.', platforms: 'android', icon: 'tv' },
+  { id: 'exoplayer', name: 'ExoPlayer / Media3 Direct', badge: 'Native Android TV • Direct mode', description: 'Direct single-source Media3 playback. VYORA Player remains the managed mode with multi-source racing and automatic failover.', platforms: 'android', icon: 'tv' },
   { id: 'hlsjs', name: 'HLS.js Player', badge: 'In-app web engine', description: 'Adaptive HLS playback inside VYORA on supported browsers and WebViews.', platforms: 'all', icon: 'signal' },
   { id: 'html5', name: 'HTML5 Player', badge: 'In-app web engine', description: 'Browser-native video playback for supported direct media URLs.', platforms: 'all', icon: 'monitor' },
   { id: 'vlc', name: 'VLC Media Player', badge: 'External Android app', description: 'Open streams in VLC when installed on the Android device.', pkg: 'org.videolan.vlc', platforms: 'android', icon: 'play-circle' },
