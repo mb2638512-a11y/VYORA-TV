@@ -88,6 +88,18 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onSourceFailed(String url, long elapsedMs) {
+                runOnUiThread(() -> {
+                    if (web == null) return;
+                    String safeUrl = org.json.JSONObject.quote(url == null ? "" : url);
+                    web.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('vyora-native-source-failed',{detail:{url:"
+                                    + safeUrl + ",elapsedMs:" + elapsedMs + "}}));",
+                            null);
+                });
+            }
+
+            @Override
             public void onAllSourcesFailed() {
                 runOnUiThread(() -> {
                     if (web != null) {
