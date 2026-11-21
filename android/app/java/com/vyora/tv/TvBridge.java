@@ -2,6 +2,7 @@ package com.vyora.tv;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Bundle;
 import android.net.Uri;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -9,6 +10,9 @@ import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Bridge exposed to the web UI as window.VyoraBridge.
@@ -117,8 +121,9 @@ public class TvBridge {
     }
 
     @JavascriptInterface
-    public boolean launchPlayer(final String url, final String title, final String pkg) {
-        if (pkg == null || pkg.trim().isEmpty()) return false;
+    public boolean launchPlayer(final String url, final String title, final String pkg,
+                                final String referer, final String ua) {
+        if (url == null || url.trim().isEmpty() || pkg == null || pkg.trim().isEmpty()) return false;
         try {
             // Android 11+ package visibility is declared in AndroidManifest.xml.
             act.getPackageManager().getPackageInfo(pkg.trim(), 0);
@@ -128,25 +133,67 @@ public class TvBridge {
                     Toast.LENGTH_LONG).show());
             return false;
         }
-        act.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setDataAndType(Uri.parse(url), "video/*");
-                    intent.setPackage(pkg.trim());
-                    if (title != null && !title.trim().isEmpty()) intent.putExtra("title", title);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    act.startActivity(intent);
-                } catch (Throwable error) {
-                    Log.e(TAG, "External player could not open stream: " + pkg, error);
-                    Toast.makeText(act,
-                            "This player could not open the stream. Try VYORA Player or another player.",
-                            Toast.LENGTH_LONG).show();
+
+        final Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.parse(url), "video/*");
+        intent.setPackage(pkg.trim());
+        if (title != null && !title.trim().isEmpty()) {
+            intent.putExtra("title", title);
+            intent.putExtra(Intent.EXTRA_TITLE, title);
+        }
+
+        // Common Android media/browser header conventions. Apps may ignore
+        // these extras; the built-in Media3 player remains the reliable option
+        // for providers that require custom request headers.
+        if ((referer != null && !referer.isEmpty()) || (ua != null && !ua.isEmpty())) {
+            Bundle headers = new Bundle();
+            if (referer != null && !referer.isEmpty()) {
+                headers.putString("Referer", referer);
+                intent.putExtra("http-referrer", referer);
+            }
+            if (ua != null && !ua.isEmpty()) {
+                headers.putString("User-Agent", ua);
+                intent.putExtra("http-user-agent", ua);
+            }
+            intent.putExtra("com.android.browser.headers", headers);
+            intent.putExtra("headers", headers);
+            intent.putExtra("http_headers", headers);
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        // JavascriptInterface methods run off the UI thread. Wait briefly for
+        // startActivity so the web UI never reports a launch before Android
+        // has actually accepted it.
+        final CountDownLatch completed = new CountDownLatch(1);
+        final AtomicBoolean started = new AtomicBoolean(false);
+        act.runOnUiThread(() -> {
+            try {
+                if (intent.resolveActivity(act.getPackageManager()) == null) {
+                    throw new android.content.ActivityNotFoundException("No activity can open this stream");
                 }
+                act.startActivity(intent);
+                started.set(true);
+            } catch (Throwable error) {
+                Log.e(TAG, "External player could not open stream: " + pkg, error);
+                Toast.makeText(act,
+                        "This player could not open the stream. Try VYORA Player instead.",
+                        Toast.LENGTH_LONG).show();
+            } finally {
+                completed.countDown();
             }
         });
-        return true;
+        try {
+            if (!completed.await(4, TimeUnit.SECONDS)) return false;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        return started.get();
+    }
+
+    @JavascriptInterface
+    public void setBrowserDisplayMode(final String mode) {
+        act.runOnUiThread(() -> act.setBrowserDisplayMode(mode));
     }
 
     @JavascriptInterface
