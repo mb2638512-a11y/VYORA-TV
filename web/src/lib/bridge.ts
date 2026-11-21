@@ -14,7 +14,8 @@ type AndroidBridge = {
   isMuted(): boolean
   toggleMute(): void
   openExternal(url: string): void
-  launchPlayer?(url: string, title: string, pkg: string): boolean
+  launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
+  setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -52,6 +53,10 @@ export function nativePlayMulti(
   }
   const first = list[0]
   bridge?.play(first.url, first.referer || '', first.ua || '', title, logo)
+}
+
+export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
+  bridge?.setBrowserDisplayMode?.(mode)
 }
 
 export function nativeStop() {
@@ -147,13 +152,13 @@ export function downloadStreamM3u(title: string, streamUrl: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
 
-export function launchExternalStream(playerId: PlayerEngineId, streamUrl: string, title = '') {
+export function launchExternalStream(playerId: PlayerEngineId, streamUrl: string, title = '', referer = '', ua = '') {
   const player = TOP_STREAMING_PLAYERS.find((p) => p.id === playerId)
   if (playerId === 'internal' || playerId === 'exoplayer' || playerId === 'hlsjs' || playerId === 'html5') {
     return { launched: false, inPlatform: true }
   }
   if (bridge?.launchPlayer && player?.pkg) {
-    const launched = bridge.launchPlayer(streamUrl, title, player.pkg)
+    const launched = bridge.launchPlayer(streamUrl, title, player.pkg, referer, ua)
     return launched
       ? { launched: true, method: 'bridge_launch' }
       : { launched: false, reason: 'not_installed', inPlatform: true }
