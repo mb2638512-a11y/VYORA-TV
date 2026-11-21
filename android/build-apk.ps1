@@ -18,6 +18,13 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $app = Join-Path $root 'android\app'
 $libs = Join-Path $root 'android\libs'
+# Media3 DASH is an optional module; fetch the pinned version so .mpd
+# catalogue entries can use the same native player as HLS streams.
+$dashAar = Join-Path $libs 'media3-exoplayer-dash-1.4.1.aar'
+if (-not (Test-Path $dashAar)) {
+  New-Item -ItemType Directory -Force -Path $libs | Out-Null
+  Invoke-WebRequest -Uri 'https://repo.maven.apache.org/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' -OutFile $dashAar
+}
 $build = Join-Path $root 'android\build'
 $outDir = Join-Path $root 'android\out'
 $bt = Join-Path $Sdk "build-tools\$BuildTools"
