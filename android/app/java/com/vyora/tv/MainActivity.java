@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private TvPlayer player;
     private LocalServer localServer;
     private TextToSpeech tts;
+    private String defaultWebUserAgent;
     private boolean ttsReady = false;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
@@ -91,7 +92,8 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " VyoraTV/1.0 (Android TV)");
+        defaultWebUserAgent = WebSettings.getDefaultUserAgent(this);
+        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android TV)");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -128,6 +130,20 @@ public class MainActivity extends Activity {
         } else {
             Log.w(TAG, "local server unavailable, falling back to bundled file");
             web.loadUrl(INDEX_URL);
+        }
+    }
+
+    /** Apply a real WebView User-Agent, not only a CSS viewport width. */
+    public void setBrowserDisplayMode(String mode) {
+        if (web == null) return;
+        WebSettings settings = web.getSettings();
+        if ("desktop".equalsIgnoreCase(mode)) {
+            settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 VyoraTV/1.0");
+        } else if ("mobile".equalsIgnoreCase(mode)) {
+            settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 VyoraTV/1.0");
+        } else {
+            settings.setUserAgentString((defaultWebUserAgent == null ? WebSettings.getDefaultUserAgent(this) : defaultWebUserAgent)
+                    + " VyoraTV/1.0 (Android TV)");
         }
     }
 
