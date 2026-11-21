@@ -340,6 +340,11 @@ export function PlayerOverlay({
       return
     }
 
+    if (isNative && (activeEngineId === 'hlsjs' || activeEngineId === 'html5')) {
+      // Hide the native SurfaceView so the selected WebView engine is visible.
+      nativeStop()
+    }
+
     if (isNative && activeEngineId !== 'hlsjs' && activeEngineId !== 'html5') {
       // VYORA Player and ExoPlayer both use the native Media3 playback surface.
       const candidates = (channel.streams || [])
