@@ -197,7 +197,13 @@ export function PlayerOverlay({
     // only start the player once the winner is known -> no restart, no blank
     // screen, first frame in milliseconds.
     setResolvedIdx(null)
-    if (channel.streams && channel.streams.length > 1) {
+    // Native Media3 already races the full source list and uses persisted
+    // per-source playback evidence. A separate HTTP resolve race here is
+    // redundant and can change streamIndex after native playback has started,
+    // restarting the player and wasting the first connection attempt.
+    if (isNative) {
+      setResolvedIdx(initialIdx)
+    } else if (channel.streams && channel.streams.length > 1) {
       resolveFastestStream(channel.id)
         .then((res) => {
           if (!res || !res.ok || typeof res.streamIndex !== 'number') {
