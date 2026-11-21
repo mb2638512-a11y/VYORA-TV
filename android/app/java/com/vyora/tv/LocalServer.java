@@ -434,12 +434,13 @@ public class LocalServer {
                 || (headers.get("accept") != null
                         && headers.get("accept").toLowerCase(Locale.US).contains("text/html"));
 
+        String userAgentMode = queryParam(query, "mode");
         HttpURLConnection conn = null;
         String finalUrl = target;
         try {
             String current = target;
             for (int hop = 0; hop < 8; hop++) {
-                conn = openRemote(current, method, headers, body);
+                conn = openRemote(current, method, headers, body, userAgentMode);
                 int code = conn.getResponseCode();
                 if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
                     String loc = conn.getHeaderField("Location");
@@ -532,12 +533,18 @@ public class LocalServer {
     }
 
     private HttpURLConnection openRemote(String url, String method, Map<String, String> headers,
-                                         byte[] body) throws IOException {
+                                         byte[] body, String userAgentMode) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setInstanceFollowRedirects(false);
         conn.setConnectTimeout(12000);
         conn.setReadTimeout(25000);
-        conn.setRequestProperty("User-Agent", UA);
+        String requestUa = UA;
+        if ("desktop".equalsIgnoreCase(userAgentMode)) {
+            requestUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+        } else if ("mobile".equalsIgnoreCase(userAgentMode)) {
+            requestUa = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
+        }
+        conn.setRequestProperty("User-Agent", requestUa);
         conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
         conn.setRequestProperty("Accept-Encoding", "gzip");
         String accept = headers.get("accept");
