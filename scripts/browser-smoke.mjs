@@ -7,7 +7,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const pageErrors = []
 const suggestionEngines = []
 
-await page.route('**/api/suggest?*', async (route) => {
+await page.route('**/api/suggest**', async (route) => {
   const requestUrl = new URL(route.request().url())
   const engine = requestUrl.searchParams.get('engine') || ''
   suggestionEngines.push(engine)
@@ -20,6 +20,7 @@ await page.route('**/api/suggest?*', async (route) => {
 
 await page.addInitScript(() => {
   window.__vyoraModes = []
+  window.__vyoraSuggestionEngines = []
   window.VyoraBridge = {
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
@@ -51,11 +52,13 @@ try {
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
     await page.getByRole('option', { name: new RegExp(engine === 'bing' ? 'Bing' : 'DuckDuckGo', 'i') }).click({ force: true })
+    await page.waitForTimeout(100)
     await omnibox.fill('vyora browser')
-    await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
+    await page.waitForFunction((expected) => window.__vyoraSuggestionEngines?.includes(expected), engine, { timeout: 5000 }).catch(() => {})
     if (!suggestionEngines.includes(engine)) {
       throw new Error(`${engine} autocomplete request did not include the selected provider`)
     }
+    await page.locator('.chromium-suggestions').getByText(`${engine} suggestion result`).waitFor({ state: 'visible', timeout: 5000 })
   }
 
   // Closing the only tab must create and activate a fresh New Tab instead
