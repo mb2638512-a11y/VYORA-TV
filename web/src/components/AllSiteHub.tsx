@@ -174,15 +174,25 @@ const ANIME_SITES: Site[] = [
   { id: "animex.one", title: "AnimeX", url: "https://animex.one/home", domain: "animex.one", category: 'Anime' },
   { id: "anitaku.io", title: "AniTaku", url: "https://anitaku.io/browse/", domain: "anitaku.io", category: 'Anime' },
 ]
-const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES]
-export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime'] as const
+
+const MANGA_SITES: Site[] = [
+  { id: "mangaball.com", title: "MangaBall", url: "https://mangaball.com/", domain: "mangaball.com", category: 'Manga' },
+  { id: "comick.dev", title: "Comick", url: "https://comick.dev/", domain: "comick.dev", category: 'Manga' },
+  { id: "qtoon.org", title: "QToon", url: "https://qtoon.org/", domain: "qtoon.org", category: 'Manga' },
+  { id: "weebcentral.com", title: "Weeb Central", url: "https://weebcentral.com/", domain: "weebcentral.com", category: 'Manga' },
+  { id: "kingofshojo.com", title: "King of Shojo", url: "https://kingofshojo.com/", domain: "kingofshojo.com", category: 'Manga' },
+  { id: "m.webtoons.com", title: "WEBTOON", url: "https://m.webtoons.com/en/?webtoon-platform-redirect=true", domain: "m.webtoons.com", category: 'Manga' },
+  { id: "anireads.cc", title: "AniReads", url: "https://anireads.cc/", domain: "anireads.cc", category: 'Manga' },
+]
+const ALL_SITES: Site[] = [...MOVIES_SHOWS_SITES, ...ANIME_SITES, ...MANGA_SITES]
+export const ALLSITEHUB_CATEGORIES = ['Movies & Shows', 'Anime', 'Manga'] as const
 export const ALLSITEHUB_SITE_COUNT = ALL_SITES.length
 export function AllSiteHub({ onOpenSite }: { onOpenSite: (url: string) => void }) {
  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All'); const [sort,setSort]=useState<'az'|'za'>('az')
  const filtered=useMemo(()=>{const q=query.trim().toLowerCase();return ALL_SITES.filter(site=>(category==='All'||site.category===category)&&(!q||site.title.toLowerCase().includes(q)||site.domain.toLowerCase().includes(q))).sort((a,b)=>sort==='az'?a.title.localeCompare(b.title):b.title.localeCompare(a.title))},[query,category,sort])
  return <section className="row allsitehub-section">
-  <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h2 className="row-title"><Icon name="grid" size={24}/> AllSiteHub <span className="muted">({ALL_SITES.length} sites)</span></h2><p className="muted">Built-in site directory · Categories 2 of 8 received</p></div><span className="pill">Protected platform app</span></div>
-  <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',margin:'14px 0'}}><input aria-label="Search AllSiteHub sites" className="input-text" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search all 42 sites…" style={{flex:'1 1 240px',minWidth:180,padding:'11px 14px',borderRadius:10}}/><button className="btn btn-ghost" data-focusable onClick={()=>setSort(v=>v==='az'?'za':'az')}><Icon name="arrow-down-a-z" size={16}/> {sort==='az'?'A–Z':'Z–A'}</button></div>
+  <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h2 className="row-title"><Icon name="grid" size={24}/> AllSiteHub <span className="muted">({ALL_SITES.length} sites)</span></h2><p className="muted">Built-in site directory · Categories {ALLSITEHUB_CATEGORIES.length} of 8 received</p></div><span className="pill">Protected platform app</span></div>
+  <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',margin:'14px 0'}}><input aria-label="Search AllSiteHub sites" className="input-text" value={query} onChange={e=>setQuery(e.target.value)} placeholder={`Search all ${ALLSITEHUB_SITE_COUNT} sites…`} style={{flex:'1 1 240px',minWidth:180,padding:'11px 14px',borderRadius:10}}/><button className="btn btn-ghost" data-focusable onClick={()=>setSort(v=>v==='az'?'za':'az')}><Icon name="arrow-down-a-z" size={16}/> {sort==='az'?'A–Z':'Z–A'}</button></div>
   <div className="chips chips-scroll" role="tablist" aria-label="AllSiteHub categories">{['All',...ALLSITEHUB_CATEGORIES].map(cat=>{const count=cat==='All'?ALL_SITES.length:ALL_SITES.filter(site=>site.category===cat).length;return <button key={cat} className={'chip '+(category===cat?'active':'')} data-focusable role="tab" aria-selected={category===cat} onClick={()=>setCategory(cat)}>{cat} ({count})</button>})}</div>
   <div className="apps-grid" style={{marginTop:16}}>{filtered.map(site=><article key={site.id} className="app-card installed-app-card" data-focusable onClick={()=>onOpenSite(site.url)} role="button" tabIndex={0}><div className="app-card-badge" style={{background:'linear-gradient(135deg,#253b68,#111827)'}}><img src={'https://www.google.com/s2/favicons?domain='+site.domain+'&sz=128'} alt="" loading="lazy" style={{width:34,height:34,borderRadius:8}}/></div><div className="app-card-body"><div className="app-badge-tag">{site.category}</div><h3 className="app-card-title">{site.title}</h3><p className="app-card-desc" style={{fontSize:12,opacity:.7}}>{site.domain}</p></div><button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();onOpenSite(site.url)}}><Icon name="external-link" size={15}/> Open</button></article>)}</div>
   {filtered.length===0?<div className="empty"><Icon name="search" size={28}/><p>No matching sites found.</p></div>:null}<p className="muted" style={{marginTop:14,fontSize:12}}>Sites open through VYORA Browser. Availability and playback depend on each external provider.</p>
