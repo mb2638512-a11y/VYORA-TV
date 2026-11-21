@@ -535,6 +535,11 @@ export default function ChromiumBrowser({
     setAppDisplayMode(initialDisplayMode)
     setDesktopMode(initialDisplayMode === 'desktop')
     setBrowserDisplayMode(initialDisplayMode)
+    // The installed web app may have started its first iframe request before
+    // the native bridge applied the requested User-Agent. Reload it once.
+    setTabs((prev) => prev.map((tab) => tab.id === activeTabId
+      ? { ...tab, isLoading: Boolean(tab.url), navKey: (tab.navKey || 0) + 1 }
+      : tab))
   }, [standalone, initialDisplayMode])
 
   useEffect(() => {
