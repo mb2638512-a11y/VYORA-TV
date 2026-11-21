@@ -23,7 +23,7 @@ $libs = Join-Path $root 'android\libs'
 $dashAar = Join-Path $libs 'media3-exoplayer-dash-1.4.1.aar'
 if (-not (Test-Path $dashAar)) {
   New-Item -ItemType Directory -Force -Path $libs | Out-Null
-  Invoke-WebRequest -Uri 'https://repo.maven.apache.org/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' -OutFile $dashAar
+  Invoke-WebRequest -Uri 'https://dl.google.com/dl/android/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' -OutFile $dashAar
 }
 $build = Join-Path $root 'android\build'
 $outDir = Join-Path $root 'android\out'
