@@ -332,7 +332,7 @@ export function PlayerOverlay({
           setToast(`Opened in ${currentEngine.name}`)
           return
         }
-        setToast(`${currentEngine.name} is not installed. Using VYORA Player instead.`)
+        setToast(`${currentEngine.name} could not open this stream. Falling back to VYORA Player.`)
       } else {
         setToast('External Android players are available in the Android TV app. Using VYORA Player here.')
       }
