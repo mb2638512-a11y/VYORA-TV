@@ -39,6 +39,7 @@ public class TvPlayer {
 
     public interface PlaybackListener {
         void onFirstFrame(String url, long startupMs);
+        void onSourceFailed(String url, long elapsedMs);
         void onAllSourcesFailed();
     }
 
@@ -445,6 +446,10 @@ public class TvPlayer {
     private void activeSourceFailed(int index, ExoPlayer failedPlayer, String reason) {
         if (player != failedPlayer || !winnerChosen) return;
         Log.w(TAG, "active source " + index + " failed: " + reason);
+        if (playbackListener != null && index >= 0 && index < urls.length) {
+            playbackListener.onSourceFailed(urls[index],
+                    SystemClock.elapsedRealtime() - playbackStartedAt);
+        }
         cancelFirstFrameWatchdog();
         player = null;
         active = false;
@@ -458,6 +463,10 @@ public class TvPlayer {
         pendingPlayers.remove(index);
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
+        if (playbackListener != null && index >= 0 && index < urls.length) {
+            playbackListener.onSourceFailed(urls[index],
+                    SystemClock.elapsedRealtime() - playbackStartedAt);
+        }
         safeRelease(failedPlayer);
         startMoreCandidates();
     }
