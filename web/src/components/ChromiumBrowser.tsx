@@ -178,7 +178,8 @@ type FindFn = (
   showDialog?: boolean,
 ) => boolean
 
-const HISTORY_STORAGE_KEY = 'vyora_browser_history_v1'const BOOKMARKS_STORAGE_KEY = 'vyora_browser_bookmarks_v1'
+const HISTORY_STORAGE_KEY = 'vyora_browser_history_v1'
+const BOOKMARKS_STORAGE_KEY = 'vyora_browser_bookmarks_v1'
 const SESSION_STORAGE_KEY = 'vyora_browser_session_v1'
 const SETTINGS_STORAGE_KEY = 'vyora_browser_settings_v1'
 export const INSTALLED_APPS_KEY = 'vyora_installed_apps_v1'
