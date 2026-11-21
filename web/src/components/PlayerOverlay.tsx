@@ -172,8 +172,12 @@ export function PlayerOverlay({
     manifestParsedRef.current = false
     fragLoadedRef.current = false
     const best = statuses[channel.id]?.bestStream
-    const initialIdx =
-      typeof best === 'number' && best >= 0 && best < (channel.streams?.length || 0) ? best : 0
+    // Backend health indexes refer to the original catalogue order. The app
+    // may have reordered streams by network quality, so map by source identity.
+    const mappedBest = typeof best === 'number'
+      ? (channel.streams || []).findIndex((s) => s.sourceIndex === best)
+      : -1
+    const initialIdx = mappedBest >= 0 ? mappedBest : 0
     setStreamIndex(initialIdx)
     setStatus('loading')
     setBuffering(false)
@@ -200,7 +204,8 @@ export function PlayerOverlay({
             setResolvedIdx((cur) => (cur === null ? initialIdx : cur))
             return
           }
-          const idx = res.streamIndex
+          const originalIndex = res.streamIndex
+          const idx = (channel.streams || []).findIndex((s) => s.sourceIndex === originalIndex)
           if (idx < 0 || idx >= (channel.streams?.length || 0)) {
             setResolvedIdx((cur) => (cur === null ? initialIdx : cur))
             return
@@ -302,7 +307,7 @@ export function PlayerOverlay({
     }
 
     // Only after genuine extensive multi-cycle exhaustion show offline screen
-    void reportStreamPlayback(channel.id, false, 0, streamIndex)
+    void reportStreamPlayback(channel.id, false, 0, stream?.sourceIndex ?? streamIndex)
     setStatus('error')
     setOffline(true)
     setMessage(t('offlineHint'))
@@ -436,7 +441,7 @@ export function PlayerOverlay({
         watchdogRef.current = null
       }
       markStream(stream.url, true)
-      void reportStreamPlayback(channel.id, true, 0, streamIndex)
+      void reportStreamPlayback(channel.id, true, 0, stream?.sourceIndex ?? streamIndex)
       void notifyPlaybackActive(channel.id)
 
       // Predictive Lookahead: prefetch next and previous channel in low-priority background
