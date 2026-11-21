@@ -5,8 +5,6 @@ const baseURL = process.env.VYORA_BASE_URL || 'http://127.0.0.1:5173'
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const pageErrors = []
-const suggestionEngines = []
-
 await page.addInitScript(() => {
   window.__vyoraModes = []
   window.__vyoraSuggestionEngines = []
