@@ -1,0 +1,51 @@
+name: Android Java compile
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  android-java:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-36"
+      - name: Compile Android Java sources against checked-in Media3 libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          mkdir -p "$work/classes" "$work/aar"
+          cp_dir="$ANDROID_HOME/platforms/android-36/android.jar"
+          while IFS= read -r aar; do
+            name="$(basename "$aar" .aar)"
+            mkdir -p "$work/aar/$name"
+            unzip -p "$aar" classes.jar > "$work/aar/$name/classes.jar"
+            cp_dir="$cp_dir:$work/aar/$name/classes.jar"
+          done < <(find android/libs -maxdepth 1 -name '*.aar' -print | sort)
+          while IFS= read -r jar; do cp_dir="$cp_dir:$jar"; done < <(find android/libs -maxdepth 1 -name '*.jar' -print | sort)
+          mkdir -p "$work/stub/com/vyora/tv"
+          cat > "$work/stub/com/vyora/tv/R.java" <<'EOF'
+          package com.vyora.tv;
+          public final class R {
+            public static final class string {
+              public static final int player_hint = 1;
+            }
+          }
+          EOF
+          mapfile -t sources < <(find android/app/java -name '*.java' -print | sort)
+          javac -encoding UTF-8 -source 8 -target 8 -Xlint:-options \
+            -classpath "$cp_dir" -d "$work/classes" \
+            "$work/stub/com/vyora/tv/R.java" "${sources[@]}"
+          echo "Compiled ${#sources[@]} Android Java source files."
