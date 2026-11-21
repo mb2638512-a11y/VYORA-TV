@@ -138,7 +138,7 @@ async function probe(item) {
     return {
       channelId: item.channelId, channel: item.channel, country: item.country,
       streamId: item.streamId, sourceIndex: item.sourceIndex,
-      url: safeUrl(item.url), host: (() => { try { return new URL(item.url).host } catch { return '' } })(),
+      urlOrigin: safeUrl(item.url), host: (() => { try { return new URL(item.url).host } catch { return '' } })(),
       status: aborted ? 'timeout' : 'network_error', httpStatus: 0, kind: 'no_response',
       manifestValid: false, elapsedMs: Date.now() - started, bytesRead: 0,
       contentType: '', reason: aborted ? `Timeout after ${timeoutMs}ms` : String(error?.message || error).slice(0, 240),
