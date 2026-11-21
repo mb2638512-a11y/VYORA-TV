@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * Media3 live-TV player with bounded parallel source selection.
  *
- * At most two candidates are prepared at once. The first candidate to become
+ * At most two candidates are prepared at once, with a stagger to protect slow links. The first candidate to become
  * READY wins; the other player is released immediately. This avoids serial
  * dead-source delays without flooding a constrained connection with every
  * source in a channel.
@@ -62,7 +62,7 @@ public class TvPlayer {
     public TvPlayer(Context ctx, SurfaceView surfaceView) {
         this.ctx = ctx;
         this.surfaceView = surfaceView;
-        this.bandwidthMeter = new DefaultBandwidthMeter.Builder(ctx).build();
+        this.bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(ctx);
         this.bandwidthMeter.addEventListener(main, (elapsedMs, bytes, bitrate) -> {
             lastBandwidthSampleAt = SystemClock.elapsedRealtime();
             Log.d(TAG, "bandwidth sample kbps=" + (bitrate / 1000));
@@ -107,7 +107,7 @@ public class TvPlayer {
         play(new String[]{url}, new String[]{referer}, new String[]{ua});
     }
 
-    /** Start up to two sources together; first READY candidate becomes active. */
+    /** Start with one source, then stagger one alternate if the first is slow. */
     public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas) {
         if (candidateUrls == null || candidateUrls.length == 0) return;
         release();
@@ -203,11 +203,27 @@ public class TvPlayer {
             }
 
             DefaultDataSource.Factory dataFactory = new DefaultDataSource.Factory(ctx, httpFactory);
-            DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(1500, 15000, 800, 1500)
-                    .setPrioritizeTimeOverSizeThresholds(true)
-                    .setTargetBufferBytes(8 * 1024 * 1024)
-                    .build();
+            long sampleAge = lastBandwidthSampleAt == 0
+                    ? Long.MAX_VALUE : SystemClock.elapsedRealtime() - lastBandwidthSampleAt;
+            boolean hasRecentEstimate = sampleAge < 30000;
+            long estimatedBps = bandwidthMeter.getBitrateEstimate();
+            DefaultLoadControl.Builder bufferBuilder = new DefaultLoadControl.Builder()
+                    .setPrioritizeTimeOverSizeThresholds(true);
+
+            if (hasRecentEstimate && estimatedBps < 1800000) {
+                // Slow line: keep a larger reserve after startup to reduce rebuffering.
+                bufferBuilder.setBufferDurationsMs(2500, 30000, 1200, 3000)
+                        .setTargetBufferBytes(12 * 1024 * 1024);
+            } else if (hasRecentEstimate && estimatedBps < 6000000) {
+                // Mid-range line: balanced startup and rebuffer reserve.
+                bufferBuilder.setBufferDurationsMs(2000, 24000, 1000, 2200)
+                        .setTargetBufferBytes(10 * 1024 * 1024);
+            } else {
+                // Fast or not-yet-measured line: favour a quick first frame.
+                bufferBuilder.setBufferDurationsMs(1500, 18000, 800, 1600)
+                        .setTargetBufferBytes(8 * 1024 * 1024);
+            }
+            DefaultLoadControl loadControl = bufferBuilder.build();
 
             final ExoPlayer candidatePlayer = new ExoPlayer.Builder(ctx)
                     .setMediaSourceFactory(new DefaultMediaSourceFactory(dataFactory))
