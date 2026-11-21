@@ -131,7 +131,10 @@ App mein:
 VYORA Player is the default in-platform player. Settings lets users choose a default
 player and override it independently for Live TV channels, Movies, Series and
 Downloads. The ten choices are VYORA Player, ExoPlayer/Media3, HLS.js, HTML5,
-VLC, MX Player, mpv, Kodi, Nova Video Player and Just Player.
+VLC, MX Player, mpv, Kodi, Nova Video Player and Just Player. The native
+Media3 engine includes HLS and DASH modules, adapts bitrate when the stream
+manifest provides multiple renditions, and reports measured throughput to the
+network-quality selector.
 
 VLC, MX, mpv, Kodi, Nova and Just Player are external Android apps: the selected
 app must already be installed. VYORA checks package availability and falls back
