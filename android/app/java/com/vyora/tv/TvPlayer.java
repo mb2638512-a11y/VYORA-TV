@@ -52,7 +52,7 @@ public class TvPlayer {
     private ExoPlayer player;
     private boolean active = false;
     private boolean winnerChosen = false;
-    private boolean firstFrameNotified = false;
+    private int lastNotifiedSourceIndex = -1;
     private boolean failureNotified = false;
     private PlaybackListener playbackListener;
 
@@ -138,7 +138,7 @@ public class TvPlayer {
         nextCandidateIndex = 0;
         activeAttempts = 0;
         winnerChosen = false;
-        firstFrameNotified = false;
+        lastNotifiedSourceIndex = -1;
         failureNotified = false;
         active = false;
         playbackStartedAt = SystemClock.elapsedRealtime();
@@ -343,8 +343,8 @@ public class TvPlayer {
                         rememberSuccessfulSource(index);
                         long startupMs = SystemClock.elapsedRealtime() - playbackStartedAt;
                         Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" + startupMs);
-                        if (!firstFrameNotified && playbackListener != null) {
-                            firstFrameNotified = true;
+                        if (lastNotifiedSourceIndex != index && playbackListener != null) {
+                            lastNotifiedSourceIndex = index;
                             playbackListener.onFirstFrame(urls[index], startupMs);
                         }
                     }
