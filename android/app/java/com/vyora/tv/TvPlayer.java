@@ -11,6 +11,7 @@ import android.view.SurfaceView;
 import android.view.View;
 
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultDataSource;
@@ -344,7 +345,16 @@ public class TvPlayer {
             // Prepare in parallel, but do not start audio/video until a winner
             // is selected and attached to the visible surface.
             candidatePlayer.setPlayWhenReady(false);
-            candidatePlayer.setMediaItem(MediaItem.fromUri(url));
+            MediaItem.Builder mediaItem = new MediaItem.Builder().setUri(url);
+            String lowerUrl = url.toLowerCase(java.util.Locale.US);
+            if (lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
+                mediaItem.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lowerUrl.contains(".mpd")) {
+                // DASH needs the optional Media3 DASH module. If it is not
+                // packaged, the candidate will fail quickly and fail over.
+                mediaItem.setMimeType(MimeTypes.APPLICATION_MPD);
+            }
+            candidatePlayer.setMediaItem(mediaItem.build());
             candidatePlayer.prepare();
             Log.i(TAG, "source " + index + " preparing");
         } catch (Throwable t) {
