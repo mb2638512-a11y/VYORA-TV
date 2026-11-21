@@ -74,3 +74,49 @@ func TestPlayableProbeBodyValidation(t *testing.T) {
 		})
 	}
 }
+
+
+func TestReportSourcePersistsEvidenceAndOrdersFastHealthyStreams(t *testing.T) {
+	health := &HealthStore{status: make(map[string]*HealthRecord)}
+	channel := &Channel{ID: "news", Streams: []Stream{
+		{ID: "unknown", URL: "https://unknown.example/live.m3u8"},
+		{ID: "fast", URL: "https://fast.example/live.m3u8"},
+		{ID: "failed", URL: "https://failed.example/live.m3u8"},
+	}}
+
+	health.ReportSource(channel.ID, true, 180, 1)
+	health.ReportSource(channel.ID, false, 900, 2)
+
+	rec := health.Get(channel.ID)
+	if rec == nil || len(rec.Sources) != 2 {
+		t.Fatalf("expected two per-source records, got %#v", rec)
+	}
+	if rec.Sources[1].Status != "online" || rec.Sources[1].SuccessCount != 1 {
+		t.Fatalf("successful source evidence not recorded: %#v", rec.Sources[1])
+	}
+	if rec.Sources[2].Status != "offline" || rec.Sources[2].FailureCount != 1 {
+		t.Fatalf("failed source evidence not recorded: %#v", rec.Sources[2])
+	}
+
+	ordered, original := health.OrderStreams(channel)
+	if len(ordered) != 3 || len(original) != 3 {
+		t.Fatalf("unexpected ordered result lengths: streams=%d indexes=%d", len(ordered), len(original))
+	}
+	if original[0] != 1 || original[2] != 2 {
+		t.Fatalf("expected fast source first and recently failed source last, got %v", original)
+	}
+}
+
+func TestHealthGetReturnsIndependentSourceMap(t *testing.T) {
+	health := &HealthStore{status: map[string]*HealthRecord{
+		"channel": {ID: "channel", Sources: map[int]SourceHealthRecord{
+			0: {Status: "online", MS: 120},
+		}},
+	}}
+	copyRec := health.Get("channel")
+	copyRec.Sources[0] = SourceHealthRecord{Status: "offline"}
+	stored := health.Get("channel")
+	if stored.Sources[0].Status != "online" {
+		t.Fatalf("mutating returned health snapshot changed stored state: %#v", stored.Sources[0])
+	}
+}
