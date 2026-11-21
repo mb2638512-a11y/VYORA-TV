@@ -565,6 +565,7 @@ export default function ChromiumBrowser({
   const [portalCategory, setPortalCategory] = useState<'all' | 'streaming' | 'sports' | 'news' | 'tools' | 'gaming'>('all')
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const omniboxRef = useRef<HTMLInputElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const findTimer = useRef<number | null>(null)
   const suggestTimer = useRef<number | null>(null)
@@ -1225,6 +1226,45 @@ export default function ChromiumBrowser({
     }
   }
 
+  // Desktop keyboard shortcuts also work with a connected TV keyboard.
+  // Ignore ordinary keystrokes so websites and form controls keep their input.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey
+      if (mod && event.key.toLowerCase() === 'l') {
+        event.preventDefault()
+        omniboxRef.current?.focus()
+        omniboxRef.current?.select()
+      } else if (mod && event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        addTab()
+      } else if (mod && event.key.toLowerCase() === 'w') {
+        event.preventDefault()
+        closeTab(activeTabId)
+      } else if (mod && event.key.toLowerCase() === 'r') {
+        event.preventDefault()
+        reloadTab()
+      } else if (mod && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        setIsFindOpen(true)
+      } else if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault()
+        goBack()
+      } else if (event.altKey && event.key === 'ArrowRight') {
+        event.preventDefault()
+        goForward()
+      } else if (event.key === 'Escape') {
+        if (isFindOpen) {
+          setIsFindOpen(false)
+        } else if (activeTab?.isLoading) {
+          stopLoading()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeTab?.isLoading, activeTabId, addTab, closeTab, goBack, goForward, isFindOpen, reloadTab, stopLoading])
+
   // INSTALL WEB APP TO PLATFORM (WITH REAL LOGO)
   const installCurrentAsWebApp = (overrideUrl?: string, overrideTitle?: string) => {
     const rawTarget = overrideUrl || activeTab?.url
@@ -1722,6 +1762,7 @@ export default function ChromiumBrowser({
               <Icon name="lock" size={14} />
             </span>
             <input
+              ref={omniboxRef}
               type="text"
               className="chromium-omnibox-input"
               value={inputUrl}
