@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Vyora frame probe</title>
+  <style>
+    body { margin: 0; background: #0b0f16; color: #e6edf6; font: 13px system-ui, sans-serif; }
+    h1 { font-size: 14px; padding: 8px 12px; margin: 0; background: #161b22; }
+    iframe { width: 100%; height: 84vh; border: 0; background: #fff; }
+    #probe { padding: 6px 12px; font-family: ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Nested iframe probe &mdash; DIRECT load (no server proxy), real JS engine</h1>
+  <div id="probe">loading...</div>
+  <iframe id="f" src="https://www.google.com/search?igu=1&q=youtube"></iframe>
+  <script>
+    const f = document.getElementById('f');
+    const probe = document.getElementById('probe');
+    const report = (l) => { probe.textContent += '\n' + l; };
+    f.addEventListener('load', () => report('iframe load fired'));
+    f.addEventListener('error', () => report('iframe ERROR event'));
+    report('probe ready');
+  </script>
+</body>
+</html>

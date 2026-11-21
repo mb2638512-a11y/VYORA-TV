@@ -1,0 +1,23 @@
+{
+  "name": "vyora-tv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vyora TV - Android TV IPTV client with real world channels, flags, logos and remote-first navigation",
+  "type": "module",
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "data": "node scripts/build-data.mjs",
+    "dev:web": "npm --workspace web run dev",
+    "dev:server": "node server/src/index.js",
+    "build:go": "cd server-go && go build -o vyora-tv.exe .",
+    "build": "npm run data && npm --workspace web run build && npm run build:go",
+    "start": "server-go\\vyora-tv.exe -port 8787 -data server/data -web web/dist",
+    "start:node": "node server/src/index.js",
+    "apk": "powershell -ExecutionPolicy Bypass -File android/build-apk.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

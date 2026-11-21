@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="vyora_bg">#FF06060A</color>
+    <color name="vyora_accent">#FF7C5CFF</color>
+    <color name="vyora_accent2">#FF22D3EE</color>
+    <color name="vyora_text">#FFF3F5FF</color>
+</resources>

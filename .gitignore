@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+*/node_modules/
+web/node_modules/
+
+# Build artifacts & temp
+android/build/
+server-go/vyora-tv-new.exe
+server-go/tmp*.log
+.kilo/
+scratch/
+test_chunk.ts
+
+# Logs
+*.log
+server.err.log
+server.log
+server-go/*.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
