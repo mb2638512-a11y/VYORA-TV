@@ -1748,7 +1748,7 @@ export default function App() {
                       key={app.id}
                       className="app-card installed-app-card"
                       data-focusable
-                      onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true })}
+                      onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })}
                     >
                       <button
                         className="app-del-btn"
@@ -1775,7 +1775,7 @@ export default function App() {
                         data-focusable
                         onClick={(e) => {
                           e.stopPropagation()
-                          setView({ name: 'browser', initialUrl: app.url, standalone: true })
+                          setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })
                         }}
                       >
                         Launch
@@ -2362,6 +2362,15 @@ export default function App() {
             initialUrl={(view as any).initialUrl}
             initialEngine={(view as any).initialEngine}
             standalone={(view as any).standalone === true}
+            initialDisplayMode={(view as any).initialDisplayMode || 'auto'}
+            onDisplayModeChange={(mode) => {
+              const appUrl = (view as any).initialUrl
+              setInstalledApps((prev) => {
+                const updated = prev.map((app) => app.url === appUrl ? { ...app, displayMode: mode } : app)
+                try { localStorage.setItem('vyora_installed_apps_v1', JSON.stringify(updated)) } catch {}
+                return updated
+              })
+            }}
             onClose={() => setView({ name: 'home' })}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
@@ -2415,7 +2424,7 @@ export default function App() {
                   key={app.id}
                   className="app-card installed-app-card"
                   data-focusable
-                  onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true })}
+                  onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })}
                 >
                   <button
                     className="app-del-btn"
@@ -2442,7 +2451,7 @@ export default function App() {
                     data-focusable
                     onClick={(e) => {
                       e.stopPropagation()
-                      setView({ name: 'browser', initialUrl: app.url, standalone: true })
+                      setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })
                     }}
                   >
                     Launch
