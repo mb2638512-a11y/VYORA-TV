@@ -58,6 +58,11 @@ try {
     }
   }
 
+  // Closing the only tab must create and activate a fresh New Tab instead
+  // of leaving the browser with an activeTabId that no longer exists.
+  await page.getByRole('button', { name: 'Close Tab' }).click()
+  await page.locator('.chromium-tab-title').getByText('New Tab').waitFor({ state: 'visible', timeout: 5000 })
+
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/browser-before.png', fullPage: true })
 
