@@ -51,6 +51,7 @@ public class TvPlayer {
     private int activeAttempts = 0;
     private long playbackStartedAt;
     private Runnable firstFrameWatchdog;
+    private Runnable staggeredCandidateStart;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final DefaultBandwidthMeter bandwidthMeter;
@@ -123,14 +124,43 @@ public class TvPlayer {
 
     private void startMoreCandidates() {
         if (winnerChosen) return;
-        while (activeAttempts < MAX_PARALLEL_CANDIDATES && nextCandidateIndex < urls.length) {
-            final int index = nextCandidateIndex++;
-            startCandidate(index);
+
+        // Start one source immediately. Only spend bandwidth on a second
+        // candidate if the first has not become READY after a short grace
+        // period. If the first fails, advance immediately instead.
+        if (activeAttempts == 0 && nextCandidateIndex < urls.length) {
+            cancelStaggeredCandidateStart();
+            startCandidate(nextCandidateIndex++);
         }
+
+        if (!winnerChosen && activeAttempts > 0 &&
+                activeAttempts < MAX_PARALLEL_CANDIDATES &&
+                nextCandidateIndex < urls.length && staggeredCandidateStart == null) {
+            staggeredCandidateStart = new Runnable() {
+                @Override
+                public void run() {
+                    staggeredCandidateStart = null;
+                    if (!winnerChosen && activeAttempts > 0 &&
+                            activeAttempts < MAX_PARALLEL_CANDIDATES &&
+                            nextCandidateIndex < urls.length) {
+                        startCandidate(nextCandidateIndex++);
+                    }
+                }
+            };
+            main.postDelayed(staggeredCandidateStart, 1200);
+        }
+
         if (activeAttempts == 0 && nextCandidateIndex >= urls.length && !winnerChosen) {
             active = false;
             Log.w(TAG, "all sources exhausted after " +
                     (SystemClock.elapsedRealtime() - playbackStartedAt) + "ms");
+        }
+    }
+
+    private void cancelStaggeredCandidateStart() {
+        if (staggeredCandidateStart != null) {
+            main.removeCallbacks(staggeredCandidateStart);
+            staggeredCandidateStart = null;
         }
     }
 
@@ -255,6 +285,7 @@ public class TvPlayer {
     private void chooseWinner(int index, ExoPlayer winningPlayer) {
         if (winnerChosen || pendingPlayers.get(index) != winningPlayer) return;
         winnerChosen = true;
+        cancelStaggeredCandidateStart();
         cancelWatchdog(index);
         pendingPlayers.remove(index);
         activeAttempts = Math.max(0, activeAttempts - 1);
@@ -350,6 +381,7 @@ public class TvPlayer {
 
     private void release() {
         cancelFirstFrameWatchdog();
+        cancelStaggeredCandidateStart();
         for (Integer index : new ArrayList<>(readyWatchdogs.keySet())) {
             cancelWatchdog(index);
         }
