@@ -44,9 +44,9 @@ public class TvPlayer {
     }
 
     private static final String TAG = "VyoraPlayer";
-    private static final long READY_TIMEOUT_MS = 8000;
-    private static final long FIRST_FRAME_TIMEOUT_MS = 10000;
-    private static final int MAX_PARALLEL_CANDIDATES = 2;
+    private static final long READY_TIMEOUT_MS = 5000;
+    private static final long FIRST_FRAME_TIMEOUT_MS = 7000;
+    private static final int MAX_PARALLEL_CANDIDATES = 3;
 
     private final Context ctx;
     private final SurfaceView surfaceView;
@@ -223,7 +223,7 @@ public class TvPlayer {
                     }
                 }
             };
-            main.postDelayed(staggeredCandidateStart, 1200);
+            main.postDelayed(staggeredCandidateStart, 450);
         }
 
         if (activeAttempts == 0 && nextCandidateIndex >= urls.length && !winnerChosen) {
@@ -260,8 +260,8 @@ public class TvPlayer {
             DefaultHttpDataSource.Factory httpFactory =
                     new DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
-                            .setConnectTimeoutMs(6000)
-                            .setReadTimeoutMs(12000)
+                            .setConnectTimeoutMs(4000)
+                            .setReadTimeoutMs(9000)
                             .setTransferListener(bandwidthMeter);
 
             if (ua != null && !ua.isEmpty()) {
