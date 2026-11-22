@@ -48,7 +48,8 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 - [x] Add a dedicated private-browser process with WebView data-directory suffix on Android 9+; private tabs are not persisted and cleanup runs on close.
 - [x] Disable private browsing on Android 8.1 and older rather than expose a non-isolated mode.
 - [ ] OAuth, sign-in popups, target=_blank, downloads and file chooser flows work.
-- [ ] Ad/pop-up protection can be disabled for one site without disabling it globally.
+- [x] Hosts-based ad/tracker protection can be paused for the active host; long-press Shield to toggle global protection.
+- [ ] Expand filter coverage and add full EasyList-style cosmetic/scriptlet rules and a dedicated popup rules engine.
 - [ ] No browser proxy is enabled by default; no navigation can remain in an infinite loading/retry loop.
 - [ ] Back/forward/reload, tab restore, downloads, bookmarks and history work.
 - [ ] Background tabs are suspended/restored within a bounded memory budget.
@@ -128,3 +129,8 @@ The first VYORA-owned protection layer now uses the MIT-licensed StevenBlack hos
 - Closing the private Activity clears WebView cache/history/form data, cookies and DOM storage before its renderer is destroyed.
 - Android API 27 and below are intentionally unsupported for private mode; the UI explains why rather than sharing the normal profile.
 - This is implemented in source but still needs physical-device verification, including abrupt process termination and cookie/storage separation tests.
+
+
+## Site protection controls (2026-11-23)
+
+The browser toolbar now exposes a Shield control. Tap it to allowlist/unallowlist the active host (including its subdomains); long-press it to toggle the global hosts-based protection layer. This is a basic hosts-rule control, not a full EasyList/uBlock rules engine. Login, payment and video sites can be allowlisted when a filter causes breakage.
