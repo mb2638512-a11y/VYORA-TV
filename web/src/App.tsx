@@ -97,7 +97,7 @@ function AppBadgeLogo({ app, size = 28 }: { app: InstalledApp; size?: number }) 
 }
 
 const APP_VERSION = '1.0.0'
-const PAGE_SIZE = 240
+const PAGE_SIZE = 120
 const FAV_KEY = 'vyora.favourites'
 const SETTINGS_KEY = 'vyora.settings'
 const RECENT_KEY = 'vyora.recent'
