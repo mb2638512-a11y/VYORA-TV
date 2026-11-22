@@ -87,7 +87,7 @@ public class MainActivity extends Activity {
         // controls are underneath that surface and cannot receive touch input.
         playerExpandButton = new Button(this);
         playerExpandButton.setText("⛶  Expand");
-        playerExpandButton.setTextAllCaps(false);
+        playerExpandButton.setAllCaps(false);
         playerExpandButton.setTextColor(Color.WHITE);
         playerExpandButton.setTextSize(14);
         playerExpandButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xDD172235));
@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
 
         playerCloseButton = new Button(this);
         playerCloseButton.setText("✕");
-        playerCloseButton.setTextAllCaps(false);
+        playerCloseButton.setAllCaps(false);
         playerCloseButton.setTextColor(Color.WHITE);
         playerCloseButton.setTextSize(18);
         playerCloseButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xDD172235));
