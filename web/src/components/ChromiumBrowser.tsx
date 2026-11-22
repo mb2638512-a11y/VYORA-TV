@@ -4,6 +4,7 @@ import { nativeInstallApk, setBrowserDisplayMode, nativeOpenBrowser } from '../l
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
 import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId } from '../lib/browserEngines'
+export { BROWSER_ENGINES, BROWSER_ENGINES_LIST } from '../lib/browserEngines'
 
 export type ChromiumBrowserProps = {
   initialUrl?: string
