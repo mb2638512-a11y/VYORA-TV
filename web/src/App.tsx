@@ -1001,7 +1001,10 @@ export default function App() {
         if (primary <= 4) continue
         const secondary = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
           ? Math.abs(dy) : Math.abs(dx)
-        const score = primary + secondary * 1.6
+        // Prefer candidates on the same visual row/column. This keeps
+        // horizontal TV navigation inside the TV tab rail instead of jumping
+        // to a nearby utility button in the header row above it.
+        const score = primary + secondary * 3
         if (score < nearestScore) {
           nearest = candidate
           nearestScore = score
