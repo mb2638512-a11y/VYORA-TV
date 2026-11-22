@@ -7409,3 +7409,77 @@ button {
   .channel-card { padding: 6px; }
   .channel-card-sub { font-size: 9px; }
 }
+
+
+/* VYORA phone: keep the AllSiteHub launch action full-width and readable. */
+@media (max-width: 700px) {
+  .allsitehub-featured-card {
+    display: grid !important;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start !important;
+    gap: 12px !important;
+    width: 100%;
+    min-width: 0;
+    padding: 16px !important;
+  }
+  .allsitehub-featured-card .app-card-badge {
+    grid-column: 1;
+    grid-row: 1;
+    width: 56px;
+    height: 56px;
+    margin: 0;
+  }
+  .allsitehub-featured-card .app-card-body {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    width: 100%;
+  }
+  .allsitehub-featured-card .app-card-title,
+  .allsitehub-featured-card .app-card-desc {
+    overflow-wrap: anywhere;
+  }
+  .allsitehub-featured-card .app-card-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .allsitehub-featured-card .app-card-launch {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 54px;
+    flex: none !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    justify-content: center;
+    margin: 0;
+  }
+}
+
+.player-auto-recover {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: min(92vw, 420px);
+  padding: 12px 14px;
+  border: 1px solid var(--line-bright);
+  border-radius: 16px;
+  background: rgba(8, 12, 22, .92);
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0,0,0,.4);
+  backdrop-filter: blur(14px);
+  font-size: 14px;
+  font-weight: 700;
+}
+.player-auto-recover .btn { flex: 0 0 auto; }
