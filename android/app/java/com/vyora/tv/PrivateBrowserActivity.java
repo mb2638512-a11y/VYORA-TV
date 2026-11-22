@@ -2,8 +2,6 @@ package com.vyora.tv;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.webkit.CookieManager;
-import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.widget.Toast;
 
