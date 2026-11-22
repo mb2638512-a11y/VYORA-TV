@@ -6,7 +6,6 @@
   --tv-focus: #67d8ff;
 }
 .device-tv,
-.device-tv body,
 .device-tv #root {
   width: 100%;
   min-width: 0;
@@ -49,7 +48,8 @@
 .device-tv .grid-channels,
 .device-tv .grid-movies,
 .device-tv .grid-countries,
-.device-tv .grid-themes {
+.device-tv .grid-themes,
+.device-tv .apps-grid {
   gap: 20px;
 }
 .device-tv .channel-card,
@@ -57,6 +57,7 @@
 .device-tv .country-card,
 .device-tv .theme-card,
 .device-tv .site-card,
+.device-tv .app-card,
 .device-tv .installed-app-card {
   border-radius: 16px;
 }
@@ -96,12 +97,14 @@
 .device-tv .cinema-hero-desc { font-size: 19px; max-width: 850px; }
 .device-tv .billboard-title { font-size: clamp(42px, 4vw, 64px); }
 .device-tv .allsitehub-section { max-width: 100%; }
-.device-tv .allsitehub-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-.device-tv .allsitehub-card { min-height: 150px; padding: 22px; }
+.device-tv .allsitehub-section .apps-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.device-tv .allsitehub-section .app-card { min-height: 150px; padding: 22px; }
+.device-tv .app-card-title { font-size: 20px; }
+.device-tv .app-card-desc { font-size: 15px !important; }
 .device-tv ::-webkit-scrollbar { width: 10px; height: 10px; }
 .device-tv ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.45); border-radius: 99px; }
 @media (max-width: 1100px) {
-  .device-tv .allsitehub-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .device-tv .allsitehub-section .apps-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .device-tv *, .device-tv *::before, .device-tv *::after {
