@@ -904,6 +904,77 @@ export default function App() {
     }
   }, [playing, overlay, view])
 
+  /* ---------------- Android TV directional focus navigation ---------------- */
+  useEffect(() => {
+    const onRemoteArrow = (event: KeyboardEvent) => {
+      if (playing || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
+
+      const active = document.activeElement as HTMLElement | null
+      // Keep text editing, native form controls, and third-party web frames in
+      // control of their own directional keys.
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        active instanceof HTMLIFrameElement ||
+        active?.isContentEditable
+      ) return
+
+      const candidates = Array.from(document.querySelectorAll<HTMLElement>(
+        '[data-focusable], button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [role="button"][tabindex], [role="tab"][tabindex]'
+      )).filter((element) => {
+        if (element.tabIndex < 0 || element.hasAttribute('disabled') ||
+          element.closest('[aria-hidden="true"], [inert]')) return false
+        const style = window.getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        return style.display !== 'none' && style.visibility !== 'hidden' &&
+          Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0
+      })
+
+      if (!candidates.length) return
+      const currentIndex = active ? candidates.indexOf(active) : -1
+      if (currentIndex < 0) {
+        event.preventDefault()
+        candidates[0].focus()
+        candidates[0].scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        return
+      }
+
+      const currentRect = candidates[currentIndex].getBoundingClientRect()
+      const currentX = currentRect.left + currentRect.width / 2
+      const currentY = currentRect.top + currentRect.height / 2
+      let nearest: HTMLElement | null = null
+      let nearestScore = Number.POSITIVE_INFINITY
+
+      for (const candidate of candidates) {
+        if (candidate === active) continue
+        const rect = candidate.getBoundingClientRect()
+        const dx = rect.left + rect.width / 2 - currentX
+        const dy = rect.top + rect.height / 2 - currentY
+        const primary = event.key === 'ArrowRight' ? dx
+          : event.key === 'ArrowLeft' ? -dx
+          : event.key === 'ArrowDown' ? dy : -dy
+        if (primary <= 4) continue
+        const secondary = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
+          ? Math.abs(dy) : Math.abs(dx)
+        const score = primary + secondary * 1.6
+        if (score < nearestScore) {
+          nearest = candidate
+          nearestScore = score
+        }
+      }
+
+      if (!nearest) return
+      event.preventDefault()
+      event.stopPropagation()
+      nearest.focus()
+      nearest.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+
+    window.addEventListener('keydown', onRemoteArrow, true)
+    return () => window.removeEventListener('keydown', onRemoteArrow, true)
+  }, [playing])
+
   /* ---------------- keyboard shortcuts (browser desktop use) ---------------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
