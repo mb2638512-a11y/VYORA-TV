@@ -281,13 +281,13 @@ public class BrowserActivity extends Activity {
                 if (!isUserGesture || resultMsg == null || tabs.size() >= MAX_TABS) return false;
                 BrowserTab popup = createTab(tab.engineId);
                 tabs.add(popup);
-                activeIndex = tabs.size() - 1;
-                showActiveTab();
-                updateTabs();
                 WebView.WebViewTransport transport =
                         (WebView.WebViewTransport) resultMsg.obj;
                 transport.setWebView(popup.web);
                 resultMsg.sendToTarget();
+                activeIndex = tabs.size() - 1;
+                showActiveTab();
+                updateTabs();
                 saveSession();
                 return true;
             }
