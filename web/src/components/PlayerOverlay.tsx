@@ -96,6 +96,7 @@ export function PlayerOverlay({
   const [message, setMessage] = useState('')
   const [streamIndex, setStreamIndex] = useState(0)
   const [showInfo, setShowInfo] = useState(true)
+  const [phoneWideMode, setPhoneWideMode] = useState(false)
   const [toast, setToast] = useState('')
   const [volume, setVolume] = useState<number>(() => {
     try {
@@ -1066,8 +1067,36 @@ export function PlayerOverlay({
   }, [stream])
 
   return (
-    <div className="player-overlay">
+    <div className={`player-overlay${phoneWideMode ? ' phone-wide-mode' : ''}`}>
       <div className="player-stage">
+        <button
+          type="button"
+          className="player-expand-toggle"
+          aria-label={phoneWideMode ? 'Return to portrait player' : 'Expand player to landscape'}
+          title={phoneWideMode ? 'Portrait view' : 'Expand to landscape'}
+          onClick={() => {
+            const next = !phoneWideMode
+            setPhoneWideMode(next)
+            if (next) {
+              const root = document.querySelector('.player-overlay') as HTMLElement | null
+              if (root && !document.fullscreenElement && root.requestFullscreen) {
+                void root.requestFullscreen().catch(() => {})
+              }
+              const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> }
+              if (orientation?.lock) void orientation.lock('landscape').catch(() => {})
+            } else {
+              const orientation = screen.orientation as ScreenOrientation & { unlock?: () => void }
+              orientation?.unlock?.()
+              if (document.fullscreenElement && document.exitFullscreen) {
+                void document.exitFullscreen().catch(() => {})
+              }
+            }
+          }}
+          data-focusable
+        >
+          <Icon name={phoneWideMode ? 'minimize' : 'maximize'} size={18} />
+          <span>{phoneWideMode ? 'Portrait' : 'Expand'}</span>
+        </button>
         {!isNative ? (
           isEmbedStream ? (
             <iframe
