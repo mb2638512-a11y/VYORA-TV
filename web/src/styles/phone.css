@@ -1110,3 +1110,10 @@
 }
 .device-phone .channel-loading-state .spinner { width: 30px; height: 30px; }
 .device-phone .channel-load-error .btn { margin-top: 4px; }
+
+
+/* Phone player cleanup: keep the video surface unobstructed. */
+.device-phone .player-info { display: none !important; }
+.device-phone .player-hud-actions .hud-action-group:first-child { display: none !important; }
+.device-phone .player-status.player-error { width: min(92vw, 420px); max-height: 78dvh; overflow-y: auto; padding: 18px; gap: 10px; }
+.device-phone .player-error-hint { display: none; }
