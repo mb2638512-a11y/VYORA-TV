@@ -58,7 +58,8 @@ async function checkSite(site) {
       return {
         ...site,
         status: response.status,
-        result: response.status >= 200 && response.status < 400 ? 'reachable' :
+        result: response.status >= 200 && response.status < 300 ? 'reachable' :
+          response.status >= 300 && response.status < 400 ? 'redirect' :
           response.status === 401 || response.status === 403 ? 'restricted' : 'http_error',
         redirectHost,
         durationMs: Date.now() - started,
@@ -129,6 +130,7 @@ const summary = {
   generatedAt: new Date().toISOString(),
   total: results.length,
   reachable: results.filter((r) => r.result === 'reachable').length,
+  redirects: results.filter((r) => r.result === 'redirect').length,
   restricted: results.filter((r) => r.result === 'restricted').length,
   httpErrors: results.filter((r) => r.result === 'http_error').length,
   timeouts: results.filter((r) => r.result === 'timeout').length,
@@ -141,7 +143,7 @@ const columns = ['title', 'id', 'url', 'status', 'result', 'redirectHost', 'dura
 const csv = [columns.join(','), ...results.map((row) => columns.map((key) => csvCell(row[key])).join(','))].join('\n')
 await fs.writeFile(path.join(outputDir, 'results.csv'), csv + '\n')
 
-const counts = `Reachable: ${summary.reachable} · Restricted (401/403): ${summary.restricted} · HTTP errors: ${summary.httpErrors} · Timeouts: ${summary.timeouts} · Network errors: ${summary.networkErrors}`
+const counts = `Reachable: ${summary.reachable} · Redirects: ${summary.redirects} · Restricted (401/403): ${summary.restricted} · HTTP errors: ${summary.httpErrors} · Timeouts: ${summary.timeouts} · Network errors: ${summary.networkErrors}`
 console.log(`\nAllSiteHub audit complete: ${counts}`)
 console.log(summary.note)
 if (process.env.GITHUB_STEP_SUMMARY) {
