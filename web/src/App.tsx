@@ -752,12 +752,15 @@ export default function App() {
         const bestIdx = getHealthRecord(ch.id)?.bestStream ?? 0
         const stream = ch.streams[bestIdx] || ch.streams[0]
         if (!stream) return
-        await fetch(`/api/prefetch?${prefetchParams(stream, ch.id)}`)
-        // Warm the runner-up source too, so the race always has a hot backup.
-        const backup = ch.streams.find((s, i) => i !== bestIdx && s.url !== stream.url)
-        if (backup) {
-          void fetch(`/api/prefetch?${prefetchParams(backup, ch.id)}`).catch(() => undefined)
-        }
+        // Warm the best source and one backup concurrently. Waiting for the
+        // primary before requesting the backup wastes the user's focus time.
+        const backup = ch.streams.find((candidate, i) => i !== bestIdx && candidate.url !== stream.url)
+        const jobs = [stream, backup].filter(Boolean).map((candidate) =>
+          fetch(`/api/prefetch?${prefetchParams(candidate!, ch.id)}`).then((response) => {
+            if (!response.ok) throw new Error(`prefetch ${response.status}`)
+          }),
+        )
+        await Promise.allSettled(jobs)
       } catch {
         /* prefetch is best effort */
       }
