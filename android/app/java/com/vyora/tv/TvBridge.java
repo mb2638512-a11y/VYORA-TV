@@ -211,6 +211,23 @@ public class TvBridge {
         return started.get();
     }
 
+    /** Open the full native Android WebView browser, outside the app's iframe shell. */
+    @JavascriptInterface
+    public void openBrowser(final String initialUrl, final String engineId, final String displayMode) {
+        act.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(act, BrowserActivity.class);
+                intent.putExtra("initialUrl", initialUrl == null ? "" : initialUrl);
+                intent.putExtra("engineId", engineId == null ? "google0" : engineId);
+                intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
+                act.startActivity(intent);
+            } catch (Throwable error) {
+                Log.e(TAG, "Could not open native browser", error);
+                Toast.makeText(act, "VYORA Browser could not be opened", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     @JavascriptInterface
     public void setBrowserDisplayMode(final String mode) {
         act.runOnUiThread(() -> act.setBrowserDisplayMode(mode));
