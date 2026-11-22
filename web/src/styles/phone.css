@@ -98,3 +98,39 @@
   overflow-y: auto;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
 }
+
+.device-phone .topbar-phone .topbar-right { gap: 6px; min-width: 0; }
+.device-phone .topbar-phone .topbar-right .btn,
+.device-phone .topbar-phone .topbar-right .theme-toggle-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 12px;
+}
+.device-phone .topbar-phone .topbar-right .btn span,
+.device-phone .topbar-phone .topbar-right .theme-toggle-btn span { display: none; }
+.device-phone .grid,
+.device-phone .grid-channels,
+.device-phone .grid-movies,
+.device-phone .grid-countries,
+.device-phone .grid-themes,
+.device-phone .apps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.device-phone .main > *,
+.device-phone .main section,
+.device-phone .row { min-width: 0; max-width: 100%; }
+.device-phone .row-track,
+.device-phone .chips,
+.device-phone .chips-scroll,
+.device-phone .moviebox-genre-chips {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
