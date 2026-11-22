@@ -16,6 +16,7 @@ export type ChromiumBrowserProps = {
   onInstallApp?: (app: InstalledApp) => void
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
+  onNavigate?: (destination: 'home' | 'movies' | 'series' | 'songs' | 'global' | 'favorites' | 'apps' | 'allsitehub' | 'downloads') => void
 }
 
 export type HistoryItem = {
@@ -450,6 +451,7 @@ export default function ChromiumBrowser({
   onInstallApp,
   onPlayMovie,
   onNavigateToDownloads,
+  onNavigate,
 }: ChromiumBrowserProps) {
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
   useEffect(() => {
@@ -1608,6 +1610,46 @@ export default function ChromiumBrowser({
       role="region"
       aria-label="Chromium Web Browser"
     >
+      {!standalone ? (
+        <aside className="vyora-browser-sidebar" aria-label="VYORA main navigation">
+          <div className="vyora-browser-sidebar-brand" aria-hidden="true">V</div>
+          {([
+            ['home', 'Home', 'home'],
+            ['movies', 'Movies', 'film'],
+            ['series', 'Series', 'clapperboard'],
+            ['songs', 'Music', 'volume'],
+            ['global', 'Live TV', 'tv'],
+            ['favorites', 'Favorites', 'star'],
+            ['apps', 'Apps', 'apps'],
+            ['allsitehub', 'AllSiteHub', 'grid'],
+            ['downloads', 'Downloads', 'download'],
+          ] as const).map(([destination, label, icon]) => (
+            <button
+              key={destination}
+              type="button"
+              className="vyora-browser-sidebar-item"
+              data-focusable
+              title={label}
+              aria-label={label}
+              onClick={() => onNavigate?.(destination)}
+            >
+              <Icon name={icon} size={19} />
+              <span>{label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className="vyora-browser-sidebar-item vyora-browser-sidebar-back"
+            data-focusable
+            title="Back to VYORA home"
+            aria-label="Back to VYORA home"
+            onClick={onClose}
+          >
+            <Icon name="arrow-left" size={19} />
+            <span>Exit</span>
+          </button>
+        </aside>
+      ) : null}
       {/* TOAST MESSAGE */}
       {toastMessage ? (
         <div className="chromium-toast" role="alert">
