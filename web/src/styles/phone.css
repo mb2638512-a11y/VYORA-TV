@@ -1016,11 +1016,11 @@
 
 
 /* Keep Home, Movies, Live TV and Apps in the dock; secondary pages stay in Menu. */
-.device-phone .phone-tab-shell .topnav-btn:nth-child(3),
-.device-phone .phone-tab-shell .topnav-btn:nth-child(4) { display: none !important; }
-.device-phone .phone-tab-shell .topnav-btn:nth-child(5),
-.device-phone .phone-tab-shell .topnav-btn:nth-child(8) { display: flex !important; }
-.device-phone .phone-tab-shell .topnav-btn:nth-child(1) { order: 1; }
-.device-phone .phone-tab-shell .topnav-btn:nth-child(2) { order: 3; }
-.device-phone .phone-tab-shell .topnav-btn:nth-child(5) { order: 2; }
-.device-phone .phone-tab-shell .topnav-btn:nth-child(8) { order: 4; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(3),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(4) { display: none !important; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { display: flex !important; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1) { order: 1; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2) { order: 3; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5) { order: 2; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { order: 4; }
