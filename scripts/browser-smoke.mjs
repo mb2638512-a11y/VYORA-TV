@@ -45,12 +45,10 @@ try {
   // spatially between category chips, not merely scroll the page.
   const allCategoryTab = hub.getByRole('tab').filter({ hasText: 'All (64)' })
   await allCategoryTab.focus()
-  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
-    key: 'ArrowRight', bubbles: true, cancelable: true,
-  })))
+  await page.keyboard.press('ArrowRight')
   const focusedCategory = await page.evaluate(() => document.activeElement?.textContent || '')
   if (!focusedCategory.includes('Movies & Shows')) {
-    throw new Error('Android TV D-pad navigation did not focus the next AllSiteHub category')
+    throw new Error('Android TV D-pad navigation did not focus the next AllSiteHub category; focused: ' + focusedCategory)
   }
 
   const expectedCategories = [['Movies & Shows', 21], ['Anime', 22], ['Manga', 7], ['Live TV & Sports', 10], ['Games', 1], ['Cartoons', 1], ['All in One', 2]]
