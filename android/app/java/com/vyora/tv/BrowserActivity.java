@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.Handler;
 import android.os.Environment;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -82,6 +83,8 @@ public class BrowserActivity extends Activity {
         WebView web;
         Bundle savedState;
         BrowserTab opener;
+        long navigationToken;
+        Runnable loadTimeout;
         BrowserTab(String id, String engineId) {
             this.id=id; this.engineId=engineId; this.title="New tab"; this.url="";
         }
@@ -97,6 +100,7 @@ public class BrowserActivity extends Activity {
     private ProgressBar progress;
     private SharedPreferences prefs;
     private BrowserHostBlocker hostBlocker;
+    private final Handler mainHandler = new Handler();
     private int activeIndex = 0;
     private boolean tv = false;
     private String initialMode = "auto";
@@ -295,8 +299,34 @@ public class BrowserActivity extends Activity {
         return web;
     }
 
+    private void cancelLoadTimeout(BrowserTab tab) {
+        if (tab == null) return;
+        tab.navigationToken++;
+        if (tab.loadTimeout != null) {
+            mainHandler.removeCallbacks(tab.loadTimeout);
+            tab.loadTimeout = null;
+        }
+    }
+
+    private void scheduleLoadTimeout(BrowserTab tab, WebView view) {
+        cancelLoadTimeout(tab);
+        final long token = tab.navigationToken;
+        tab.loadTimeout = () -> {
+            if (tab.navigationToken != token || tab.web != view) return;
+            tab.loadTimeout = null;
+            view.stopLoading();
+            if (current() == tab) {
+                progress.setVisibility(View.GONE);
+                Toast.makeText(BrowserActivity.this,"This page took too long to respond. Loading stopped; tap reload to try again.",Toast.LENGTH_LONG).show();
+                updateControls();
+            }
+        };
+        mainHandler.postDelayed(tab.loadTimeout, 45000L);
+    }
+
     private void suspendTab(BrowserTab tab) {
         if(tab==null || tab.web==null) return;
+        cancelLoadTimeout(tab);
         WebView web=tab.web;
         try {
             Bundle state=new Bundle();
@@ -352,21 +382,25 @@ public class BrowserActivity extends Activity {
                 return true;
             }
             @Override public void onPageStarted(WebView view,String url,android.graphics.Bitmap icon) {
-                tab.url=url; if(current()==tab) { address.setText(url); progress.setVisibility(View.VISIBLE); progress.setProgress(5); }
+                tab.url=url; scheduleLoadTimeout(tab, view);
+                if(current()==tab) { address.setText(url); progress.setVisibility(View.VISIBLE); progress.setProgress(5); }
                 updateTabs();
             }
             @Override public void onPageFinished(WebView view,String url) {
+                cancelLoadTimeout(tab);
                 tab.url=url; String title=view.getTitle(); if(title!=null && !title.trim().isEmpty()) tab.title=title.trim();
                 if(current()==tab) { address.setText(url); progress.setVisibility(View.GONE); updateControls(); updateProtectionButton(); }
                 updateTabs(); saveSession();
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (Build.VERSION.SDK_INT >= 23 && request.isForMainFrame()) cancelLoadTimeout(tab);
                 if (Build.VERSION.SDK_INT >= 23 && request.isForMainFrame() && current()==tab) {
                     progress.setVisibility(View.GONE);
                     Toast.makeText(BrowserActivity.this,"Page could not load. Check your connection, then tap reload.",Toast.LENGTH_LONG).show();
                 }
             }
             @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                cancelLoadTimeout(tab);
                 // A crashed/evicted Chromium renderer must not take down the app.
                 try { if(view.getParent() instanceof ViewGroup) ((ViewGroup)view.getParent()).removeView(view); } catch(Throwable ignored) { }
                 try { view.destroy(); } catch(Throwable ignored) { }
@@ -495,6 +529,7 @@ public class BrowserActivity extends Activity {
 
     private void reloadActiveTab() {
         BrowserTab tab=current(); if(tab==null) return;
+        if (tab.web != null && tab.web.getUrl() != null) { tab.web.reload(); return; }
         WebView web=ensureWebView(tab);
         if(tab.url!=null && !tab.url.isEmpty()) web.loadUrl(tab.url);
         else web.loadUrl(engine(tab.engineId).home);
@@ -559,6 +594,7 @@ public class BrowserActivity extends Activity {
     private void closeTabAt(int index) {
         if(index<0||index>=tabs.size()) return;
         BrowserTab removed=tabs.remove(index);
+        cancelLoadTimeout(removed);
         // Do not leave a popup holding a detached OAuth opener (and its renderer) alive.
         for(BrowserTab tab:tabs) if(tab.opener==removed) tab.opener=null;
         if(removed.web!=null) { webFrame.removeView(removed.web); removed.web.stopLoading(); removed.web.destroy(); removed.web=null; }
@@ -605,7 +641,7 @@ public class BrowserActivity extends Activity {
 
     @Override protected void onDestroy() {
         saveSession();
-        for(BrowserTab t:tabs) if(t.web!=null) { t.web.stopLoading(); t.web.destroy(); t.web=null; }
+        for(BrowserTab t:tabs) { cancelLoadTimeout(t); if(t.web!=null) { t.web.stopLoading(); t.web.destroy(); t.web=null; } }
         tabs.clear(); super.onDestroy();
     }
 }
