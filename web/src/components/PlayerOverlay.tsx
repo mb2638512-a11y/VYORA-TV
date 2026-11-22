@@ -1200,7 +1200,6 @@ export function PlayerOverlay({
           </div>
         ) : null}
         {status === 'error' && !autoSkipOffline ? (
-        {status === 'error' ? (
           <div className="player-status player-error" role="alert">
             <ChannelLogo channel={channel} size="lg" />
             <strong className="error-channel-name">{channel.name}</strong>
@@ -1270,9 +1269,6 @@ export function PlayerOverlay({
               Channel locked: Vyora TV stays on your selected channel with zero auto-hopping.
             </div>
           </div>
-        ) : null}
-
-
         ) : null}
 
         {/* Overlay Info Bar */}
