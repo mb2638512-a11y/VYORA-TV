@@ -12,7 +12,7 @@
   min-height: 100%;
   overflow-x: hidden;
 }
-.device-tv body { font-size: 18px; }
+.device-tv { font-size: 18px; }
 .device-tv .app {
   width: 100%;
   min-width: 0;
