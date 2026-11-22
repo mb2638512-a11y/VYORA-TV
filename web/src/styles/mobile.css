@@ -68,10 +68,13 @@
     scrollbar-width: none;
     box-shadow: 0 -10px 32px rgba(0,0,0,.28);
   }
+  .mobile-bottom-nav .topnav { scroll-snap-type: x proximity; }
+  .mobile-bottom-nav .topnav-btn { scroll-snap-align: start; }
   .mobile-bottom-nav .topnav::-webkit-scrollbar { display: none; }
   .mobile-bottom-nav .topnav-btn {
-    flex: 0 0 66px;
-    min-width: 62px;
+    flex: 0 0 66px !important;
+    width: 66px;
+    min-width: 66px !important;
     min-height: 52px;
     display: inline-flex;
     flex-direction: column;
@@ -150,7 +153,7 @@
 @media (max-width: 420px) {
   .main { padding-left: 11px; padding-right: 11px; }
   .grid-movies-banners { gap: 8px; }
-  .mobile-bottom-nav .topnav-btn { flex-basis: 61px; min-width: 58px; font-size: 9px; }
+  .mobile-bottom-nav .topnav-btn { flex: 0 0 61px !important; width: 61px; min-width: 61px !important; font-size: 9px; }
   .cinema-hero-actions .btn { flex: 1 1 auto; }
 }
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
