@@ -35,7 +35,7 @@ public final class PrivateBrowserActivity extends BrowserActivity {
                 cleanup.clearFormData();
                 cleanup.destroy();
             } catch (Throwable ignored) { }
-            continuation.run();
+            if (!isFinishing() && !isDestroyed()) continuation.run();
         });
     }
 
