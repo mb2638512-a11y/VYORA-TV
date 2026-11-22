@@ -40,6 +40,19 @@ try {
   await hubNav.click()
   const hub = page.locator('.allsitehub-section')
   await hub.waitFor({ state: 'visible', timeout: 10000 })
+
+  // The same synthetic key path used by the Android TV bridge must move focus
+  // spatially between category chips, not merely scroll the page.
+  const allCategoryTab = hub.getByRole('tab').filter({ hasText: 'All (64)' })
+  await allCategoryTab.focus()
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'ArrowRight', bubbles: true, cancelable: true,
+  })))
+  const focusedCategory = await page.evaluate(() => document.activeElement?.textContent || '')
+  if (!focusedCategory.includes('Movies & Shows')) {
+    throw new Error('Android TV D-pad navigation did not focus the next AllSiteHub category')
+  }
+
   const expectedCategories = [['Movies & Shows', 21], ['Anime', 22], ['Manga', 7], ['Live TV & Sports', 10], ['Games', 1], ['Cartoons', 1], ['All in One', 2]]
   const totalSites = await hub.locator('.app-card').count()
   if (totalSites !== 64) throw new Error('Expected 64 AllSiteHub sites, found ' + totalSites)
