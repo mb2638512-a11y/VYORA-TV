@@ -246,47 +246,6 @@ export function PlayerOverlay({
     return () => window.clearTimeout(deadline)
   }, [channel.id])
 
-  const nextOnlineChannel = useCallback(() => {
-    const i = channels.findIndex((c) => c.id === channel.id)
-    if (i === -1 || channels.length < 2) return false
-
-    // 1. Search forward for a verified online channel
-    let target = channels.slice(i + 1).find((c) => statuses[c.id]?.status === 'online')
-    // 2. Search wrap-around from beginning
-    if (!target) {
-      target = channels.slice(0, i).find((c) => statuses[c.id]?.status === 'online')
-    }
-    // 3. Search forward for any non-offline channel
-    if (!target) {
-      target = channels.slice(i + 1).find((c) => statuses[c.id]?.status !== 'offline')
-    }
-    // 4. Search wrap-around for any non-offline channel
-    if (!target) {
-      target = channels.slice(0, i).find((c) => statuses[c.id]?.status !== 'offline')
-    }
-    // 5. Fallback to next channel
-    if (!target) {
-      target = channels[(i + 1) % channels.length]
-    }
-    if (target && target.id !== channel.id) {
-      setToast(t('tuningNextLive'))
-      window.setTimeout(() => {
-        onSwitch(target)
-      }, 250)
-      return true
-    }
-    return false
-  }, [channels, channel.id, statuses, t, onSwitch])
-
-  // Automatically move past a dead channel after every source and retry pass fails.
-  useEffect(() => {
-    if (status !== 'error' || !autoSkipOffline) return
-    const timer = window.setTimeout(() => {
-      if (!nextOnlineChannel()) setToast('No working channel found nearby')
-    }, 650)
-    return () => window.clearTimeout(timer)
-  }, [status, autoSkipOffline, nextOnlineChannel])
-
   const tryNextStream = useCallback(() => {
     const list = channel.streams || []
     if (list.length < 2) return false
