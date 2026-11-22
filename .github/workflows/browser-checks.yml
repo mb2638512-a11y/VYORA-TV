@@ -29,6 +29,10 @@ jobs:
         run: |
           node --check scripts/audit-allsitehub.mjs
           node scripts/audit-allsitehub.mjs --validate-only
+      - name: Validate VOD catalogues, stream URLs and mirrored data
+        run: |
+          node --check scripts/validate-vod-catalog.mjs
+          node scripts/validate-vod-catalog.mjs
       - run: npm --workspace web run build
 
   go-tests:
