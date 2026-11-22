@@ -961,13 +961,11 @@ export function PlayerOverlay({
   }, [channels, channel.id, onSwitch])
 
   const nextChannel = useCallback(() => {
-    if (!nextOnlineChannel()) {
-      const i = channels.findIndex((c) => c.id === channel.id)
-      if (i !== -1 && channels.length > 1) {
-        onSwitch(channels[(i + 1) % channels.length])
-      }
+    const i = channels.findIndex((c) => c.id === channel.id)
+    if (i !== -1 && channels.length > 1) {
+      onSwitch(channels[(i + 1) % channels.length])
     }
-  }, [nextOnlineChannel, channels, channel.id, onSwitch])
+  }, [channels, channel.id, onSwitch])
 
   // Apply volume setting to video element when playing or mounted
   useEffect(() => {
