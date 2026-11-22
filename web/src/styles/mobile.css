@@ -163,3 +163,233 @@
   .cinema-hero-spotlight { display: none; }
   .main { padding-bottom: 76px; }
 }
+
+
+/* ---------- Phone UX hardening: all primary surfaces ---------- */
+@media (max-width: 768px) {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { width: 100%; overflow-x: hidden; }
+  #root { overflow-x: clip; }
+  .app { width: 100%; max-width: 100vw; overflow-x: clip; }
+  .topbar {
+    position: sticky;
+    top: 0;
+    min-height: 56px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    background: rgba(7, 10, 18, .96);
+    border-bottom: 1px solid var(--line);
+  }
+  [data-theme="light"] .topbar { background: rgba(248,250,252,.96); }
+  .topbar-left, .topbar-right { min-width: 0; }
+  .topbar-right { margin-left: auto; }
+  .topbar-right > * { flex: 0 0 auto; }
+  .brand-titles { min-width: 0; }
+  .main {
+    width: 100%;
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding-top: 8px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .main > *, .row, .row > *, section, .home-filter-head { min-width: 0; max-width: 100%; }
+  .row { margin-top: 18px; margin-bottom: 22px; }
+  .row-track, .chips, .chips-scroll, .moviebox-genre-chips {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: 5px;
+  }
+  .row-track::-webkit-scrollbar, .chips::-webkit-scrollbar,
+  .chips-scroll::-webkit-scrollbar, .moviebox-genre-chips::-webkit-scrollbar { display: none; }
+  .chip, .row-track > *, .chips > * { flex: 0 0 auto; }
+  .grid, .grid-channels, .grid-movies, .grid-countries, .grid-themes, .apps-grid {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .card { min-width: 0; max-width: 100%; }
+  .channel-card { min-height: 0; }
+  .channel-card-logo { min-height: 88px; }
+  .channel-card-name, .movie-card-title, .country-name, .app-card-title {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+  .channel-card-sub { min-width: 0; flex-wrap: wrap; gap: 4px; }
+  .channel-card-country-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .fav-btn { width: 38px; height: 38px; }
+  .country-card { min-width: 0; padding: 12px 8px; }
+  .theme-card { min-width: 0; padding: 12px 8px; }
+  .movie-poster-wrap { width: 100%; }
+  .movie-card-meta { min-width: 0; padding: 8px 2px; }
+  .movie-card-sub { flex-wrap: wrap; gap: 3px 6px; }
+  .moviebox-filter-bar { width: 100%; min-width: 0; }
+  .moviebox-filter-bar > div:first-child { min-width: 0; width: 100%; }
+  .moviebox-search-wrap { width: 100%; min-width: 0 !important; }
+  .moviebox-search-input { width: 100%; min-width: 0; font-size: 16px; }
+  .moviebox-filter-bar .chip { min-height: 38px; }
+  .moviebox-billboard { width: 100%; min-width: 0; background-position: center; }
+  .billboard-content { min-width: 0; }
+  .billboard-title, .cinema-hero-title { overflow-wrap: anywhere; }
+  .billboard-actions > .btn { width: 100%; justify-content: center; }
+  .toolbar { width: 100%; min-width: 0; }
+  .toolbar .btn { min-height: 42px; }
+  .cable-epg-row { min-width: 0; gap: 8px; padding: 10px 8px; }
+  .cable-info { min-width: 0; flex: 1 1 auto; }
+  .cable-name, .cable-meta { overflow-wrap: anywhere; }
+  .cable-badge { flex: 0 0 auto; }
+  .load-more { min-height: 46px; width: 100%; }
+  .loader-anchor { width: 100%; padding: 8px 0 18px; }
+  .empty, .loading { max-width: 100%; overflow-wrap: anywhere; }
+
+  /* Modal sheets: usable with a thumb, never wider than the device. */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10020;
+    width: 100%;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .overlay-head { position: sticky; top: 0; z-index: 3; gap: 10px; flex-wrap: wrap; }
+  .overlay-head h2 { font-size: 18px; }
+  .overlay-head .btn { min-height: 42px; }
+  .search-overlay, .settings-overlay, .playlists-overlay,
+  .cinema-settings-modal { width: 100%; max-width: 100%; }
+  .search-box { width: 100%; min-width: 0; }
+  .search-results { min-width: 0; }
+  .keyboard { gap: 5px; }
+  .kb-row { gap: 4px; }
+  .kb-key { min-width: 0; min-height: 42px; padding: 5px 2px; font-size: 13px; }
+  .search-results .grid-channels { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+  /* Settings: convert desktop side rail into a horizontal, scrollable tab strip. */
+  .cinema-settings-head { align-items: flex-start; }
+  .cinema-settings-title-group { min-width: 0; flex: 1 1 100%; }
+  .cinema-settings-subhead { display: block; font-size: 11px; line-height: 1.4; }
+  .cinema-settings-head-actions { width: 100%; justify-content: space-between; }
+  .cinema-settings-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .cinema-settings-nav {
+    position: sticky;
+    top: 64px;
+    z-index: 2;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 7px;
+    padding: 8px 0;
+    background: var(--bg);
+    scrollbar-width: none;
+  }
+  .cinema-settings-nav::-webkit-scrollbar { display: none; }
+  .cinema-settings-nav-item {
+    flex: 0 0 auto;
+    min-width: max-content;
+    min-height: 42px;
+    padding: 8px 11px;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .cinema-settings-nav-item .nav-label { font-size: 12px; }
+  .cinema-settings-content { width: 100%; min-width: 0; overflow: visible; }
+  .settings-tab-pane, .settings-section { min-width: 0; }
+  .settings-banner { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+  .active-player-banner { width: 100%; }
+  .player-category-preferences, .top-players-grid, .layout-picker-grid,
+  .form-grid, .form-row-2 { grid-template-columns: minmax(0,1fr) !important; }
+  .player-engine-card, .layout-card { min-width: 0; }
+  .player-actions-row, .form-actions { flex-wrap: wrap; }
+  .player-actions-row .btn, .form-actions .btn { min-height: 42px; }
+  .settings-section select, .settings-section input, .settings-section textarea,
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .settings-section p, .player-desc, .active-player-desc { overflow-wrap: anywhere; }
+
+  /* Playlist manager and dialogs. */
+  .playlist-tabs, .playlist-tab-bar { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+  .playlist-tab, .playlist-tabs button { flex: 0 0 auto; min-height: 42px; }
+  .playlist-grid, .playlists-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .playlist-card, .playlist-form-container { min-width: 0; width: 100%; }
+  .playlist-card-actions { flex-wrap: wrap; }
+  .playlist-card-actions .btn { min-height: 42px; }
+  .playlist-form-container input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; }
+
+  /* Browser and AllSiteHub are full-width mobile workspaces. */
+  .browser-shell, .chromium-browser, .browser-container,
+  .allsitehub-section { width: 100%; max-width: 100%; min-width: 0; }
+  .browser-toolbar, .browser-controls, .browser-tabbar { flex-wrap: wrap; gap: 7px; }
+  .browser-address, .browser-url-input, .browser-search-input { min-width: 0; width: 100%; font-size: 16px; }
+  .browser-content, .browser-frame-wrap { min-width: 0; max-width: 100%; }
+  .allsitehub-section .home-filter-head { align-items: flex-start !important; }
+  .allsitehub-section > div:nth-of-type(2) { width: 100%; }
+  .allsitehub-section input { min-width: 0 !important; width: 100%; font-size: 16px; }
+  .allsitehub-section .apps-grid { grid-template-columns: minmax(0,1fr); }
+  .app-card { min-width: 0; width: 100%; gap: 10px; }
+  .app-card-body { min-width: 0; }
+  .app-card-desc { overflow-wrap: anywhere; word-break: break-word; }
+  .app-card-launch { min-height: 42px; flex: 0 0 auto; }
+
+  /* Touch targets, form controls and reduced motion. */
+  button, [role="button"], input, select, textarea, a { touch-action: manipulation; }
+  button, [role="button"], .chip, .topnav-btn { -webkit-user-select: none; user-select: none; }
+  input, select, textarea { max-width: 100%; }
+  :focus-visible { outline-offset: 3px; }
+}
+@media (max-width: 420px) {
+  .grid, .grid-channels, .grid-movies, .grid-countries, .grid-themes {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 8px;
+  }
+  .channel-card-logo { min-height: 76px; }
+  .channel-card-meta { padding: 7px; }
+  .channel-card-name, .movie-card-title { font-size: 12px; }
+  .channel-card-sub { font-size: 10px; }
+  .badge-quality, .badge-res-pill, .badge-year { font-size: 9px; }
+  .mobile-bottom-nav {
+    padding-left: max(5px, env(safe-area-inset-left));
+    padding-right: max(5px, env(safe-area-inset-right));
+  }
+  .mobile-bottom-nav .topnav-btn { flex-basis: 60px !important; width: 60px; min-width: 60px !important; }
+  .cinema-hero-footer { flex-wrap: wrap; }
+  .cinema-hero-footer > * { min-width: 0; }
+  .overlay { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-width: 360px) {
+  .brand-name { font-size: 15px; }
+  .topbar { padding-left: 8px; padding-right: 8px; }
+  .topbar-right { gap: 4px; }
+  .topbar-right .btn, .topbar-right .theme-toggle-btn { min-width: 36px; min-height: 36px; padding: 6px; }
+  .grid, .grid-channels, .grid-movies, .grid-countries, .grid-themes { gap: 6px; }
+  .channel-card-logo { min-height: 68px; }
+  .mobile-bottom-nav .topnav-btn { flex-basis: 56px !important; width: 56px; min-width: 56px !important; font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @media (max-width: 768px) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+}
