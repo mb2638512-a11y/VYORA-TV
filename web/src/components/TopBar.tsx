@@ -54,7 +54,7 @@ function PhoneNavigationShell({ left, right, clock, onBrandClick, onMenuToggle, 
           <button type="button" className="phone-menu-toggle" onClick={onMenuToggle}
             aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={Boolean(menuOpen)} title={menuOpen ? 'Close menu' : 'All sections'}>
-            <Icon name={menuOpen ? 'x' : 'menu'} size={19} />
+            <Icon name="menu" size={19} />
           </button>
           <Clock value={clock} />
         </div>
