@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <queries>
         <package android:name="org.videolan.vlc" />
@@ -20,14 +19,6 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
-        <activity
-            android:name=".PrivateBrowserActivity"
-            android:process=":private_browser"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:exported="false"
-            android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/VyoraTheme" />
         android:allowBackup="true"
         android:banner="@drawable/banner"
         android:hardwareAccelerated="true"
@@ -36,6 +27,15 @@
         android:largeHeap="true"
         android:supportsRtl="true"
         android:theme="@style/VyoraTheme"
-        android:usesCleartextTraffic="true" />
+        android:usesCleartextTraffic="true">
 
+        <activity
+            android:name=".PrivateBrowserActivity"
+            android:process=":private_browser"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/VyoraTheme" />
+    </application>
 </manifest>
