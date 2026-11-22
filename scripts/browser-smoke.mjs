@@ -390,7 +390,7 @@ try {
 
   // Closing the only tab must create and activate a fresh New Tab instead
   // of leaving the browser with an activeTabId that no longer exists.
-  await page.getByRole('button', { name: 'Close Tab' }).click()
+  await page.locator('.chromium-tab.active .chromium-tab-close').click()
   await page.locator('.chromium-tab-title').getByText('New Tab').waitFor({ state: 'visible', timeout: 5000 })
   await page.keyboard.press('Control+Shift+T')
   await page.waitForFunction(() => document.querySelectorAll('.chromium-tab').length === 2, null, { timeout: 5000 })
