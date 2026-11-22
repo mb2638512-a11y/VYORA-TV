@@ -5,7 +5,7 @@
   Requires: Android SDK build-tools + platform android.jar, JDK 17, Python 3.
 #>
 param(
-  [string]$Sdk = "$env:LOCALAPPDATA\Android\Sdk",
+  [string]$Sdk = $(if ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } elseif ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { "$env:LOCALAPPDATA\Android\Sdk" }),
   [string]$BuildTools = "35.0.0",
   [string]$Platform = "android-36",
   [string]$MinSdk = "21",
