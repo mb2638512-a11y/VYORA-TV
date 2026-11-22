@@ -21,6 +21,8 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 
 import java.util.Locale;
 
@@ -37,6 +39,8 @@ public class MainActivity extends Activity {
     private TextView overlay;
     private Button playerExpandButton;
     private Button playerCloseButton;
+    private FrameLayout playerLoadingOverlay;
+    private TextView playerLoadingText;
     private boolean tvDevice = false;
     private boolean phonePlayerExpanded = false;
     private TvPlayer player;
@@ -85,6 +89,34 @@ public class MainActivity extends Activity {
         olp.gravity = android.view.Gravity.TOP;
         root.addView(overlay, olp);
 
+        // Media3 SurfaceView is above the WebView, so show a native loading
+        // indicator until the first decoded video frame actually arrives.
+        playerLoadingOverlay = new FrameLayout(this);
+        playerLoadingOverlay.setBackgroundColor(0x66050810);
+        playerLoadingOverlay.setClickable(false);
+        playerLoadingOverlay.setFocusable(false);
+        LinearLayout loadingContent = new LinearLayout(this);
+        loadingContent.setOrientation(LinearLayout.VERTICAL);
+        loadingContent.setGravity(android.view.Gravity.CENTER);
+        ProgressBar loadingSpinner = new ProgressBar(this);
+        LinearLayout.LayoutParams spinnerLp = new LinearLayout.LayoutParams(64, 64);
+        loadingContent.addView(loadingSpinner, spinnerLp);
+        playerLoadingText = new TextView(this);
+        playerLoadingText.setTextColor(Color.WHITE);
+        playerLoadingText.setTextSize(15);
+        playerLoadingText.setGravity(android.view.Gravity.CENTER);
+        playerLoadingText.setMaxWidth(720);
+        playerLoadingText.setPadding(28, 18, 28, 0);
+        loadingContent.addView(playerLoadingText, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        FrameLayout.LayoutParams loadingContentLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.CENTER);
+        playerLoadingOverlay.addView(loadingContent, loadingContentLp);
+        root.addView(playerLoadingOverlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        playerLoadingOverlay.setVisibility(View.GONE);
+
         // Native phone controls must sit above Media3's SurfaceView. WebView
         // controls are underneath that surface and cannot receive touch input.
         playerExpandButton = new Button(this);
@@ -122,6 +154,7 @@ public class MainActivity extends Activity {
             @Override
             public void onFirstFrame(String url, long startupMs) {
                 runOnUiThread(() -> {
+                    hideNativeLoading();
                     if (web == null) return;
                     String safeUrl = org.json.JSONObject.quote(url == null ? "" : url);
                     web.evaluateJavascript(
@@ -146,6 +179,7 @@ public class MainActivity extends Activity {
             @Override
             public void onAllSourcesFailed() {
                 runOnUiThread(() -> {
+                    hideNativeLoading();
                     if (web != null) {
                         web.evaluateJavascript(
                                 "window.dispatchEvent(new Event('vyora-native-sources-failed'));",
@@ -305,6 +339,7 @@ public class MainActivity extends Activity {
     public void startPlayback(String url, String referer, String ua, String title, String logo) {
         surface.setVisibility(View.VISIBLE);
         surface.bringToFront();
+        showNativeLoading(title);
         player.play(url, referer, ua);
         showOverlay(title, referer);
         showPhonePlayerControls();
@@ -329,6 +364,7 @@ public class MainActivity extends Activity {
             }
             surface.setVisibility(View.VISIBLE);
             surface.bringToFront();
+            showNativeLoading(title);
             player.play(urls, referers, uas);
             showOverlay(title, "");
             showPhonePlayerControls();
@@ -339,6 +375,7 @@ public class MainActivity extends Activity {
 
     public void stopPlayback() {
         player.stop();
+        hideNativeLoading();
         surface.setVisibility(View.GONE);
         web.bringToFront();
         overlay.setVisibility(View.GONE);
@@ -351,6 +388,21 @@ public class MainActivity extends Activity {
             phonePlayerExpanded = false;
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
+    }
+
+    private void showNativeLoading(String title) {
+        if (playerLoadingOverlay == null) return;
+        String label = (title == null || title.trim().isEmpty()) ? "Live channel" : title.trim();
+        playerLoadingText.setText(label + "\\nConnecting to live stream…");
+        playerLoadingOverlay.setVisibility(View.VISIBLE);
+        playerLoadingOverlay.bringToFront();
+        if (overlay != null) overlay.bringToFront();
+        if (playerExpandButton != null) playerExpandButton.bringToFront();
+        if (playerCloseButton != null) playerCloseButton.bringToFront();
+    }
+
+    private void hideNativeLoading() {
+        if (playerLoadingOverlay != null) playerLoadingOverlay.setVisibility(View.GONE);
     }
 
     private void showPhonePlayerControls() {
