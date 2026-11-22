@@ -580,3 +580,322 @@
   .device-phone .main { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
   .device-phone .player-info { max-height: 25dvh; }
 }
+
+
+/* Final phone-wide responsive audit: remaining pages, forms, overlays and players. */
+.device-phone *,
+.device-phone *::before,
+.device-phone *::after { box-sizing: border-box; }
+.device-phone { -webkit-text-size-adjust: 100%; }
+.device-phone .main {
+  display: block;
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
+}
+.device-phone .main > * { width: 100%; min-width: 0; max-width: 100%; }
+.device-phone .main section,
+.device-phone .main article,
+.device-phone .main aside,
+.device-phone .main header,
+.device-phone .main footer { min-width: 0; max-width: 100%; }
+.device-phone img,
+.device-phone video,
+.device-phone canvas,
+.device-phone svg { max-width: 100%; }
+.device-phone input,
+.device-phone select,
+.device-phone textarea { min-width: 0; max-width: 100%; font-size: 16px; }
+.device-phone button { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Every browse/library/category collection must shrink to the real viewport. */
+.device-phone .grid,
+.device-phone .grid-channels,
+.device-phone .grid-movies,
+.device-phone .grid-countries,
+.device-phone .grid-themes,
+.device-phone .grid-movies-banners,
+.device-phone .apps-grid,
+.device-phone .playlist-grid,
+.device-phone .playlists-grid,
+.device-phone .top-players-grid,
+.device-phone .layout-picker-grid {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.device-phone .card,
+.device-phone .channel-card,
+.device-phone .movie-card,
+.device-phone .country-card,
+.device-phone .theme-card,
+.device-phone .app-card,
+.device-phone .playlist-card,
+.device-phone .movie-banner-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.device-phone .card img,
+.device-phone .channel-card img,
+.device-phone .movie-card img,
+.device-phone .movie-poster-wrap img {
+  max-width: 100%;
+  object-fit: cover;
+}
+.device-phone .card-title,
+.device-phone .movie-card-title,
+.device-phone .channel-card-name,
+.device-phone .country-name,
+.device-phone .app-card-title,
+.device-phone .playlist-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.device-phone .toolbar,
+.device-phone .filter-bar,
+.device-phone .moviebox-filter-bar,
+.device-phone .player-actions-row,
+.device-phone .form-actions,
+.device-phone .cinema-hero-actions,
+.device-phone .billboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 7px;
+}
+.device-phone .toolbar > *,
+.device-phone .filter-bar > *,
+.device-phone .moviebox-filter-bar > * { min-width: 0; max-width: 100%; }
+.device-phone .row-track,
+.device-phone .chips,
+.device-phone .chips-scroll,
+.device-phone .moviebox-genre-chips,
+.device-phone .playlist-tabs,
+.device-phone .playlist-tab-bar,
+.device-phone .drawer-filter-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.device-phone .row-track > *,
+.device-phone .chips > *,
+.device-phone .chips-scroll > *,
+.device-phone .playlist-tabs > *,
+.device-phone .playlist-tab-bar > * { flex: 0 0 auto; }
+
+/* Browser, settings, downloads and app-management workspaces. */
+.device-phone .chromium-browser:not(.chromium-browser-standalone) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: none;
+  padding-left: 0;
+  border-radius: 0;
+}
+.device-phone .vyora-browser-sidebar { display: none; }
+.device-phone .chromium-browser-standalone {
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+.device-phone .chromium-browser-standalone .chromium-iframe-wrapper,
+.device-phone .chromium-browser-standalone .chromium-iframe-scaler,
+.device-phone .chromium-browser-standalone .chromium-iframe {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.device-phone .cinema-settings-modal,
+.device-phone .settings-overlay,
+.device-phone .search-overlay,
+.device-phone .playlists-overlay,
+.device-phone .cinema-settings-content,
+.device-phone .settings-tab-pane,
+.device-phone .settings-section {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.device-phone .cinema-settings-modal,
+.device-phone .settings-overlay,
+.device-phone .search-overlay,
+.device-phone .playlists-overlay {
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.device-phone .settings-row,
+.device-phone .settings-banner,
+.device-phone .settings-card,
+.device-phone .form-row,
+.device-phone .form-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+.device-phone .settings-row { flex-wrap: wrap; }
+.device-phone .settings-row > * { min-width: 0; max-width: 100%; }
+.device-phone table { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
+.device-phone pre,
+.device-phone code { max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Correct actual player DOM classes (player-video is the video/iframe node). */
+.device-phone .player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: #000;
+}
+.device-phone .player-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.device-phone .player-video {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  border: 0;
+  background: #000;
+  object-fit: contain;
+}
+.device-phone .player-embed-frame { position: absolute; inset: 0; }
+.device-phone .player-status { max-width: calc(100vw - 28px); overflow-wrap: anywhere; }
+.device-phone .player-info {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 38dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+}
+.device-phone .player-hud-actions {
+  justify-content: flex-start;
+  gap: 5px;
+}
+.device-phone .hud-action-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  justify-content: center;
+}
+.device-phone .hud-action-btn span { display: none; }
+.device-phone .hud-btn-back span,
+.device-phone .hud-btn-channels span { display: inline; }
+.device-phone .player-drawer {
+  position: fixed;
+  z-index: 12020;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: 100%;
+  height: min(82dvh, 720px);
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.device-phone .drawer-scrim {
+  position: fixed;
+  z-index: 12010;
+  inset: 0;
+}
+.device-phone .drawer-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .drawer-item { min-width: 0; width: 100%; }
+.device-phone .player-engine-picker {
+  position: fixed;
+  z-index: 12030;
+  left: 10px;
+  right: 10px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: none;
+  max-height: 72dvh;
+  overflow-y: auto;
+}
+.device-phone .player-close,
+.device-phone .player-menu-btn,
+.device-phone .player-external-btn {
+  min-width: 42px;
+  min-height: 42px;
+}
+
+/* Avoid content hiding behind persistent navigation and system gesture area. */
+.device-phone .main { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+.device-phone .overlay,
+.device-phone .chromium-dialog-overlay {
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+@media (max-width: 430px) {
+  .device-phone .grid,
+  .device-phone .grid-channels,
+  .device-phone .grid-movies,
+  .device-phone .grid-countries,
+  .device-phone .grid-themes,
+  .device-phone .grid-movies-banners,
+  .device-phone .apps-grid,
+  .device-phone .playlist-grid,
+  .device-phone .playlists-grid { gap: 8px; }
+  .device-phone .topbar-phone .topbar-right { max-width: 48%; }
+  .device-phone .topbar-phone .brand-mark { width: 32px; height: 32px; }
+  .device-phone .topbar-phone .brand-name { font-size: 15px; }
+  .device-phone .player-info-right { display: none; }
+}
+@media (max-width: 340px) {
+  .device-phone .grid-channels,
+  .device-phone .grid-movies,
+  .device-phone .grid-countries,
+  .device-phone .grid-themes,
+  .device-phone .grid-movies-banners,
+  .device-phone .apps-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .device-phone .chromium-browser:not(.chromium-browser-standalone) {
+    height: calc(100dvh - 98px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .device-phone .player-info { max-height: 28dvh; }
+  .device-phone .player-drawer { height: 88dvh; }
+}
