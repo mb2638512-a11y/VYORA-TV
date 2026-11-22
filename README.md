@@ -207,3 +207,49 @@ Partial progress is checkpointed every 25 completed sources under
 `reports/stream-audit/`. Checkpoints contain result metadata and provider origins only;
 the catalogue URL set is fingerprinted for matching on resume. The report CSV/JSON
 never stores URL paths, query strings, fragments, or playback tokens.
+
+---
+
+## 6. Entertainment hubs & AllSiteHub
+
+The app includes three VOD/music sections alongside Live TV:
+
+| Hub | Catalogue |
+|---|---:|
+| Movies | 2,943 titles |
+| Series | 23 shows with episode entries |
+| Songs & Music | 803 music channels |
+
+Movies, series and songs are served from `server/data/vod/`, mirrored to
+`web/public/data/vod/`, `web/dist/data/vod/` and
+`android/app/assets/data/vod/`. The Go API exposes:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/vod/index` | VOD catalogue totals and genres |
+| `GET /api/vod/movies?genre=&q=&limit=` | Search/filter movies |
+| `GET /api/vod/series?genre=&q=&limit=` | Search/filter series |
+| `GET /api/vod/songs?genre=&q=&limit=` | Search/filter music channels |
+
+Large grids are paginated on the client (48 movies and 240 music channels per
+page) to reduce initial DOM work on lower-powered TV devices. Use **Load More**
+to reveal further results.
+
+AllSiteHub is a built-in platform directory with 64 external websites across
+7 received categories. It is separate from user-installed apps and opens sites
+inside VYORA Browser. External website availability, login, embedded media and
+playback are controlled by each provider; directory inclusion is not a live
+availability guarantee.
+
+### Catalogue commands
+
+```powershell
+npm run build:vod       # regenerate movies, series and music catalogue files
+npm run validate:vod    # validate IDs, URLs, counts and all four data mirrors
+npm run audit:allsitehub # optional HTTP reachability audit of the 64 homepages
+```
+
+The AllSiteHub audit is a bounded HTTP check (3 concurrent requests, 10-second
+timeout); it does not test sign-in, page rendering, video playback or content
+licensing. It can also be started manually from GitHub Actions:
+**AllSiteHub external link audit → Run workflow**.
