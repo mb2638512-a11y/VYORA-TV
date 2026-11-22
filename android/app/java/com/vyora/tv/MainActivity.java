@@ -340,6 +340,9 @@ public class MainActivity extends Activity {
         surface.setVisibility(View.GONE);
         web.bringToFront();
         overlay.setVisibility(View.GONE);
+        if (web != null) {
+            web.evaluateJavascript("window.dispatchEvent(new Event('vyora-native-player-closed'));", null);
+        }
         if (playerExpandButton != null) playerExpandButton.setVisibility(View.GONE);
         if (playerCloseButton != null) playerCloseButton.setVisibility(View.GONE);
         if (!tvDevice) {
