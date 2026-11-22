@@ -594,7 +594,10 @@ public class BrowserActivity extends Activity {
                 try { tab.web.stopLoading(); tab.web.clearCache(true); tab.web.clearHistory(); tab.web.clearFormData(); } catch (Throwable ignored) { }
             }
         }
-        try { CookieManager.getInstance().removeAllCookies(null); CookieManager.getInstance().flush(); } catch (Throwable ignored) { }
+        try {
+            CookieManager cookies = CookieManager.getInstance();
+            cookies.removeAllCookies(value -> cookies.flush());
+        } catch (Throwable ignored) { }
         try { WebStorage.getInstance().deleteAllData(); } catch (Throwable ignored) { }
     }
 
