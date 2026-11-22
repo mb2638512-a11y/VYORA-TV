@@ -995,3 +995,21 @@
     height: 100dvh;
   }
 }
+
+
+/* VYORA phone navigation: four frequent destinations, everything else in a drawer. */
+.device-phone .phone-menu-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;border:1px solid var(--line-bright);border-radius:12px;color:var(--text);background:var(--surface-2,rgba(255,255,255,.07))}
+.device-phone .phone-tab-shell{z-index:10050!important;padding:5px max(7px,env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left))}
+.device-phone .phone-menu-panel{width:100%;min-width:0}
+.device-phone .phone-tab-shell .topnav{display:flex!important;flex-direction:row;align-items:stretch;justify-content:space-around;gap:3px}
+.device-phone .phone-tab-shell .topnav-btn:nth-child(n+5){display:none!important}
+.device-phone .phone-tab-shell .topnav-btn{flex:1 1 0!important;min-width:0!important;max-width:none;width:auto!important;min-height:52px;padding:5px 2px;overflow:hidden;text-overflow:ellipsis}
+.device-phone .phone-tab-shell.menu-open{position:fixed!important;inset:0!important;z-index:20000!important;display:block!important;width:100vw!important;height:100dvh!important;min-height:100dvh!important;padding:0!important;background:rgba(0,0,0,.58);backdrop-filter:blur(5px);overflow:hidden}
+.device-phone .phone-tab-shell.menu-open .phone-menu-panel{position:absolute;top:0;bottom:0;left:0;width:min(84vw,340px);height:100%;padding:max(18px,env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;background:var(--panel,#101827);border-right:1px solid var(--line-bright);box-shadow:18px 0 48px rgba(0,0,0,.38)}
+.device-phone .phone-tab-shell.menu-open .topnav{display:flex!important;flex-direction:column!important;align-items:stretch;justify-content:flex-start;gap:7px;width:100%;height:auto;max-height:none;min-height:0;overflow:visible!important}
+.device-phone .phone-tab-shell.menu-open .topnav-btn,.device-phone .phone-tab-shell.menu-open .topnav-btn:nth-child(n+5){display:flex!important;flex:0 0 auto!important;width:100%!important;max-width:none;min-width:0!important;min-height:48px;justify-content:flex-start;flex-direction:row;gap:12px;padding:10px 13px;border-radius:12px;font-size:14px;text-align:left}
+.device-phone .allsitehub-section .allsitehub-card{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:10px;padding:13px}
+.device-phone .allsitehub-section .allsitehub-card .app-card-body{min-width:0}
+.device-phone .allsitehub-section .allsitehub-card .app-card-title{overflow-wrap:anywhere}
+.device-phone .allsitehub-section .allsitehub-card .app-card-launch{display:inline-flex;width:100%;min-height:42px;justify-content:center;align-items:center;gap:8px;white-space:nowrap;font-size:12px}
+.device-phone .player-expand-toggle{display:none!important}
