@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
 import android.os.Environment;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -236,7 +237,7 @@ public class BrowserActivity extends Activity {
         s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
         s.setSupportZoom(true); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
         s.setLoadsImagesAutomatically(true); s.setMediaPlaybackRequiresUserGesture(true);
-        s.setJavaScriptCanOpenWindowsAutomatically(false); s.setSupportMultipleWindows(false);
+        s.setJavaScriptCanOpenWindowsAutomatically(false); s.setSupportMultipleWindows(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -272,6 +273,23 @@ public class BrowserActivity extends Activity {
             @Override public void onReceivedTitle(WebView view,String title) {
                 if(title!=null && !title.trim().isEmpty()) tab.title=title.trim();
                 updateTabs();
+            }
+            @Override public boolean onCreateWindow(WebView view, boolean isDialog,
+                                                    boolean isUserGesture, Message resultMsg) {
+                // Allow user-initiated OAuth/sign-in and target=_blank windows.
+                // Scripted background popups stay blocked to avoid ad spam.
+                if (!isUserGesture || resultMsg == null || tabs.size() >= MAX_TABS) return false;
+                BrowserTab popup = createTab(tab.engineId);
+                tabs.add(popup);
+                activeIndex = tabs.size() - 1;
+                showActiveTab();
+                updateTabs();
+                WebView.WebViewTransport transport =
+                        (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(popup.web);
+                resultMsg.sendToTarget();
+                saveSession();
+                return true;
             }
         });
         tab.web.setDownloadListener((url,userAgent,contentDisposition,mimeType,contentLength)->download(url,userAgent,contentDisposition,mimeType));
