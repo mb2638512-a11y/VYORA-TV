@@ -13,15 +13,13 @@ import android.widget.Toast;
  */
 public final class PrivateBrowserActivity extends BrowserActivity {
     @Override public void onCreate(Bundle state) {
-        if (Build.VERSION.SDK_INT < 28) {
-            Toast.makeText(this, "Private browsing requires Android 9 or newer on this device.", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-        // Must be called before BrowserActivity (or anything else in this process)
-        // creates the first WebView.
-        WebView.setDataDirectorySuffix("vyora_private");
+        // Must be called before BrowserActivity creates the first WebView.
+        if (Build.VERSION.SDK_INT >= 28) WebView.setDataDirectorySuffix("vyora_private");
         super.onCreate(state);
+        if (Build.VERSION.SDK_INT < 28) {
+            Toast.makeText(this, "Private browsing requires Android 9 or newer for isolated storage.", Toast.LENGTH_LONG).show();
+            finish();
+        }
     }
 
     @Override protected boolean isPrivateSession() {
@@ -29,14 +27,8 @@ public final class PrivateBrowserActivity extends BrowserActivity {
     }
 
     @Override protected void onDestroy() {
-        // Do not retain private cookies, cache, DOM storage, or WebView history
-        // when the private browser window is closed.
-        try {
-            CookieManager cookies = CookieManager.getInstance();
-            cookies.removeAllCookies(null);
-            cookies.flush();
-        } catch (Throwable ignored) { }
-        try { WebStorage.getInstance().deleteAllData(); } catch (Throwable ignored) { }
+        // Destroy and clear private renderers/storage before the private process exits.
+        clearPrivateBrowsingData();
         super.onDestroy();
     }
 }
