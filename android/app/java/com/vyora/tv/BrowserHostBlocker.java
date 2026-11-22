@@ -2,7 +2,6 @@ package com.vyora.tv;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.BufferedReader;
