@@ -452,8 +452,10 @@ export function PlayerOverlay({
     )
 
     if (isEmbed) {
-      setStatus('playing')
-      setBuffering(false)
+      // The provider page has not loaded yet; let the iframe's load event
+      // move the UI out of its loading state instead of claiming playback early.
+      setStatus('loading')
+      setBuffering(true)
       setIsMuted(false)
       return () => {}
     }
@@ -1074,6 +1076,16 @@ export function PlayerOverlay({
               title={channel.name}
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => {
+                setStatus('playing')
+                setBuffering(false)
+              }}
+              onError={() => {
+                setStatus('error')
+                setBuffering(false)
+                setToast('This embedded player could not be loaded')
+              }}
               style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
             />
           ) : (
