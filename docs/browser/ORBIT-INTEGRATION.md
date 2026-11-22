@@ -59,7 +59,7 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 
 ## Current known VYORA browser defects to eliminate
 
-The existing `BrowserActivity` creates a WebView per tab, sets `setSupportMultipleWindows(false)`, disables automatic JavaScript window opening, and has no isolated private-profile implementation. These are concrete causes of popup/sign-in and privacy-mode gaps. Replace this implementation as the Orbit port lands; do not treat a settings-only cosmetic change as a fix.
+The existing `BrowserActivity` still creates a live WebView for every tab and has no isolated private-profile implementation. Popup support is now enabled for user-initiated windows, with scripted background popups rejected and transport validation added; this is an interim compatibility fix, not the full Orbit popup/adblock policy. The per-tab WebView allocation is a key memory/performance gap versus Orbit's single-live-WebView + saved-state tab lifecycle. Replace this implementation as the Orbit port lands; do not treat a settings-only cosmetic change as a fix.
 
 ## CI strategy
 
@@ -70,3 +70,27 @@ Use GitHub Actions on this branch/PR to:
 4. Upload phone and TV APK artifacts for device testing.
 
 A successful CI build is not a substitute for physical Android phone and Android TV testing.
+
+
+## Orbit source audit — performance-critical pieces
+
+The pinned Orbit tree was inspected at the exact upstream commit. It is a complete browser application, not a standalone WebView dependency. Its performance characteristics depend on the combined implementation:
+
+- `TabManager` keeps background tabs serialized and restores a WebView when selected; only a bounded number of renderers stay live.
+- `WebViewFactory` applies low-memory WebView settings, safe browsing, image controls, cache policy, document-start cosmetic/performance scripts and WebKit feature checks.
+- `AdblockService` builds filter lists off the UI thread, keeps a compiled `engine.bin` cache and a fast `hosts.bin` path, and avoids repeating a failed/OOM filter compilation on every launch.
+- `AdblockEngine` uses a read/write lock around JNI handles so request filtering cannot race native-engine replacement/free.
+- `OrbitWebViewClient` and `OrbitChromeClient` coordinate request interception, page lifecycle, popup windows and site-level protection.
+- `NativeAdblock` requires the matching Rust JNI ABI plus packaged `libadblock_jni.so` files for supported Android ABIs. Kotlin wrappers alone do not enable ad blocking.
+
+The current VYORA branch has no Orbit JNI libraries or Rust engine sources in its Android tree yet. The existing CI success therefore validates the VYORA Android packaging and current browser shell only; it does not validate Orbit ad blocking, Orbit's low-memory tab lifecycle, or private-profile isolation.
+
+### Performance acceptance targets
+
+- Keep only the active tab's WebView alive by default; save and restore background tab state safely.
+- Never compile multi-megabyte filter lists on the UI thread. Download, parse, compile and persist filter data in background workers.
+- Load a versioned compiled filter cache on subsequent launches; fall back safely if the JNI library or cache is unavailable.
+- Bound in-memory decision caches and release them under memory pressure.
+- Do not eagerly restore every tab's WebView on app startup.
+- Preserve opener relationships while an OAuth popup is active so `window.opener.postMessage` flows continue to work.
+- Measure cold start, first-page render, tab switch, peak memory and renderer recovery on a low-RAM phone before claiming Orbit-level performance.
