@@ -153,8 +153,10 @@ function getInitialBookmarks(): Bookmark[] {
 function getInitialSettings(): BrowserSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
-    if (raw) const parsed = JSON.parse(raw)
+    if (raw) {
+      const parsed = JSON.parse(raw)
       return { ...DEFAULT_BROWSER_SETTINGS, ...parsed, defaultEngine: normalizeBrowserEngineId(parsed?.defaultEngine) }
+    }
   } catch (e) {
     // ignore
   }
