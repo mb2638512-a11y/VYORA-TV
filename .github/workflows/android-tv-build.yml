@@ -34,6 +34,7 @@ jobs:
       - run: npm ci
       - run: npm run data
       - run: npm run build:vod
+      - run: npx tsc --noEmit -p web/tsconfig.json
       - run: npm --workspace web run build
       - name: Bundle latest web platform into Android TV app
         run: |
