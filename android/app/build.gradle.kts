@@ -17,9 +17,7 @@ android {
 
     flavorDimensions += "device"
     productFlavors {
-        create("tv") {
-            dimension = "device"
-        }
+        create("tv") { dimension = "device" }
         create("phone") {
             dimension = "device"
             applicationIdSuffix = ".phone"
@@ -28,17 +26,17 @@ android {
 
     sourceSets {
         getByName("main") {
-            manifest.srcFile("app/AndroidManifest.common.xml")
-            java.setSrcDirs(listOf("app/java"))
-            res.setSrcDirs(listOf("app/res"))
-            assets.setSrcDirs(listOf("app/assets"))
-            jniLibs.setSrcDirs(listOf("app/jniLibs"))
+            manifest.srcFile("AndroidManifest.common.xml")
+            java.setSrcDirs(listOf("java"))
+            res.setSrcDirs(listOf("res"))
+            assets.setSrcDirs(listOf("assets"))
+            jniLibs.setSrcDirs(listOf("jniLibs"))
         }
         getByName("tv") {
-            manifest.srcFile("app/AndroidManifest.xml")
+            manifest.srcFile("AndroidManifest.xml")
         }
         getByName("phone") {
-            manifest.srcFile("app/AndroidManifest.phone.xml")
+            manifest.srcFile("AndroidManifest.phone.xml")
         }
     }
 
@@ -47,13 +45,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures {
-        buildConfig = true
-    }
+    buildFeatures { buildConfig = true }
 
     packaging {
         resources {
@@ -71,13 +65,11 @@ dependencies {
     implementation(fileTree(rootProject.file("libs")) {
         include("*.jar", "*.aar")
     })
-
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     implementation("com.google.android.material:material:1.13.0")
-
     implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
 }
