@@ -716,22 +716,6 @@ export default function ChromiumBrowser({
     }
   }
 
-  const isVideoSite = activeTab?.url
-    ? /(youtube\.com|youtu\.be|vimeo\.com|twitch\.tv|dailymotion\.com|\.(mp4|mkv|webm|m3u8|ts)(\?|$))/i.test(
-        activeTab.url,
-      )
-    : false
-
-  const streamInVyoraPlayer = () => {
-    if (!activeTab?.url) return
-    if (onPlayMovie) {
-      onPlayMovie(activeTab.url, activeTab.title || 'Web Video Stream')
-      showToast('🎬 Streaming in Vyora TV Hardware Player...')
-    } else {
-      showToast('Player handler not connected')
-    }
-  }
-
   // Synchronize omnibox input when tab changes
   useEffect(() => {
     if (activeTab) {
@@ -2105,19 +2089,6 @@ export default function ChromiumBrowser({
 
         {/* ACTIONS */}
         <div className="chromium-actions">
-          {isVideoSite ? (
-            <button
-              type="button"
-              className="chromium-badge-btn stream-video-btn"
-              onClick={streamInVyoraPlayer}
-              title="Stream this video with hardware acceleration in Vyora TV Player"
-              data-focusable
-            >
-              <Icon name="play" size={13} />
-              <span className="chromium-btn-label">Stream on TV</span>
-            </button>
-          ) : null}
-
           <button
             type="button"
             className="chromium-badge-btn install-app-btn"
