@@ -1,6 +1,7 @@
 package com.vyora.tv;
 
 import android.app.Activity;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,6 +20,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Button;
 
 import java.util.Locale;
 
@@ -31,6 +33,10 @@ public class MainActivity extends Activity {
     private WebView web;
     private SurfaceView surface;
     private TextView overlay;
+    private Button playerExpandButton;
+    private Button playerCloseButton;
+    private boolean tvDevice = false;
+    private boolean phonePlayerExpanded = false;
     private TvPlayer player;
     private LocalServer localServer;
     private TextToSpeech tts;
@@ -44,6 +50,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         try {
         startupStage = "window configuration";
+        tvDevice = getPackageManager().hasSystemFeature("android.software.leanback");
         configureWindowForDevice();
 
         startupStage = "native view creation";
@@ -75,6 +82,35 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         olp.gravity = android.view.Gravity.TOP;
         root.addView(overlay, olp);
+
+        // Native phone controls must sit above Media3's SurfaceView. WebView
+        // controls are underneath that surface and cannot receive touch input.
+        playerExpandButton = new Button(this);
+        playerExpandButton.setText("⛶  Expand");
+        playerExpandButton.setTextAllCaps(false);
+        playerExpandButton.setTextColor(Color.WHITE);
+        playerExpandButton.setTextSize(14);
+        playerExpandButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xDD172235));
+        FrameLayout.LayoutParams expandLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        expandLp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
+        expandLp.setMargins(0, 0, 24, 28);
+        root.addView(playerExpandButton, expandLp);
+        playerExpandButton.setVisibility(View.GONE);
+        playerExpandButton.setOnClickListener(v -> togglePhonePlayerOrientation());
+
+        playerCloseButton = new Button(this);
+        playerCloseButton.setText("✕");
+        playerCloseButton.setTextAllCaps(false);
+        playerCloseButton.setTextColor(Color.WHITE);
+        playerCloseButton.setTextSize(18);
+        playerCloseButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xDD172235));
+        FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(56, 52);
+        closeLp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+        closeLp.setMargins(0, 22, 16, 0);
+        root.addView(playerCloseButton, closeLp);
+        playerCloseButton.setVisibility(View.GONE);
+        playerCloseButton.setOnClickListener(v -> stopPlayback());
 
         setContentView(root);
 
@@ -199,7 +235,8 @@ public class MainActivity extends Activity {
 
     /** Keep TV immersive while allowing phone status/navigation bars and portrait layout. */
     private void configureWindowForDevice() {
-        boolean tv = getPackageManager().hasSystemFeature("android.software.leanback");
+        boolean tv = tvDevice;
+        setRequestedOrientation(tv ? ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         getWindow().setStatusBarColor(Color.rgb(6, 7, 13));
         getWindow().setNavigationBarColor(Color.rgb(6, 7, 13));
         View decor = getWindow().getDecorView();
@@ -268,6 +305,7 @@ public class MainActivity extends Activity {
         surface.bringToFront();
         player.play(url, referer, ua);
         showOverlay(title, referer);
+        showPhonePlayerControls();
     }
 
     /**
@@ -291,6 +329,7 @@ public class MainActivity extends Activity {
             surface.bringToFront();
             player.play(urls, referers, uas);
             showOverlay(title, "");
+            showPhonePlayerControls();
         } catch (Throwable t) {
             Log.e(TAG, "startPlaybackMulti failed", t);
         }
@@ -301,6 +340,39 @@ public class MainActivity extends Activity {
         surface.setVisibility(View.GONE);
         web.bringToFront();
         overlay.setVisibility(View.GONE);
+        if (playerExpandButton != null) playerExpandButton.setVisibility(View.GONE);
+        if (playerCloseButton != null) playerCloseButton.setVisibility(View.GONE);
+        if (!tvDevice) {
+            phonePlayerExpanded = false;
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        }
+    }
+
+    private void showPhonePlayerControls() {
+        if (tvDevice) return;
+        phonePlayerExpanded = false;
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        if (playerExpandButton != null) {
+            playerExpandButton.setText("⛶  Expand");
+            playerExpandButton.setVisibility(View.VISIBLE);
+        }
+        if (playerCloseButton != null) playerCloseButton.setVisibility(View.VISIBLE);
+        if (overlay != null) overlay.bringToFront();
+        if (playerExpandButton != null) playerExpandButton.bringToFront();
+        if (playerCloseButton != null) playerCloseButton.bringToFront();
+    }
+
+    private void togglePhonePlayerOrientation() {
+        if (tvDevice) return;
+        phonePlayerExpanded = !phonePlayerExpanded;
+        setRequestedOrientation(phonePlayerExpanded
+                ? ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        if (playerExpandButton != null) {
+            playerExpandButton.setText(phonePlayerExpanded ? "↙  Portrait" : "⛶  Expand");
+            playerExpandButton.bringToFront();
+        }
+        if (playerCloseButton != null) playerCloseButton.bringToFront();
     }
 
     /** Base URL of the embedded engine (used to resolve relative app URLs). */
