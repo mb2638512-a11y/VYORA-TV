@@ -52,10 +52,12 @@ try {
   const hubSearch = hub.getByRole('textbox', { name: 'Search AllSiteHub sites' })
   await hubSearch.fill('gojolive')
   const searchMatches = await hub.locator('.app-card').count()
-  if (searchMatches !== 1 || !(await hub.getByText('GojoLive').isVisible())) {
+  const gojoCard = hub.getByRole('button', { name: /GojoLive gojolive\.site/i })
+  if (searchMatches !== 1 || !(await gojoCard.isVisible())) {
     throw new Error('AllSiteHub search should return only GojoLive; found ' + searchMatches)
   }
   await hubSearch.fill('')
+  await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/allsitehub.png', fullPage: true })
 
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })
