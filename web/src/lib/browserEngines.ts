@@ -60,7 +60,12 @@ export const BROWSER_ENGINES_LIST: EngineConfig[] = engines.map((engine) => {
     requiresAuth: Boolean(engine.requiresAuth),
     suggestEngine,
   }
-})
+}).concat([{
+  id: 'brave', name: 'Brave Search', short: 'Brave', tagline: 'web', category: 'web',
+  searchUrl: (query: string) => `https://search.brave.com/search?q=${encodeURIComponent(query)}`,
+  homeUrl: 'https://search.brave.com/', color: '#FB542B',
+  favicon: 'https://search.brave.com/favicon.ico', requiresAuth: false,
+}])
 
 const byId = Object.fromEntries(BROWSER_ENGINES_LIST.map((engine) => [engine.id, engine])) as Record<string, EngineConfig>
 
@@ -71,7 +76,7 @@ const LEGACY_ENGINE_IDS: Record<string, string> = {
   bing: 'bing1',
   duckduckgo: 'duckduckgo2',
   yahoo: 'yahoo4',
-  brave: 'brave-search',
+  brave: 'brave',
 }
 
 export function normalizeBrowserEngineId(
@@ -90,6 +95,7 @@ export const BROWSER_ENGINES: Record<string, EngineConfig> = {
   bing: byId.bing1,
   duckduckgo: byId.duckduckgo2,
   yahoo: byId.yahoo4,
+  brave: byId.brave,
 }
 
 export const BROWSER_ENGINE_CATEGORIES = [
