@@ -25,7 +25,7 @@ flags, real channel logos, aur D-pad (remote) se poora control.
 | Auto fallback | Dead/slow source pe automatically next stream try hoti hai |
 | Waiting queue | Offline channel queue me daalein - har minute khud check hota hai |
 | Accessibility | Audio description (TTS), focus announcements, large text, high contrast |
-| Android TV | Native app (ExoPlayer/Media3 + WebView), leanback launcher, built without Gradle |
+| Android TV + Android phones | One native app (ExoPlayer/Media3 + WebView), Leanback + phone launcher, portrait/landscape layouts, built without Gradle |
 | Player selection | 10 playback options; VYORA Player is default; independent defaults for Live TV, Movies, Series and Downloads; Android external-player handoff for VLC, MX, mpv, Kodi, Nova and Just Player |
 
 ---
@@ -55,7 +55,7 @@ E:\Vyora TV
 │  │  ├─ lib/{api,bridge,nav,i18n}.ts
 │  │  └─ components/         # Cards, PlayerOverlay, SearchOverlay, SettingsOverlay
 │  └─ public/data/           # dataset copy for the static build
-├─ android/                  # native Android TV app (no Gradle)
+├─ android/                  # native Android TV + phone app (no Gradle)
 │  ├─ app/                   # manifest, java, res
 │  ├─ libs/                  # Media3/ExoPlayer AARs
 │  ├─ tools/pack_apk.py
@@ -116,6 +116,24 @@ TV par install:
 adb connect <tv-ip>:5555
 adb install -r android\out\VyoraTV-1.0.0.apk
 ```
+
+### Android phones
+
+The same Android package supports phones and Android TV; a separate phone-only app is not required.
+On phones the activity allows portrait and landscape rotation, keeps Android status/navigation
+bars visible, and uses the phone-first responsive layout: a bottom swipeable navigation bar,
+compact entertainment cards, touch-sized controls, safe-area spacing, and phone-sized player
+drawers. Android TV devices retain immersive full-screen mode and the remote/D-pad interface.
+
+Phone install (after you build the APK locally):
+
+```powershell
+adb devices
+adb install -r android\\out\\VyoraTV-1.0.0.apk
+```
+
+Physical phone testing is still required for real playback, device-specific status-bar insets,
+and external-player handoff. CI checks compile the Android Java sources but do not build an APK.
 
 App mein:
 - Leanback launcher (TV home screen par app icon)
