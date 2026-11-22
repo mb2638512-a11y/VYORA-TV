@@ -2504,11 +2504,11 @@ export default function App() {
               </div>
             </div>
 
-            {seriesFiltered.length === 0 ? (
+            {visibleSeries.length === 0 ? (
               <div className="empty"><Icon name="grid" size={24} /> No series match your filter</div>
             ) : (
               <div className="grid grid-movies">
-                {seriesFiltered.map((s) => (
+                {visibleSeries.map((s) => (
                   <SeriesCard key={s.id} series={s} onOpen={(sel) => setSelectedSeries(sel)} />
                 ))}
               </div>
