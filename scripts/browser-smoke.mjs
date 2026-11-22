@@ -103,22 +103,30 @@ try {
   // Phone-first navigation: portrait viewport, persistent bottom navigation,
   // touch-sized controls, and a working Movies route without horizontal page overflow.
   await page.setViewportSize({ width: 390, height: 844 })
-  const phoneNav = page.locator('.mobile-bottom-nav .topnav')
+  const phoneNavWrapper = page.locator('.mobile-bottom-nav')
+  const phoneNav = phoneNavWrapper.locator('.topnav')
   await phoneNav.getByRole('button', { name: 'Home', exact: true }).click()
-  const phoneNavStyle = await phoneNav.evaluate((element) => {
-    const rect = element.getBoundingClientRect()
-    const style = getComputedStyle(element)
+  const phoneNavStyle = await phoneNavWrapper.evaluate((wrapper) => {
+    const nav = wrapper.querySelector('.topnav')
+    const buttons = Array.from(nav.querySelectorAll('.topnav-btn'))
+    const rect = wrapper.getBoundingClientRect()
+    const navStyle = getComputedStyle(nav)
     return {
-      position: style.position,
+      wrapperPosition: getComputedStyle(wrapper).position,
       bottomGap: Math.abs(window.innerHeight - rect.bottom),
       width: rect.width,
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth,
+      overflowX: navStyle.overflowX,
+      buttonCount: buttons.length,
+      buttonsWidth: buttons.reduce((sum, button) => sum + button.getBoundingClientRect().width, 0),
+      smallestButtonHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
     }
   })
-  if (phoneNavStyle.position !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
-      phoneNavStyle.width < 380 || phoneNavStyle.scrollWidth <= phoneNavStyle.clientWidth) {
-    throw new Error('Portrait phone bottom navigation is not fixed/scrollable: ' + JSON.stringify(phoneNavStyle))
+  if (phoneNavStyle.wrapperPosition !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
+      phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 8 ||
+      !['auto', 'scroll'].includes(phoneNavStyle.overflowX) ||
+      phoneNavStyle.buttonsWidth <= phoneNavStyle.width ||
+      phoneNavStyle.smallestButtonHeight < 44) {
+    throw new Error('Portrait phone bottom navigation is not fixed/touch-scrollable: ' + JSON.stringify(phoneNavStyle))
   }
   const phoneOverflow = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
