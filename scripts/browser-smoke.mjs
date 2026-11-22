@@ -60,6 +60,21 @@ try {
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/allsitehub.png', fullPage: true })
 
+  // Check the directory at common TV and portrait-phone viewport sizes.
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 720, height: 1280 }]) {
+    await page.setViewportSize(viewport)
+    await hub.waitFor({ state: 'visible' })
+    const dimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }))
+    if (dimensions.content > dimensions.viewport + 2) {
+      throw new Error('AllSiteHub overflows horizontally at ' + viewport.width + 'x' + viewport.height +
+        ' (' + dimensions.content + 'px content / ' + dimensions.viewport + 'px viewport)')
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+
   // Sorting should reorder the catalogue without changing its size.
   const sortButton = hub.getByRole('button', { name: /A–Z/ })
   const firstAZ = await hub.locator('.app-card-title').first().textContent()
@@ -79,6 +94,21 @@ try {
   const openedUrl = await page.locator('.chromium-omnibox-input').inputValue()
   if (openedUrl !== 'https://gojolive.site/') {
     throw new Error('AllSiteHub Open should load GojoLive in VYORA Browser; got ' + openedUrl)
+  }
+
+  // A top-level window must not be able to spoof the iframe's privileged bridge.
+  await page.evaluate(() => window.postMessage({
+    type: 'VYORA_NAVIGATE',
+    url: 'https://attacker.invalid/forged-navigation',
+  }, '*'))
+  await page.waitForTimeout(100)
+  const urlAfterForgedMessage = await page.locator('.chromium-omnibox-input').inputValue()
+  if (urlAfterForgedMessage !== openedUrl) {
+    throw new Error('A non-iframe message changed the browser address')
+  }
+  const directFrameSandbox = await page.locator('iframe.chromium-iframe').getAttribute('sandbox')
+  if (!directFrameSandbox?.includes('allow-same-origin')) {
+    throw new Error('Direct external pages lost their normal same-origin sandbox capability')
   }
 
   if (!(await browserRegion.isVisible().catch(() => false))) {
