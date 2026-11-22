@@ -7365,3 +7365,47 @@ button {
 .device-tv .vyora-browser-sidebar { width: 82px; padding: 16px 8px; gap: 8px; }
 .device-tv .vyora-browser-sidebar-brand { width: 50px; height: 50px; flex-basis: 50px; font-size: 28px; }
 .device-tv .vyora-browser-sidebar-item { width: 66px; min-height: 62px; font-size: 12px; gap: 6px; }
+
+
+/* Phone-first live channel layout: two useful cards per row on compact phones. */
+@media (max-width: 599px) {
+  .grid { gap: 10px; }
+  .grid-channels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .channel-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 13px;
+  }
+  .channel-card-logo {
+    width: 100%;
+    height: clamp(86px, 28vw, 124px);
+    min-height: 0;
+  }
+  .channel-card-name { font-size: clamp(12px, 3.5vw, 14px); }
+  .channel-card-sub { font-size: 10px; gap: 4px; }
+  .channel-category-tag { max-width: 42%; overflow: hidden; text-overflow: ellipsis; font-size: 9px; }
+  .channel-card .status-tag { top: 6px; left: 6px; padding: 2px 5px; font-size: 8px; }
+  .channel-card .fav-btn { right: 6px; top: 6px; }
+  .badge-quality.card-quality { right: 5px; bottom: 5px; font-size: 9px; padding: 2px 5px; }
+  .country-card { min-width: 0; width: 100%; padding: 12px 8px; }
+  .theme-card { min-width: 0; padding: 12px; }
+  .cinema-sports-rail .channel-card { min-width: 210px; max-width: 76vw; }
+  .card:hover { transform: none; }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  .grid-channels { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .channel-card { min-width: 0; padding: 10px; }
+  .channel-card-logo { height: clamp(110px, 18vw, 150px); }
+}
+@media (max-width: 359px) {
+  .grid-channels { gap: 7px; }
+  .channel-card { padding: 6px; }
+  .channel-card-sub { font-size: 9px; }
+}
