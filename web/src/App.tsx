@@ -31,7 +31,7 @@ import {
 } from './lib/api'
 import { installNavigation } from './lib/nav'
 import { categoryName, translate } from './lib/i18n'
-import { downloadStreamM3u, isNative, nativeInstallApk, speak } from './lib/bridge'
+import { downloadStreamM3u, isNative, nativeInstallApk, nativeOpenBrowser, speak } from './lib/bridge'
 import { useChannelHealth, statusOf } from './hooks/useChannelHealth'
 import { TopBar } from './components/TopBar'
 import { Icon } from './components/Icon'
@@ -828,11 +828,12 @@ export default function App() {
         if (view.name !== 'home') setView({ name: 'home' })
       },
       onFocus: (el) => {
+        // Warm the focused channel even when spoken focus announcements are off.
+        const id = el.getAttribute('data-channel-id')
+        if (id) prefetchChannelNow(id)
         if (!settings.a11y.announceFocus) return
         const label = el.getAttribute('aria-label') || el.textContent?.trim() || ''
         if (label) setLiveRegion(label)
-        const id = el.getAttribute('data-channel-id')
-        if (id) prefetchChannelNow(id)
       },
       onChannelUp: () => {
         if (!playing) return
@@ -3149,7 +3150,10 @@ export default function App() {
         ) : null}
 
         {view.name === 'allsitehub' ? (
-          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url })} />
+          <AllSiteHub onOpenSite={(url) => {
+            const opened = nativeOpenBrowser(url, 'google0', 'auto')
+            if (!opened) setView({ name: 'browser', initialUrl: url })
+          }} />
         ) : null}
 
         {view.name === 'downloads' ? (
