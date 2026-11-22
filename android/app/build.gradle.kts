@@ -62,6 +62,8 @@ android {
 }
 
 dependencies {
+    // Media3 AARs are bundled locally, so their Guava runtime dependency must be declared explicitly.
+    implementation("com.google.guava:guava:33.3.1-android")
     implementation(fileTree(rootProject.file("libs")) {
         include("*.jar", "*.aar")
         // AndroidX annotation is supplied transitively by the modern
