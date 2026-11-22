@@ -127,8 +127,8 @@ $aligned = Join-Path $build 'app-aligned.apk'
 if ($LASTEXITCODE -ne 0) { throw 'zipalign failed' }
 
 # ---------------------------------------------------------------- sign
-$ks = Join-Path $root 'android\vyora-release.jks'
-$storePass = 'vyora2026'
+$ks = if ($env:GITHUB_ACTIONS -eq 'true') { Join-Path $build 'ci-vyora-test.jks' } else { Join-Path $root 'android\vyora-release.jks' }
+$storePass = 'vyora-ci-test-only'
 if (-not (Test-Path $ks)) {
   Write-Host '[sign] generating release keystore...'
   & keytool -genkeypair -v -keystore $ks -storepass $storePass -keypass $storePass -alias vyora `
