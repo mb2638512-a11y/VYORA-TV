@@ -5,9 +5,11 @@ on:
     branches:
       - main
       - fix/browser-search-engines
+      - feature/orbit-browser-core-port
   pull_request:
     branches:
       - main
+      - feature/separate-phone-tv-frontends
 
 permissions:
   contents: read

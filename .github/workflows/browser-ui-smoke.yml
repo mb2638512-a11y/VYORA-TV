@@ -4,9 +4,11 @@ on:
   pull_request:
     branches:
       - main
+      - feature/separate-phone-tv-frontends
   push:
     branches:
       - fix/browser-search-engines
+      - feature/orbit-browser-core-port
 
 permissions:
   contents: read

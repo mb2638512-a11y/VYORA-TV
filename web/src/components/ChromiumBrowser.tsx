@@ -16,6 +16,7 @@ export type ChromiumBrowserProps = {
   onInstallApp?: (app: InstalledApp) => void
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
+  onNavigate?: (destination: 'home' | 'movies' | 'series' | 'songs' | 'global' | 'favorites' | 'apps' | 'allsitehub' | 'downloads') => void
 }
 
 export type HistoryItem = {
@@ -450,6 +451,7 @@ export default function ChromiumBrowser({
   onInstallApp,
   onPlayMovie,
   onNavigateToDownloads,
+  onNavigate,
 }: ChromiumBrowserProps) {
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
   useEffect(() => {
@@ -711,22 +713,6 @@ export default function ChromiumBrowser({
       showToast('✓ Web link copied to clipboard!')
     } catch {
       showToast(`URL: ${activeTab.url}`)
-    }
-  }
-
-  const isVideoSite = activeTab?.url
-    ? /(youtube\.com|youtu\.be|vimeo\.com|twitch\.tv|dailymotion\.com|\.(mp4|mkv|webm|m3u8|ts)(\?|$))/i.test(
-        activeTab.url,
-      )
-    : false
-
-  const streamInVyoraPlayer = () => {
-    if (!activeTab?.url) return
-    if (onPlayMovie) {
-      onPlayMovie(activeTab.url, activeTab.title || 'Web Video Stream')
-      showToast('🎬 Streaming in Vyora TV Hardware Player...')
-    } else {
-      showToast('Player handler not connected')
     }
   }
 
@@ -1601,6 +1587,66 @@ export default function ChromiumBrowser({
     ? activeTab.historyIndex < activeTab.history.length - 1
     : false
 
+  // Native Android BACK and TV remote BACK must respect browser navigation
+  // before leaving the browser surface or returning to the platform home.
+  useEffect(() => {
+    const w = window as Window & { __vyoraBack?: () => string }
+    const previousBack = w.__vyoraBack
+    w.__vyoraBack = () => {
+      if (isAddBookmarkOpen) { setIsAddBookmarkOpen(false); return 'true' }
+      if (isAddAppOpen) { setIsAddAppOpen(false); return 'true' }
+      if (isSettingsOpen) { setIsSettingsOpen(false); return 'true' }
+      if (isHistoryOpen) { setIsHistoryOpen(false); return 'true' }
+      if (isDownloadsOpen) { setIsDownloadsOpen(false); return 'true' }
+      if (engineMenuOpen) { setEngineMenuOpen(false); return 'true' }
+      if (isFindOpen) { setIsFindOpen(false); setFindQuery(''); setFindMatches(0); return 'true' }
+      if (activeTab && activeTab.historyIndex > 0) { goBack(); return 'true' }
+      onClose()
+      return 'true'
+    }
+    return () => {
+      if (w.__vyoraBack) w.__vyoraBack = previousBack
+    }
+  }, [activeTab, isAddBookmarkOpen, isAddAppOpen, isSettingsOpen, isHistoryOpen, isDownloadsOpen, engineMenuOpen, isFindOpen, onClose])
+
+  // Android TV remotes dispatch keys at the outer WebView. When the browser
+  // iframe owns focus, forward those keys into its document so TV websites,
+  // video players and web-app controls can respond instead of swallowing D-pad.
+  useEffect(() => {
+    const forwardFrameRemoteKey = (event: KeyboardEvent) => {
+      const frame = iframeRef.current
+      if (!frame || document.activeElement !== frame) return
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) return
+      try {
+        const frameWindow = frame.contentWindow
+        const frameDocument = frame.contentDocument
+        if (!frameWindow || !frameDocument) return
+        const target = frameDocument.activeElement as HTMLElement | null
+        if (event.key === 'Enter' && target?.matches('button:not([disabled]),a[href],[role="button"],[role="tab"]')) {
+          target.click()
+        } else {
+          const forwarded = new KeyboardEvent('keydown', {
+            key: event.key,
+            bubbles: true,
+            cancelable: true,
+          })
+          ;(target || frameDocument.body).dispatchEvent(forwarded)
+          if (!forwarded.defaultPrevented && event.key === 'ArrowUp') {
+            frameWindow.scrollBy({ top: -300, behavior: 'smooth' })
+          } else if (!forwarded.defaultPrevented && event.key === 'ArrowDown') {
+            frameWindow.scrollBy({ top: 300, behavior: 'smooth' })
+          }
+        }
+        event.preventDefault()
+        event.stopPropagation()
+      } catch {
+        // Cross-origin frames cannot be inspected; leave their own key handling intact.
+      }
+    }
+    window.addEventListener('keydown', forwardFrameRemoteKey, true)
+    return () => window.removeEventListener('keydown', forwardFrameRemoteKey, true)
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -1608,6 +1654,46 @@ export default function ChromiumBrowser({
       role="region"
       aria-label="Chromium Web Browser"
     >
+      {!standalone ? (
+        <aside className="vyora-browser-sidebar" aria-label="VYORA main navigation">
+          <div className="vyora-browser-sidebar-brand" aria-hidden="true">V</div>
+          {([
+            ['home', 'Home', 'home'],
+            ['movies', 'Movies', 'film'],
+            ['series', 'Series', 'clapperboard'],
+            ['songs', 'Music', 'volume'],
+            ['global', 'Live TV', 'tv'],
+            ['favorites', 'Favorites', 'star'],
+            ['apps', 'Apps', 'apps'],
+            ['allsitehub', 'AllSiteHub', 'grid'],
+            ['downloads', 'Downloads', 'download'],
+          ] as const).map(([destination, label, icon]) => (
+            <button
+              key={destination}
+              type="button"
+              className="vyora-browser-sidebar-item"
+              data-focusable
+              title={label}
+              aria-label={label}
+              onClick={() => onNavigate?.(destination)}
+            >
+              <Icon name={icon} size={19} />
+              <span>{label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className="vyora-browser-sidebar-item vyora-browser-sidebar-back"
+            data-focusable
+            title="Back to VYORA home"
+            aria-label="Back to VYORA home"
+            onClick={onClose}
+          >
+            <Icon name="arrow-left" size={19} />
+            <span>Exit</span>
+          </button>
+        </aside>
+      ) : null}
       {/* TOAST MESSAGE */}
       {toastMessage ? (
         <div className="chromium-toast" role="alert">
@@ -2003,19 +2089,6 @@ export default function ChromiumBrowser({
 
         {/* ACTIONS */}
         <div className="chromium-actions">
-          {isVideoSite ? (
-            <button
-              type="button"
-              className="chromium-badge-btn stream-video-btn"
-              onClick={streamInVyoraPlayer}
-              title="Stream this video with hardware acceleration in Vyora TV Player"
-              data-focusable
-            >
-              <Icon name="play" size={13} />
-              <span className="chromium-btn-label">Stream on TV</span>
-            </button>
-          ) : null}
-
           <button
             type="button"
             className="chromium-badge-btn install-app-btn"
