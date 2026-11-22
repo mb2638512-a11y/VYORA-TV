@@ -4246,6 +4246,87 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.chromium-engine-menu {
+  width: min(390px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: min(72dvh, 620px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chromium-engine-menu-count {
+  padding: 0 10px 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 650;
+}
+.chromium-engine-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 7px;
+  padding: 0 6px 9px;
+}
+.chromium-engine-filters input,
+.chromium-engine-filters select {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.82);
+  color: #f1f5f9;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12px;
+}
+.chromium-engine-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px 3px 5px;
+}
+.chromium-engine-empty {
+  padding: 18px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+.chromium-engine-option-via {
+  font-size: 9px;
+  font-weight: 750;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+@media (max-width: 600px) {
+  .chromium-engine-menu {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    max-height: min(72dvh, 620px);
+  }
+  .chromium-engine-options { max-height: 48dvh; }
+  .chromium-engine-filters { grid-template-columns: minmax(0, 1fr) 118px; }
+}
+.device-tv .chromium-engine-menu {
+  width: min(520px, 42vw);
+  max-width: 42vw;
+  max-height: 70vh;
+}
+.device-tv .chromium-engine-options { max-height: 48vh; }
+.device-tv .chromium-engine-filters input,
+.device-tv .chromium-engine-filters select { min-height: 48px; font-size: 16px; }
+.device-tv .chromium-engine-option { min-height: 58px; padding: 12px 14px; }
+.device-tv .chromium-engine-option-text strong { font-size: 16px; }
+.device-tv .chromium-engine-option-text small { font-size: 13px; }
+
 .chromium-engine-menu-head {
   font-size: 10px;
   font-weight: 800;
