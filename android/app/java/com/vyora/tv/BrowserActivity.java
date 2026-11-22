@@ -23,6 +23,8 @@ import android.webkit.SslErrorHandler;
 import android.net.http.SslError;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -182,10 +184,10 @@ public class BrowserActivity extends Activity {
         root.addView(webFrame,new LinearLayout.LayoutParams(-1,0,1f));
         setContentView(root);
 
-        backButton.setOnClickListener(v -> { if(current()!=null && current().web.canGoBack()) current().web.goBack(); });
-        forwardButton.setOnClickListener(v -> { if(current()!=null && current().web.canGoForward()) current().web.goForward(); });
-        reloadButton.setOnClickListener(v -> { if(current()!=null) current().web.reload(); });
-        homeButton.setOnClickListener(v -> { if(current()!=null) current().web.loadUrl(engine(current().engineId).home); });
+        backButton.setOnClickListener(v -> { WebView web=activeWebView(); if(web!=null && web.canGoBack()) web.goBack(); });
+        forwardButton.setOnClickListener(v -> { WebView web=activeWebView(); if(web!=null && web.canGoForward()) web.goForward(); });
+        reloadButton.setOnClickListener(v -> reloadActiveTab());
+        homeButton.setOnClickListener(v -> { BrowserTab tab=current(); if(tab!=null) ensureWebView(tab).loadUrl(engine(tab.engineId).home); });
         goButton.setOnClickListener(v -> navigateFromAddress());
         address.setOnEditorActionListener((v,action,event)-> {
             if(action==EditorInfo.IME_ACTION_GO || action==EditorInfo.IME_ACTION_DONE ||
@@ -304,6 +306,25 @@ public class BrowserActivity extends Activity {
                 if(current()==tab) { address.setText(url); progress.setVisibility(View.GONE); updateControls(); }
                 updateTabs(); saveSession();
             }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (Build.VERSION.SDK_INT >= 23 && request.isForMainFrame() && current()==tab) {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(BrowserActivity.this,"Page could not load. Check your connection, then tap reload.",Toast.LENGTH_LONG).show();
+                }
+            }
+            @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                // A crashed/evicted Chromium renderer must not take down the app.
+                try { if(view.getParent() instanceof ViewGroup) ((ViewGroup)view.getParent()).removeView(view); } catch(Throwable ignored) { }
+                try { view.destroy(); } catch(Throwable ignored) { }
+                if(tab.web==view) tab.web=null;
+                tab.savedState=null; // Renderer state is no longer trustworthy; reload the last URL on demand.
+                if(current()==tab) {
+                    progress.setVisibility(View.GONE);
+                    updateControls();
+                    Toast.makeText(BrowserActivity.this,"This tab was stopped to recover memory. Tap reload to reopen it.",Toast.LENGTH_LONG).show();
+                }
+                return true;
+            }
             @Override public void onReceivedSslError(WebView view,SslErrorHandler handler,SslError error) {
                 handler.cancel();
                 if(current()==tab) Toast.makeText(BrowserActivity.this,"Secure connection failed. The page was blocked.",Toast.LENGTH_LONG).show();
@@ -416,6 +437,15 @@ public class BrowserActivity extends Activity {
 
     private BrowserTab current() { return tabs.isEmpty()?null:tabs.get(Math.max(0,Math.min(activeIndex,tabs.size()-1))); }
 
+    private WebView activeWebView() { BrowserTab tab=current(); return tab==null?null:tab.web; }
+
+    private void reloadActiveTab() {
+        BrowserTab tab=current(); if(tab==null) return;
+        WebView web=ensureWebView(tab);
+        if(tab.url!=null && !tab.url.isEmpty()) web.loadUrl(tab.url);
+        else web.loadUrl(engine(tab.engineId).home);
+    }
+
     private void showActiveTab() {
         BrowserTab tab=current(); if(tab==null) return;
         WebView activeWeb=ensureWebView(tab);
@@ -458,6 +488,8 @@ public class BrowserActivity extends Activity {
     private void closeTabAt(int index) {
         if(index<0||index>=tabs.size()) return;
         BrowserTab removed=tabs.remove(index);
+        // Do not leave a popup holding a detached OAuth opener (and its renderer) alive.
+        for(BrowserTab tab:tabs) if(tab.opener==removed) tab.opener=null;
         if(removed.web!=null) { webFrame.removeView(removed.web); removed.web.stopLoading(); removed.web.destroy(); removed.web=null; }
         if(tabs.isEmpty()) { activeIndex=0; addTab(null,null); return; }
         activeIndex=Math.min(activeIndex,tabs.size()-1);
