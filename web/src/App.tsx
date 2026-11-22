@@ -221,6 +221,8 @@ export default function App() {
   const [globalItems, setGlobalItems] = useState<Channel[]>([])
   const [globalTotal, setGlobalTotal] = useState(0)
   const [globalLoading, setGlobalLoading] = useState(false)
+  const [globalError, setGlobalError] = useState('')
+  const globalRequestRef = useRef(0)
   const [numberEntry, setNumberEntry] = useState('')
   const [liveRegion, setLiveRegion] = useState('')
   const [recentList, setRecentList] = useState<Channel[]>([])
@@ -619,7 +621,9 @@ export default function App() {
         setGlobalLoading(false)
         return
       }
+      const requestId = ++globalRequestRef.current
       setGlobalLoading(true)
+      setGlobalError('')
       const offset = reset ? 0 : globalItems.length
       try {
         const page = await loadGlobalChannels(
@@ -630,12 +634,15 @@ export default function App() {
           PAGE_SIZE,
           settings.verifiedOnly,
         )
+        if (requestId !== globalRequestRef.current) return
         setGlobalTotal(page.total)
         setGlobalItems((prev) => (reset ? page.items : [...prev, ...page.items]))
-      } catch {
+      } catch (error) {
+        if (requestId !== globalRequestRef.current) return
+        setGlobalError(error instanceof Error ? error.message : 'Channels could not be loaded')
         if (reset) setGlobalItems([])
       } finally {
-        setGlobalLoading(false)
+        if (requestId === globalRequestRef.current) setGlobalLoading(false)
       }
     },
     [
@@ -2740,6 +2747,23 @@ export default function App() {
               </span>
             </div>
 
+            {globalLoading && globalItems.length === 0 ? (
+              <div className="channel-loading-state" role="status" aria-live="polite">
+                <div className="spinner" aria-hidden="true" />
+                <strong>Loading live channels…</strong>
+                <span className="muted">Connecting to the channel catalogue</span>
+              </div>
+            ) : globalError && globalItems.length === 0 ? (
+              <div className="channel-loading-state channel-load-error" role="alert">
+                <Icon name="alert" size={22} />
+                <strong>Channels could not be loaded</strong>
+                <span className="muted">{globalError}</span>
+                <button className="btn btn-primary" data-focusable onClick={() => void loadGlobal(true)}>Try again</button>
+              </div>
+            ) : null}
+            {!globalLoading && !globalError && globalItems.length === 0 ? (
+              <div className="channel-loading-state"><strong>No channels found</strong><span className="muted">Try another country or category filter</span></div>
+            ) : null}
             {groupByCountry ? (
               <div>
                 {(boot?.countries ?? [])
