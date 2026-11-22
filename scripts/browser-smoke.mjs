@@ -76,7 +76,6 @@ try {
   await hub.locator('.app-card').filter({ hasText: 'GojoLive' }).getByRole('button', { name: 'Open' }).click()
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })
   await browserRegion.waitFor({ state: 'visible', timeout: 10000 })
-  await page.locator('.chromium-omnibox-input').waitFor({ state: 'visible', timeout: 5000 })
   const openedUrl = await page.locator('.chromium-omnibox-input').inputValue()
   if (openedUrl !== 'https://gojolive.site/') {
     throw new Error('AllSiteHub Open should load GojoLive in VYORA Browser; got ' + openedUrl)
