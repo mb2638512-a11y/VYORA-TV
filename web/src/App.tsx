@@ -1843,7 +1843,7 @@ export default function App() {
               <div className="apps-grid">
                 <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
                   <div className="app-card-badge"><Icon name="grid" size={34}/></div>
-                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} of 8 categories</span></div></div>
+                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} categories</span></div></div>
                   <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
                 </div>
               </div>
