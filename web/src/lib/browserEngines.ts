@@ -39,33 +39,36 @@ function originOf(template: string): string {
   try { return new URL(template).origin } catch { return 'https://www.google.com' }
 }
 
-export const BROWSER_ENGINES_LIST: EngineConfig[] = engines.map((engine) => {
-  const origin = originOf(engine.template)
-  const suggestEngine = engine.id === 'google0' ? 'google'
-    : engine.id === 'bing1' ? 'bing'
-    : engine.id === 'duckduckgo2' ? 'duckduckgo'
-    : undefined
-  return {
-    id: engine.id,
-    name: engine.name,
-    short: engine.name,
-    tagline: engine.category.replace(/[-_]/g, ' '),
-    category: engine.category,
-    searchUrl: (query: string) => engine.id === 'google0'
-      ? `https://www.google.com/search?igu=1&q=${encodeURIComponent(query)}`
-      : `${engine.template}${encodeURIComponent(query)}`,
-    homeUrl: origin,
-    color: CATEGORY_COLORS[engine.category] || '#64748B',
-    favicon: `${origin}/favicon.ico`,
-    requiresAuth: Boolean(engine.requiresAuth),
-    suggestEngine,
-  }
-}).concat([{
-  id: 'brave', name: 'Brave Search', short: 'Brave', tagline: 'web', category: 'web',
-  searchUrl: (query: string) => `https://search.brave.com/search?q=${encodeURIComponent(query)}`,
-  homeUrl: 'https://search.brave.com/', color: '#FB542B',
-  favicon: 'https://search.brave.com/favicon.ico', requiresAuth: false,
-}])
+export const BROWSER_ENGINES_LIST: EngineConfig[] = [
+  ...engines.map((engine): EngineConfig => {
+    const origin = originOf(engine.template)
+    const suggestEngine: EngineConfig['suggestEngine'] = engine.id === 'google0' ? 'google'
+      : engine.id === 'bing1' ? 'bing'
+      : engine.id === 'duckduckgo2' ? 'duckduckgo'
+      : undefined
+    return {
+      id: engine.id,
+      name: engine.name,
+      short: engine.name,
+      tagline: engine.category.replace(/[-_]/g, ' '),
+      category: engine.category,
+      searchUrl: (query: string) => engine.id === 'google0'
+        ? `https://www.google.com/search?igu=1&q=${encodeURIComponent(query)}`
+        : `${engine.template}${encodeURIComponent(query)}`,
+      homeUrl: origin,
+      color: CATEGORY_COLORS[engine.category] || '#64748B',
+      favicon: `${origin}/favicon.ico`,
+      requiresAuth: Boolean(engine.requiresAuth),
+      suggestEngine,
+    }
+  }),
+  {
+    id: 'brave', name: 'Brave Search', short: 'Brave', tagline: 'web', category: 'web',
+    searchUrl: (query: string) => `https://search.brave.com/search?q=${encodeURIComponent(query)}`,
+    homeUrl: 'https://search.brave.com/', color: '#FB542B',
+    favicon: 'https://search.brave.com/favicon.ico', requiresAuth: false,
+  },
+]
 
 const byId = Object.fromEntries(BROWSER_ENGINES_LIST.map((engine) => [engine.id, engine])) as Record<string, EngineConfig>
 
