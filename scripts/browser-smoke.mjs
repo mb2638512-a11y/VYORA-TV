@@ -38,13 +38,18 @@ try {
   await page.getByRole('button', { name: 'Movies', exact: true }).click()
   const movieCards = page.locator('.movie-card')
   await movieCards.first().waitFor({ state: 'visible', timeout: 15000 })
-  if (await movieCards.count() < 1000) {
-    throw new Error('Movies hub did not load the expected large catalogue')
+  if (await movieCards.count() !== 48) {
+    throw new Error('Movies hub should initially render 48 cards, found ' + await movieCards.count())
+  }
+  await page.locator('.load-more').click()
+  if (await movieCards.count() !== 96) {
+    throw new Error('Movies Load More should render 96 cards, found ' + await movieCards.count())
   }
   const movieSearch = page.locator('.moviebox-search-input').first()
   await movieSearch.fill('Dune: Part Two')
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).first()
     .waitFor({ state: 'visible', timeout: 5000 })
+  if (await movieCards.count() !== 1) throw new Error('Movie search should return one Dune: Part Two result')
   await movieSearch.fill('')
 
   await page.getByRole('button', { name: 'Series', exact: true }).click()
@@ -63,8 +68,12 @@ try {
   await page.getByRole('button', { name: 'Songs', exact: true }).click()
   const songCards = page.locator('.channel-card')
   await songCards.first().waitFor({ state: 'visible', timeout: 10000 })
-  if (await songCards.count() !== 803) {
-    throw new Error('Songs hub expected 803 music channels, found ' + await songCards.count())
+  if (await songCards.count() !== 240) {
+    throw new Error('Songs hub should initially render 240 channels, found ' + await songCards.count())
+  }
+  await page.locator('.load-more').click()
+  if (await songCards.count() !== 480) {
+    throw new Error('Songs Load More should render 480 channels, found ' + await songCards.count())
   }
   const songsSearch = page.locator('.moviebox-search-input').first()
   await songsSearch.fill('24/7 Lo-Fi Chill Beats Radio')
