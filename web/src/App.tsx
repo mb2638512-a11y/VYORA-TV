@@ -226,6 +226,8 @@ export default function App() {
   const [recentList, setRecentList] = useState<Channel[]>([])
   const [queue, setQueue] = useState<string[]>(() => readJSON<string[]>(QUEUE_KEY, []))
   const [shownCount, setShownCount] = useState(240)
+  const [movieShownCount, setMovieShownCount] = useState(48)
+  const [songsShownCount, setSongsShownCount] = useState(240)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [movies, setMovies] = useState<Movie[]>([])
   const [series, setSeries] = useState<Series[]>([])
@@ -1211,6 +1213,15 @@ export default function App() {
     }
     return list
   }, [songs, songsGenre, songsSearch])
+
+  // Keep large VOD grids lightweight on Android TV and low-memory devices.
+  useEffect(() => {
+    setMovieShownCount(48)
+  }, [movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+
+  useEffect(() => {
+    setSongsShownCount(240)
+  }, [songsGenre, songsSearch])
 
   const playMovie = useCallback((m: Movie) => {
     const streamsList: Stream[] = m.streams && m.streams.length > 0
@@ -2398,11 +2409,22 @@ export default function App() {
               <div className="empty"><Icon name="film" size={24} /> No movies match your filter</div>
             ) : (
               <div className="grid grid-movies">
-                {movieboxFiltered.map((m) => (
+                {movieboxFiltered.slice(0, movieShownCount).map((m) => (
                   <MovieCard key={m.id} movie={m} onPlay={playMovie} />
                 ))}
               </div>
             )}
+            {movieboxFiltered.length > movieShownCount ? (
+              <div className="loader-anchor">
+                <button
+                  className="btn btn-primary load-more"
+                  data-focusable
+                  onClick={() => setMovieShownCount((n) => n + 48)}
+                >
+                  {t('loadMore')} ({movieShownCount}/{movieboxFiltered.length})
+                </button>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -2575,7 +2597,7 @@ export default function App() {
               <div className="empty"><Icon name="volume" size={24} /> No music channels match your filter</div>
             ) : (
               <div className="grid grid-channels">
-                {songsFiltered.map((ch) => (
+                {songsFiltered.slice(0, songsShownCount).map((ch) => (
                   <ChannelCard
                     key={ch.id}
                     channel={ch}
@@ -2589,6 +2611,17 @@ export default function App() {
                 ))}
               </div>
             )}
+            {songsFiltered.length > songsShownCount ? (
+              <div className="loader-anchor">
+                <button
+                  className="btn btn-primary load-more"
+                  data-focusable
+                  onClick={() => setSongsShownCount((n) => n + 240)}
+                >
+                  {t('loadMore')} ({songsShownCount}/{songsFiltered.length})
+                </button>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
