@@ -50,7 +50,6 @@ function PhoneNavigationShell({ left, right, clock, onBrandClick, onMenuToggle, 
           <Brand onClick={onBrandClick} compact />
         </div>
         <div className="topbar-right">
-          {right}
           <button type="button" className="phone-menu-toggle" onClick={onMenuToggle}
             aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={Boolean(menuOpen)} title={menuOpen ? 'Close menu' : 'All sections'}>
@@ -64,6 +63,7 @@ function PhoneNavigationShell({ left, right, clock, onBrandClick, onMenuToggle, 
         onClick={() => { if (menuOpen) onMenuToggle?.() }}>
         <div className="phone-menu-panel" onClick={(event) => event.stopPropagation()}>
           {left}
+          <div className="phone-utility-actions">{right}</div>
         </div>
       </nav>
     </div>
