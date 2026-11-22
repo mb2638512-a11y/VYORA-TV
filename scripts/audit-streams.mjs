@@ -1,0 +1,324 @@
+#!/usr/bin/env node
+/**
+ * VYORA source audit (opt-in, rate-limited).
+ * Checks every stream URL independently; this is a network probe, not a decoder test.
+ *
+ * Usage:
+ *   node scripts/audit-streams.mjs --confirm-network
+ *   node scripts/audit-streams.mjs --confirm-network --country PK --limit 50
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
+import { createHash } from 'node:crypto'
+
+const ROOT = process.cwd()
+const DATA_DIR = path.resolve(ROOT, process.env.VYORA_DATA_DIR || 'server/data')
+const args = process.argv.slice(2)
+const has = (name) => args.includes(name)
+const value = (name, fallback) => {
+  const i = args.indexOf(name)
+  return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : fallback
+}
+const int = (name, fallback, min, max) => {
+  const n = Number(value(name, fallback))
+  if (!Number.isInteger(n) || n < min || n > max) throw new Error(`Invalid ${name}: expected ${min}-${max}`)
+  return n
+}
+
+if (!has('--confirm-network')) {
+  console.error('Safety stop: this command contacts third-party stream hosts. Re-run with --confirm-network after reviewing the rate limits.')
+  process.exit(2)
+}
+
+const concurrency = int('--concurrency', 2, 1, 4)
+const timeoutMs = int('--timeout-ms', 8000, 1000, 20000)
+const limit = int('--limit', 0, 0, 50000)
+const countryFilter = String(value('--country', '')).toUpperCase()
+const delayMs = int('--delay-ms', 300, 100, 5000)
+const MAX_BYTES = 128 * 1024
+
+function csvCell(v) {
+  const s = String(v ?? '')
+  return '"' + s.replaceAll('"', '""') + '"'
+}
+function safeUrl(raw) {
+  try {
+    // Reports need provider identity, not a reusable playback URL. Tokens can
+    // appear in query strings, fragments, or opaque path segments, so persist
+    // only the origin and never store the path or credentials.
+    return new URL(raw).origin
+  } catch {
+    return ''
+  }
+}
+function safeErrorReason(error) {
+  // Never persist arbitrary fetch error messages: some runtimes include the
+  // requested URL, which may contain signed paths or query tokens.
+  const rawCode = error?.cause?.code || error?.code || ''
+  const code = String(rawCode).replace(/[^a-z0-9_-]/gi, '').slice(0, 48)
+  return code ? `Network error (${code})` : 'Network request failed'
+}
+
+function classify(url, contentType, body) {
+  const text = body.toString('utf8').trim()
+  const lower = text.toLowerCase()
+  const ct = String(contentType || '').toLowerCase()
+  if (!text) return { kind: 'empty', manifestValid: false }
+  if (ct.includes('text/html') || lower.includes('<html') || lower.startsWith('<!doctype html')) {
+    return { kind: 'html_or_block_page', manifestValid: false }
+  }
+  const pathLower = (() => { try { return new URL(url).pathname.toLowerCase() } catch { return '' } })()
+  if (pathLower.endsWith('.m3u8') || ct.includes('mpegurl') || text.startsWith('#EXTM3U')) {
+    const valid = text.startsWith('#EXTM3U') && (text.includes('#EXTINF') || text.includes('#EXT-X-'))
+    return { kind: 'hls_manifest', manifestValid: valid }
+  }
+  if (pathLower.endsWith('.mpd') || ct.includes('dash+xml') || lower.includes('<mpd')) {
+    const valid = /<mpd(?:\s|>)/i.test(text) && /<\/mpd>/i.test(text)
+    return { kind: 'dash_manifest', manifestValid: valid }
+  }
+  return { kind: 'direct_media_or_unknown', manifestValid: null }
+}
+
+async function readBounded(response) {
+  if (!response.body) return Buffer.alloc(0)
+  const reader = response.body.getReader()
+  const chunks = []
+  let total = 0
+  try {
+    while (total < MAX_BYTES) {
+      const { done, value: chunk } = await reader.read()
+      if (done) break
+      const take = chunk.subarray(0, MAX_BYTES - total)
+      chunks.push(Buffer.from(take))
+      total += take.length
+      if (take.length < chunk.length) break
+    }
+  } finally {
+    try { await reader.cancel() } catch {}
+  }
+  return Buffer.concat(chunks)
+}
+
+// One shared start gate enforces the delay across all workers, not once per worker.
+let nextRequestStartAt = 0
+async function waitForGlobalRequestSlot() {
+  const now = Date.now()
+  const slot = Math.max(now, nextRequestStartAt)
+  nextRequestStartAt = slot + delayMs
+  const waitMs = slot - now
+  if (waitMs > 0) await sleep(waitMs)
+}
+
+async function probe(item) {
+  const started = Date.now()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const headers = {
+      accept: 'application/vnd.apple.mpegurl, application/x-mpegURL, application/dash+xml, video/*, */*',
+      'user-agent': item.ua || 'VYORA-TV-Stream-Audit/1.0',
+      range: `bytes=0-${MAX_BYTES - 1}`,
+    }
+    if (item.referer) headers.referer = item.referer
+    const response = await fetch(item.url, { method: 'GET', headers, signal: controller.signal, redirect: 'follow' })
+    const body = await readBounded(response)
+    const elapsedMs = Date.now() - started
+    const result = classify(item.url, response.headers.get('content-type'), body)
+    let status = 'reachable'
+    let reason = ''
+    if (!response.ok) {
+      status = 'http_error'
+      reason = `HTTP ${response.status}`
+    } else if (result.manifestValid === false) {
+      status = 'invalid_response'
+      reason = result.kind === 'html_or_block_page' ? 'HTML/block page, not a media manifest' : 'Empty or malformed response'
+    }
+    return {
+      channelId: item.channelId, channel: item.channel, country: item.country,
+      streamId: item.streamId, sourceIndex: item.sourceIndex,
+      urlOrigin: safeUrl(item.url), host: (() => { try { return new URL(response.url || item.url).host } catch { return '' } })(),
+      status, httpStatus: response.status, kind: result.kind,
+      manifestValid: result.manifestValid, elapsedMs, bytesRead: body.length,
+      contentType: response.headers.get('content-type') || '', reason,
+    }
+  } catch (error) {
+    const aborted = error?.name === 'AbortError'
+    return {
+      channelId: item.channelId, channel: item.channel, country: item.country,
+      streamId: item.streamId, sourceIndex: item.sourceIndex,
+      urlOrigin: safeUrl(item.url), host: (() => { try { return new URL(item.url).host } catch { return '' } })(),
+      status: aborted ? 'timeout' : 'network_error', httpStatus: 0, kind: 'no_response',
+      manifestValid: false, elapsedMs: Date.now() - started, bytesRead: 0,
+      contentType: '', reason: aborted ? `Timeout after ${timeoutMs}ms` : safeErrorReason(error),
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function loadTargets() {
+  const channelsDir = path.join(DATA_DIR, 'channels')
+  if (!fs.existsSync(channelsDir)) throw new Error(`Missing ${channelsDir}. Run npm run data first or set VYORA_DATA_DIR.`)
+  const files = fs.readdirSync(channelsDir).filter((f) => f.endsWith('.json')).sort()
+  const targets = []
+  for (const file of files) {
+    const country = path.basename(file, '.json').toUpperCase()
+    if (countryFilter && country !== countryFilter) continue
+    const list = JSON.parse(fs.readFileSync(path.join(channelsDir, file), 'utf8'))
+    for (const channel of list) {
+      for (const [sourceIndex, stream] of (channel.streams || []).entries()) {
+        if (!/^https?:\/\//i.test(stream.url || '')) continue
+        targets.push({
+          channelId: channel.id, channel: channel.name, country,
+          streamId: stream.id || `${channel.id}-${sourceIndex}`,
+          sourceIndex, url: stream.url, referer: stream.referer || '', ua: stream.ua || '',
+        })
+      }
+    }
+  }
+  return limit ? targets.slice(0, limit) : targets
+}
+
+async function main() {
+  const targets = loadTargets()
+  if (!targets.length) throw new Error('No stream URLs found for the selected catalogue/filter.')
+  console.log(`VYORA audit: ${targets.length} source URLs | concurrency=${concurrency} | timeout=${timeoutMs}ms | global min request gap=${delayMs}ms`)
+  console.log('This checks reachability and manifest shape only; it does not decode video or prove first-frame playback.')
+  const fingerprint = createHash('sha256')
+    .update(targets.map((item) => `${item.channelId}|${item.sourceIndex}|${item.url}`).join('\\n'))
+    .digest('hex')
+  const checkpointDir = path.join(ROOT, 'reports', 'stream-audit')
+  fs.mkdirSync(checkpointDir, { recursive: true })
+  const checkpointPath = path.join(checkpointDir, `checkpoint-${countryFilter || 'all'}-${fingerprint.slice(0, 16)}.json`)
+  const results = new Array(targets.length)
+  if (has('--resume') && fs.existsSync(checkpointPath)) {
+    const saved = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'))
+    if (saved.checkpointVersion !== 2 || saved.fingerprint !== fingerprint || saved.targetCount !== targets.length || !Array.isArray(saved.results)) {
+      throw new Error('Checkpoint does not match this catalogue/filter; refusing unsafe resume.')
+    }
+    saved.results.forEach((result, index) => { if (result && index < results.length) results[index] = result })
+  }
+  let cursor = 0
+  let completed = results.filter(Boolean).length
+  let sinceCheckpoint = 0
+  const saveCheckpoint = () => {
+    const tmp = checkpointPath + '.tmp'
+    fs.writeFileSync(tmp, JSON.stringify({
+      checkpointVersion: 2, fingerprint, targetCount: targets.length, country: countryFilter || null,
+      updatedAt: new Date().toISOString(), results,
+    }))
+    fs.renameSync(tmp, checkpointPath)
+  }
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (true) {
+      const index = cursor++
+      if (index >= targets.length) return
+      if (results[index]) continue
+      await waitForGlobalRequestSlot()
+      results[index] = await probe(targets[index])
+      completed++
+      sinceCheckpoint++
+      if (sinceCheckpoint >= 25 || completed === targets.length) {
+        saveCheckpoint()
+        sinceCheckpoint = 0
+      }
+      if (completed % 25 === 0 || completed === targets.length) {
+        process.stdout.write(`\rAudited ${completed}/${targets.length}`)
+      }
+    }
+  })
+  await Promise.all(workers)
+  if (completed === targets.length) saveCheckpoint()
+  process.stdout.write('\n')
+
+  const stamp = new Date().toISOString().replaceAll(':', '-')
+  const outDir = path.join(ROOT, 'reports', 'stream-audit')
+  fs.mkdirSync(outDir, { recursive: true })
+  const jsonPath = path.join(outDir, `audit-${stamp}.json`)
+  const csvPath = path.join(outDir, `audit-${stamp}.csv`)
+  fs.writeFileSync(jsonPath, JSON.stringify({
+    generatedAt: new Date().toISOString(), targetCount: targets.length,
+    concurrency, timeoutMs, delayMs, country: countryFilter || null,
+    note: 'Reachability/manifest-shape audit only; not a decoder or first-frame test.',
+    summary: results.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {}),
+    analytics: (() => {
+      const percentile = (values, p) => {
+        if (!values.length) return null
+        const sorted = [...values].sort((a, b) => a - b)
+        return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]
+      }
+      const latencies = results.map((r) => r.elapsedMs).filter((n) => Number.isFinite(n) && n >= 0)
+      const hosts = new Map()
+      for (const r of results) {
+        const key = r.host || 'unknown'
+        const g = hosts.get(key) || { host: key, total: 0, failures: 0, latencies: [] }
+        g.total++
+        if (r.status !== 'reachable') g.failures++
+        if (Number.isFinite(r.elapsedMs)) g.latencies.push(r.elapsedMs)
+        hosts.set(key, g)
+      }
+      return {
+        latencyMs: {
+          average: latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null,
+          p50: percentile(latencies, 50), p95: percentile(latencies, 95),
+          max: latencies.length ? Math.max(...latencies) : null,
+        },
+        manifests: {
+          valid: results.filter((r) => r.manifestValid === true).length,
+          invalidOrEmpty: results.filter((r) => r.manifestValid === false).length,
+          notApplicable: results.filter((r) => r.manifestValid === null).length,
+        },
+        slowestHosts: [...hosts.values()].map((g) => ({
+          host: g.host, total: g.total, failures: g.failures,
+          failureRate: Number((g.failures / g.total).toFixed(4)),
+          avgMs: g.latencies.length ? Math.round(g.latencies.reduce((a, b) => a + b, 0) / g.latencies.length) : null,
+          p95Ms: percentile(g.latencies, 95),
+        })).sort((a, b) => b.failureRate - a.failureRate || (b.p95Ms || 0) - (a.p95Ms || 0)).slice(0, 30),
+      }
+    })(),
+    results,
+  }, null, 2))
+  const columns = ['channelId','channel','country','streamId','sourceIndex','urlOrigin','host','status','httpStatus','kind','manifestValid','elapsedMs','bytesRead','contentType','reason']
+  fs.writeFileSync(csvPath, [columns.join(','), ...results.map(r => columns.map(k => csvCell(r[k])).join(','))].join('\n'))
+  const counts = results.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {})
+  const percentile = (values, p) => {
+    if (!values.length) return null
+    const sorted = [...values].sort((a, b) => a - b)
+    return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]
+  }
+  const latencies = results.map((r) => r.elapsedMs).filter((n) => Number.isFinite(n) && n >= 0)
+  const validManifests = results.filter((r) => r.manifestValid === true).length
+  const invalidManifests = results.filter((r) => r.manifestValid === false).length
+  const hostMap = new Map()
+  for (const result of results) {
+    const key = result.host || 'unknown'
+    const group = hostMap.get(key) || { host: key, total: 0, failures: 0, latencies: [] }
+    group.total++
+    if (result.status !== 'reachable') group.failures++
+    if (Number.isFinite(result.elapsedMs)) group.latencies.push(result.elapsedMs)
+    hostMap.set(key, group)
+  }
+  const hostSummary = [...hostMap.values()].map((group) => ({
+    host: group.host,
+    total: group.total,
+    failures: group.failures,
+    failureRate: Number((group.failures / group.total).toFixed(4)),
+    avgMs: group.latencies.length ? Math.round(group.latencies.reduce((a, b) => a + b, 0) / group.latencies.length) : null,
+    p95Ms: percentile(group.latencies, 95),
+  })).sort((a, b) => b.failureRate - a.failureRate || (b.p95Ms || 0) - (a.p95Ms || 0)).slice(0, 30)
+  const analytics = {
+    latencyMs: {
+      average: latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null,
+      p50: percentile(latencies, 50),
+      p95: percentile(latencies, 95),
+      max: latencies.length ? Math.max(...latencies) : null,
+    },
+    manifests: { valid: validManifests, invalidOrEmpty: invalidManifests, notApplicable: results.length - validManifests - invalidManifests },
+    slowestHosts: hostSummary,
+  }
+  console.log('Summary:', JSON.stringify({ statuses: counts, analytics }, null, 2))
+  console.log('JSON:', path.relative(ROOT, jsonPath))
+  console.log('CSV: ', path.relative(ROOT, csvPath))
+}
+main().catch((error) => { console.error('[audit] ' + error.message); process.exitCode = 1 })

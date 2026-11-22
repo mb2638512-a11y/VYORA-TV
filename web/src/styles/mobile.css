@@ -1,0 +1,165 @@
+/* VYORA phone-first responsive layer. TV/desktop layouts remain unchanged. */
+.mobile-bottom-nav { display: none; }
+@media (max-width: 768px) {
+  html, body, #root { width: 100%; min-width: 0; height: 100%; }
+  body { overscroll-behavior-y: contain; }
+  .app { height: 100dvh; min-height: 0; overflow: visible; }
+  .topbar {
+    position: static;
+    z-index: auto;
+    flex: 0 0 auto;
+    min-height: 58px;
+    padding: 8px 12px;
+    gap: 8px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    /* Backdrop filters create a containing block for fixed descendants;
+       disable it so the bottom tab bar anchors to the phone viewport. */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .topbar-left { min-width: 0; gap: 8px; }
+  .topbar-right { gap: 7px; }
+  .brand { gap: 8px; padding: 2px; }
+  .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
+  .brand-mark-inner { font-size: 21px; }
+  .brand-name { font-size: 17px; }
+  .brand-edition, .clock-pill, .queue-badge { display: none !important; }
+  .mobile-menu-btn { display: none !important; }
+  .topbar-nav-wrapper { display: none !important; }
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    width: 100%;
+    padding: 6px 7px calc(7px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line-bright);
+    background: rgba(8, 11, 20, .96);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 -10px 32px rgba(0,0,0,.28);
+  }
+  .mobile-bottom-nav .topnav,
+  .mobile-bottom-nav .topnav.mobile-nav-open {
+    position: static !important;
+    z-index: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    display: flex !important;
+    flex-direction: row !important;
+    height: auto;
+    min-height: 60px;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 2px;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    scrollbar-width: none;
+    box-shadow: 0 -10px 32px rgba(0,0,0,.28);
+  }
+  .mobile-bottom-nav .topnav { scroll-snap-type: x proximity; }
+  .mobile-bottom-nav .topnav-btn { scroll-snap-align: start; }
+  .mobile-bottom-nav .topnav::-webkit-scrollbar { display: none; }
+  .mobile-bottom-nav .topnav-btn {
+    flex: 0 0 66px !important;
+    width: 66px;
+    min-width: 66px !important;
+    min-height: 52px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 3px;
+    border-radius: 12px;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .mobile-bottom-nav .topnav-btn svg { width: 19px; height: 19px; }
+  .mobile-bottom-nav .topnav-btn.active { box-shadow: none; background: rgba(56,189,248,.16); color: var(--accent); }
+  .topbar-right .btn[title="Dial Channel Number"],
+  .topbar-right .btn[title^="Active:"] { display: none !important; }
+  .topbar-right .btn,
+  .topbar-right .theme-toggle-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+    border-radius: 12px;
+  }
+  .topbar-right .btn span { display: none; }
+  .main {
+    padding: 0 14px calc(88px + env(safe-area-inset-bottom));
+    scroll-padding-bottom: 100px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .row { margin: 22px 0 26px; }
+  .row-title { font-size: 18px; margin-bottom: 12px; }
+  .cinema-hero {
+    min-height: 0;
+    padding: 20px 16px;
+    margin: 10px 0 22px;
+    border-radius: 18px;
+  }
+  .cinema-hero-main { flex-direction: column; align-items: stretch; gap: 18px; }
+  .cinema-hero-content { gap: 12px; }
+  .cinema-hero-spotlight { display: none; }
+  .cinema-hero-title { font-size: clamp(24px, 7vw, 34px); overflow-wrap: anywhere; }
+  .cinema-hero-desc { font-size: 13px; line-height: 1.45; }
+  .cinema-hero-actions { gap: 8px; }
+  .hero-btn-play, .hero-btn-fav, .hero-btn-shuffle { min-height: 44px; padding: 11px 16px; font-size: 13px; }
+  .cinema-hero-footer { gap: 12px; margin-top: 20px; padding-top: 16px; }
+  .grid-movies-banners { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .movie-banner-card { border-radius: 12px; }
+  .movie-banner-overlay { padding: 9px; gap: 4px; }
+  .movie-banner-title { font-size: 12px; }
+  .movie-banner-meta { font-size: 10px; gap: 4px; }
+  .movie-banner-overlay .btn { min-height: 34px; padding: 6px 9px; font-size: 11px; }
+  .moviebox-container { gap: 18px; }
+  .moviebox-billboard { min-height: 300px; padding: 20px 16px; border-radius: 17px; }
+  .billboard-content { gap: 10px; }
+  .billboard-title { font-size: clamp(25px, 7vw, 36px); }
+  .billboard-desc { font-size: 12px; -webkit-line-clamp: 2; }
+  .billboard-actions { flex-wrap: wrap; gap: 8px; }
+  .moviebox-filter-bar { padding: 12px; gap: 12px; border-radius: 14px; }
+  .moviebox-genre-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .moviebox-genre-chips > * { flex: 0 0 auto; }
+  .active-player-banner { align-items: flex-start; flex-direction: column; gap: 12px; padding: 14px; }
+  .active-player-left { gap: 10px; }
+  .active-player-icon-box { width: 44px; height: 44px; }
+  .active-player-title { font-size: 17px; flex-wrap: wrap; }
+  .player-overlay { height: 100dvh; z-index: 10000; }
+  .player-info { padding: 16px 14px 24px; }
+  .player-info-left { gap: 10px; }
+  .player-name { font-size: 20px; }
+  .player-clock { font-size: 18px; }
+  .player-drawer { width: min(88vw, 380px); max-width: 88vw; }
+  .player-external-btn { top: max(12px, env(safe-area-inset-top)); right: 12px; width: 40px; height: 40px; }
+  .player-external-picker-popover { top: 62px; right: 10px; width: min(300px, calc(100vw - 20px)); }
+  input, select, textarea, button { touch-action: manipulation; }
+  button, [role="button"], a { -webkit-tap-highlight-color: transparent; }
+}
+@media (max-width: 420px) {
+  .main { padding-left: 11px; padding-right: 11px; }
+  .grid-movies-banners { gap: 8px; }
+  .mobile-bottom-nav .topnav-btn { flex: 0 0 61px !important; width: 61px; min-width: 61px !important; font-size: 9px; }
+  .cinema-hero-actions .btn { flex: 1 1 auto; }
+}
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
+  .topbar { min-height: 48px; }
+  .cinema-hero { padding: 14px; }
+  .cinema-hero-spotlight { display: none; }
+  .main { padding-bottom: 76px; }
+}

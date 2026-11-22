@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from './Icon'
-import { nativeInstallApk } from '../lib/bridge'
+import { nativeInstallApk, setBrowserDisplayMode } from '../lib/bridge'
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
 
@@ -8,6 +8,9 @@ export type ChromiumBrowserProps = {
   initialUrl?: string
   initialEngine?: BrowserEngineId
   onClose: () => void
+  standalone?: boolean
+  initialDisplayMode?: 'auto' | 'mobile' | 'desktop'
+  onDisplayModeChange?: (mode: 'auto' | 'mobile' | 'desktop') => void
   onInstallApp?: (app: InstalledApp) => void
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
@@ -25,39 +28,60 @@ export type EngineConfig = {
   favicon: string
 }
 
-// ============================================================================
-// GOOGLE IS THE ONLY ENGINE.
-//
-// The previous build listed five engines and silently served DuckDuckGo for
-// all of them. The cause was architectural, not cosmetic: the Go proxy
-// fetched each engine's HTML and scraped result links out of it, and Google
-// answers every plain HTTP client with a JavaScript-only shell that contains
-// no result markup — so the scraper found nothing and fell back to
-// DuckDuckGo while keeping "Google" in the URL.
-//
-// Verified on this host:
-//   * Go/plain-HTTP GET google.com/search  -> 94 KB shell, 0 result anchors,
-//     body contains /httpservice/retry/enablejs.
-//   * A real Chromium engine rendering google.com/search?igu=1 inside an
-//     iframe -> full result list (YouTube, Google Play, Wikipedia + a
-//     knowledge panel), captured via CDP.
-//
-// So search is now rendered by the browser engine itself. One engine, real
-// results, no silent substitution.
-// ============================================================================
-
+// Search results are never scraped or silently substituted. Google is
+// rendered directly with its official iframe flag; other providers use the
+// Go web proxy for result documents so frame-busting headers can be removed
+// and result clicks can be routed back through the browser.
 export const BROWSER_ENGINES: Record<BrowserEngineId, EngineConfig> = {
   google: {
     id: 'google',
-    name: 'Google Engine',
+    name: 'Google',
     short: 'Google',
-    tagline: 'World Wide Web',
-    // igu=1 is Google's own embeddable flag — without it a Google results
-    // page sends X-Frame-Options: SAMEORIGIN and refuses to render in a frame.
+    tagline: 'Google Search',
     searchUrl: (q) => `https://www.google.com/search?igu=1&q=${encodeURIComponent(q)}`,
     homeUrl: 'https://www.google.com/webhp?igu=1',
     color: '#4285F4',
     favicon: 'https://www.google.com/favicon.ico',
+  },
+  bing: {
+    id: 'bing',
+    name: 'Microsoft Bing',
+    short: 'Bing',
+    tagline: 'Microsoft Search',
+    searchUrl: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://www.bing.com/',
+    color: '#008373',
+    favicon: 'https://www.bing.com/sa/simg/favicon-2x.ico',
+  },
+  duckduckgo: {
+    id: 'duckduckgo',
+    name: 'DuckDuckGo',
+    short: 'DuckDuckGo',
+    tagline: 'Private Search',
+    searchUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://duckduckgo.com/',
+    color: '#DE5833',
+    favicon: 'https://duckduckgo.com/favicon.ico',
+  },
+  yahoo: {
+    id: 'yahoo',
+    name: 'Yahoo Search',
+    short: 'Yahoo',
+    tagline: 'Search the Web',
+    searchUrl: (q) => `https://search.yahoo.com/search?p=${encodeURIComponent(q)}`,
+    homeUrl: 'https://search.yahoo.com/',
+    color: '#6001D2',
+    favicon: 'https://s.yimg.com/rz/l/favicon.ico',
+  },
+  brave: {
+    id: 'brave',
+    name: 'Brave Search',
+    short: 'Brave',
+    tagline: 'Independent Search',
+    searchUrl: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`,
+    homeUrl: 'https://search.brave.com/',
+    color: '#FB542B',
+    favicon: 'https://search.brave.com/favicon.ico',
   },
 }
 
@@ -84,6 +108,8 @@ export type Tab = {
   historyIndex: number
   isLoading: boolean
   navKey: number
+  icon?: string
+  themeColor?: string
 }
 
 type Bookmark = {
@@ -202,6 +228,85 @@ function getInitialSettings(): BrowserSettings {
     // ignore
   }
   return DEFAULT_BROWSER_SETTINGS
+}
+
+type InitialBrowserSession = { tabs: Tab[]; activeTabId: string }
+
+function getInitialBrowserSession(
+  initialUrl?: string,
+  initialEngine: BrowserEngineId = 'google',
+  standalone = false,
+): InitialBrowserSession {
+  const startUrl = initialUrl?.trim() || ''
+  const makeNewTab = (): Tab => ({
+    id: 'tab-1',
+    title: startUrl ? getDomainTitle(startUrl) : 'New Tab',
+    url: startUrl,
+    displayUrl: startUrl,
+    frameUrl: startUrl,
+    engine: initialEngine,
+    proxyMode: false,
+    zoom: 1,
+    history: startUrl ? [startUrl] : [],
+    historyIndex: startUrl ? 0 : -1,
+    isLoading: false,
+    navKey: 0,
+  })
+  if (startUrl || standalone) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+
+  try {
+    if (getInitialSettings().privateMode) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (!raw) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const parsed = JSON.parse(raw)
+    const savedTabs = Array.isArray(parsed) ? parsed : parsed?.tabs
+    if (!Array.isArray(savedTabs)) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+
+    const restored = savedTabs.slice(0, 8).map((saved: any, index: number): Tab | null => {
+      const url = typeof saved?.url === 'string' ? saved.url : ''
+      if (url) {
+        try {
+          const parsedUrl = new URL(url)
+          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return null
+        } catch {
+          return null
+        }
+      }
+      const history = Array.isArray(saved?.history)
+        ? saved.history.filter((item: unknown): item is string => {
+            if (typeof item !== 'string') return false
+            try {
+              const parsedUrl = new URL(item)
+              return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+            } catch {
+              return false
+            }
+          }).slice(-100)
+        : url ? [url] : []
+      const requestedIndex = Number.isInteger(saved?.historyIndex) ? saved.historyIndex : history.length - 1
+      return {
+        id: `session-tab-${index + 1}`,
+        title: typeof saved?.title === 'string' && saved.title ? saved.title.slice(0, 120) : url ? getDomainTitle(url) : 'New Tab',
+        url,
+        displayUrl: url,
+        frameUrl: url,
+        engine: saved?.engine && BROWSER_ENGINES[saved.engine as BrowserEngineId] ? saved.engine : initialEngine,
+        proxyMode: false,
+        zoom: 1,
+        history,
+        historyIndex: Math.max(-1, Math.min(requestedIndex, history.length - 1)),
+        isLoading: false,
+        navKey: 0,
+      }
+    }).filter((tab: Tab | null): tab is Tab => tab !== null)
+
+    if (!restored.length) return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+    const requestedActive = Number.isInteger(parsed?.activeTabIndex) ? parsed.activeTabIndex : restored.length - 1
+    const activeIndex = Math.max(0, Math.min(requestedActive, restored.length - 1))
+    return { tabs: restored, activeTabId: restored[activeIndex].id }
+  } catch {
+    return { tabs: [makeNewTab()], activeTabId: 'tab-1' }
+  }
 }
 
 /**
@@ -405,36 +510,26 @@ export default function ChromiumBrowser({
   initialUrl,
   initialEngine = 'google',
   onClose,
+  standalone = false,
+  initialDisplayMode = 'auto',
+  onDisplayModeChange,
   onInstallApp,
   onPlayMovie,
   onNavigateToDownloads,
 }: ChromiumBrowserProps) {
-  const [tabs, setTabs] = useState<Tab[]>(() => {
-    const startUrl = initialUrl?.trim() || ''
-    return [
-      {
-        id: 'tab-1',
-        title: startUrl ? getDomainTitle(startUrl) : 'New Tab',
-        url: startUrl,
-        displayUrl: startUrl,
-        frameUrl: startUrl,
-        engine: initialEngine,
-        proxyMode: false,
-        zoom: 1.0,
-        history: startUrl ? [startUrl] : [],
-        historyIndex: startUrl ? 0 : -1,
-        isLoading: false,
-        navKey: 0,
-      },
-    ]
+  const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
+  const [tabs, setTabs] = useState<Tab[]>(() => initialSession.tabs)
+  const [activeTabId, setActiveTabId] = useState<string>(() => initialSession.activeTabId)
+  const [closedTabs, setClosedTabs] = useState<Tab[]>([])
+  const [inputUrl, setInputUrl] = useState<string>(() => {
+    const active = initialSession.tabs.find((tab) => tab.id === initialSession.activeTabId)
+    return initialUrl?.trim() || active?.displayUrl || ''
   })
-
-  const [activeTabId, setActiveTabId] = useState<string>('tab-1')
-  const [inputUrl, setInputUrl] = useState<string>(initialUrl?.trim() || '')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [engineMenuOpen, setEngineMenuOpen] = useState(false)
   const [showBookmarks, setShowBookmarks] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(getInitialBookmarks)
+  const bookmarkImportRef = useRef<HTMLInputElement | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [settings, setSettings] = useState<BrowserSettings>(getInitialSettings)
 
@@ -500,9 +595,43 @@ export default function ChromiumBrowser({
     return false
   })
 
+  const [appDisplayMode, setAppDisplayMode] = useState<'auto' | 'mobile' | 'desktop'>(initialDisplayMode)
+  useEffect(() => {
+    if (!standalone) return
+    setAppDisplayMode(initialDisplayMode)
+    setDesktopMode(initialDisplayMode === 'desktop')
+    setBrowserDisplayMode(initialDisplayMode)
+    // The installed web app may have started its first iframe request before
+    // the native bridge applied the requested User-Agent. Reload it once.
+    setTabs((prev) => prev.map((tab) => tab.id === activeTabId
+      ? { ...tab, isLoading: Boolean(tab.url), navKey: (tab.navKey || 0) + 1 }
+      : tab))
+  }, [standalone, initialDisplayMode])
+
+  useEffect(() => {
+    if (standalone) return
+    setBrowserDisplayMode(desktopMode ? 'desktop' : 'auto')
+  }, [standalone, desktopMode])
+
+  const reloadActiveTabForUserAgent = () => {
+    setTabs((prev) => prev.map((tab) => tab.id === activeTabId
+      ? { ...tab, isLoading: Boolean(tab.url), navKey: (tab.navKey || 0) + 1 }
+      : tab))
+  }
+
+  const changeAppDisplayMode = (mode: 'auto' | 'mobile' | 'desktop') => {
+    setAppDisplayMode(mode)
+    setDesktopMode(mode === 'desktop')
+    setBrowserDisplayMode(mode)
+    reloadActiveTabForUserAgent()
+    onDisplayModeChange?.(mode)
+    showToast(mode === 'desktop' ? 'Desktop User-Agent enabled' : mode === 'mobile' ? 'Mobile User-Agent enabled' : 'Automatic Android TV User-Agent enabled')
+  }
+
   const [portalCategory, setPortalCategory] = useState<'all' | 'streaming' | 'sports' | 'news' | 'tools' | 'gaming'>('all')
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const omniboxRef = useRef<HTMLInputElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const findTimer = useRef<number | null>(null)
   const suggestTimer = useRef<number | null>(null)
@@ -546,9 +675,12 @@ export default function ChromiumBrowser({
 
   const clearAllHistory = () => {
     setHistoryItems([])
-    try {
-      localStorage.removeItem(HISTORY_STORAGE_KEY)
-    } catch {}
+    // Private browsing must not modify the persistent profile's history.
+    if (!settings.privateMode) {
+      try {
+        localStorage.removeItem(HISTORY_STORAGE_KEY)
+      } catch {}
+    }
     showToast('✓ Browsing history cleared!')
   }
 
@@ -556,9 +688,11 @@ export default function ChromiumBrowser({
     e.stopPropagation()
     setHistoryItems((prev) => {
       const updated = prev.filter((h) => h.id !== id)
-      try {
-        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
-      } catch {}
+      if (!settings.privateMode) {
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch {}
+      }
       return updated
     })
   }
@@ -580,20 +714,21 @@ export default function ChromiumBrowser({
       try {
         localStorage.setItem('vyora_browser_ad_shield', String(next))
       } catch {}
-      showToast(next ? '🛡️ Ad & Popup Shield ACTIVE' : '⚠️ Ad Shield Paused')
+      showToast(next ? '🛡️ Pop-up blocker ON' : '⚠️ Pop-up blocker OFF')
       return next
     })
   }
 
   const toggleDesktopMode = () => {
-    setDesktopMode((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('vyora_browser_desktop_mode', String(next))
-      } catch {}
-      showToast(next ? '🖥️ Desktop 1080p View ON' : '📱 Responsive Auto View ON')
-      return next
-    })
+    const next = !desktopMode
+    setDesktopMode(next)
+    try {
+      localStorage.setItem('vyora_browser_desktop_mode', String(next))
+    } catch {}
+    const mode = next ? 'desktop' : 'auto'
+    setBrowserDisplayMode(mode)
+    reloadActiveTabForUserAgent()
+    showToast(next ? 'Desktop User-Agent and 1080p layout ON' : 'Automatic Android TV User-Agent ON')
   }
 
   const duplicateTab = (tabId: string, e?: React.MouseEvent) => {
@@ -681,19 +816,27 @@ export default function ChromiumBrowser({
   useEffect(() => {
     if (settings.privateMode) return
     try {
-      const payload = tabs.map((t) => ({
-        url: t.url,
-        title: t.title,
-        engine: t.engine,
-        history: t.history,
-        historyIndex: t.historyIndex,
-      }))
+      const activeTabIndex = Math.max(0, tabs.findIndex((tab) => tab.id === activeTabId))
+      const payload = {
+        version: 1,
+        activeTabIndex,
+        tabs: tabs.slice(0, 8).map((t) => ({
+          url: t.url,
+          title: t.title,
+          engine: t.engine,
+          history: t.history.slice(-100),
+          historyIndex: t.historyIndex,
+        })),
+      }
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload))
     } catch {}
-  }, [tabs, settings.privateMode])
+  }, [tabs, activeTabId, settings.privateMode])
 
   const saveBookmarks = (items: Bookmark[]) => {
     setBookmarks(items)
+    // Bookmarks edited during a private session are temporary and disappear
+    // when private mode is closed; never write them to the normal profile.
+    if (settings.privateMode) return
     try {
       localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(items))
     } catch (e) {
@@ -701,12 +844,33 @@ export default function ChromiumBrowser({
     }
   }
 
+  useEffect(() => {
+    // Restore the normal bookmark set after leaving private browsing so
+    // temporary private-session edits cannot leak into the regular profile.
+    if (settings.privateMode) return
+    setBookmarks(getInitialBookmarks())
+  }, [settings.privateMode])
+
   // Navigate the active tab
   const navigateActiveTab = useCallback(
     (target: string, keepHistory: boolean = false) => {
       if (!activeTab) return
       const normalized = normalizeUrlOrQuery(target, activeTab.engine)
       if (!normalized) return
+
+      // Proxy only the selected provider's result page. Destination websites
+      // still load directly, so normal browsing is not needlessly proxied.
+      const engine = BROWSER_ENGINES[activeTab.engine]
+      let proxySearch = false
+      if (engine && activeTab.engine !== 'google') {
+        try {
+          const targetHost = new URL(normalized).hostname
+          const searchHost = new URL(engine.searchUrl('vyora-smoke-test')).hostname
+          proxySearch = targetHost === searchHost
+        } catch {
+          proxySearch = false
+        }
+      }
 
       const domainTitle = getDomainTitle(normalized)
       recordHistory(normalized, domainTitle, activeTab.engine)
@@ -728,7 +892,7 @@ export default function ChromiumBrowser({
             url: normalized,
             displayUrl: normalized,
             frameUrl: normalized,
-            proxyMode: false,
+            proxyMode: proxySearch,
             title: domainTitle,
             history: newHistory,
             historyIndex: newIndex,
@@ -744,6 +908,16 @@ export default function ChromiumBrowser({
   // Listen for iframe postMessage events (downloads, navigation, and page state sync)
   useEffect(() => {
     const handleMsg = (e: MessageEvent) => {
+      // Only trust messages from the browser's own active iframe. Without this
+      // check any unrelated page/window could spoof VYORA_DOWNLOAD or navigation
+      // events and make the TV app fetch arbitrary URLs.
+      const frameWindow = iframeRef.current?.contentWindow
+      if (!frameWindow || e.source !== frameWindow) return
+      // Only the isolated proxy document may talk to the host bridge. Its
+      // sandboxed origin is deliberately opaque ("null"); direct third-party
+      // pages are never trusted to request downloads or rewrite browser state.
+      if (!activeTab?.proxyMode || e.origin !== 'null') return
+
       if (e.data?.type === 'VYORA_DOWNLOAD' && e.data?.url) {
         startDownload(e.data.url, e.data.name).then((res) => {
           if (res.ok) {
@@ -785,6 +959,8 @@ export default function ChromiumBrowser({
             return {
               ...t,
               title: e.data.title || t.title,
+              icon: typeof e.data.icon === 'string' ? e.data.icon : t.icon,
+              themeColor: typeof e.data.themeColor === 'string' ? e.data.themeColor : t.themeColor,
               displayUrl: unpacked,
               isLoading: false,
             }
@@ -794,7 +970,7 @@ export default function ChromiumBrowser({
     }
     window.addEventListener('message', handleMsg)
     return () => window.removeEventListener('message', handleMsg)
-  }, [activeTabId, recordHistory, activeTab?.engine])
+  }, [activeTabId, recordHistory, activeTab?.engine, activeTab?.proxyMode])
 
   // Bookmarking helper for Omnibox star button
   const isCurrentBookmarked = bookmarks.some(
@@ -813,7 +989,7 @@ export default function ChromiumBrowser({
         id: `bm-${Date.now()}`,
         title: curTitle,
         url: curUrl,
-        color: currentEngine.color || '#38bdf8',
+        color: activeTab?.themeColor || currentEngine.color || '#38bdf8',
       }
       saveBookmarks([newBm, ...bookmarks])
       showToast('⭐ Saved to TV Bookmarks!')
@@ -835,31 +1011,45 @@ export default function ChromiumBrowser({
     setSpeedDialSearch('')
   }
 
-  // Autocomplete: ask the Go core for Google's suggestions.
+  // Suggestions are fetched from the selected provider only. Engines without
+  // a verified suggestion endpoint (Yahoo and Brave) keep autocomplete off
+  // rather than showing results from a different search company.
   useEffect(() => {
     const q = inputUrl.trim()
+    const engine = activeTab?.engine || 'google'
+    const supportsSuggestions = engine === 'google' || engine === 'bing' || engine === 'duckduckgo'
     if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
-    if (q.length < 2 || /^https?:\/\//i.test(q)) {
+    if (!supportsSuggestions || q.length < 2 || /^https?:\/\//i.test(q)) {
       setSuggestions([])
       setSuggestIndex(-1)
       return
     }
+
+    // Abort the previous request when the query or search engine changes.
+    // Without this, a slow response for an older query can arrive last and
+    // replace the suggestions for the text currently in the omnibox.
+    const controller = new AbortController()
     suggestTimer.current = window.setTimeout(async () => {
       try {
-        const res = await fetch(`${API}/suggest?q=${encodeURIComponent(q)}`)
-        if (!res.ok) return
+        const params = new URLSearchParams({ engine, q })
+        const res = await fetch(`${API}/suggest?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        if (!res.ok) throw new Error(`Suggestions failed: ${res.status}`)
         const data = await res.json()
+        if (controller.signal.aborted || data?.engine && data.engine !== engine) return
         const list: string[] = Array.isArray(data?.suggestions) ? data.suggestions : []
         setSuggestions(list.slice(0, 8))
         setSuggestIndex(-1)
       } catch {
-        setSuggestions([])
+        if (!controller.signal.aborted) setSuggestions([])
       }
     }, 220)
     return () => {
       if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
+      controller.abort()
     }
-  }, [inputUrl])
+  }, [inputUrl, activeTab?.engine])
 
   const setTabEngine = (engineId: BrowserEngineId) => {
     setTabs((prev) =>
@@ -917,10 +1107,13 @@ export default function ChromiumBrowser({
 
   const closeTab = (idToClose: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
+    const closing = tabs.find((tab) => tab.id === idToClose)
+    if (closing) setClosedTabs((previous) => [...previous, closing].slice(-10))
     if (tabs.length === 1) {
+      const newId = `tab-${Date.now()}`
       setTabs([
         {
-          id: `tab-${Date.now()}`,
+          id: newId,
           title: 'New Tab',
           url: '',
           displayUrl: '',
@@ -934,7 +1127,10 @@ export default function ChromiumBrowser({
           navKey: 0,
         },
       ])
+      setActiveTabId(newId)
       setInputUrl('')
+      setSuggestions([])
+      setSuggestIndex(-1)
       return
     }
 
@@ -945,6 +1141,25 @@ export default function ChromiumBrowser({
       setActiveTabId(nextTab.id)
       setInputUrl(nextTab.displayUrl || '')
     }
+  }
+
+  const restoreClosedTab = () => {
+    const previous = closedTabs[closedTabs.length - 1]
+    if (!previous) {
+      showToast('No recently closed tabs')
+      return
+    }
+    const restored: Tab = {
+      ...previous,
+      id: `restored-tab-${Date.now()}`,
+      isLoading: Boolean(previous.url),
+      navKey: (previous.navKey || 0) + 1,
+    }
+    setClosedTabs((items) => items.slice(0, -1))
+    setTabs((items) => [...items, restored].slice(-8))
+    setActiveTabId(restored.id)
+    setInputUrl(restored.displayUrl || '')
+    showToast('Tab restored')
   }
 
   const goBack = () => {
@@ -1107,12 +1322,57 @@ export default function ChromiumBrowser({
     try {
       const win = iframeRef.current?.contentWindow as (Window & { find?: FindFn }) | null
       if (!win || typeof win.find !== 'function') return
-      win.find(findQuery, forward, false, true, false, true, false)
+      // window.find() takes caseSensitive second and backwards third.
+      // The old call accidentally toggled case sensitivity and always searched
+      // forward, so the Previous Match control could never move backwards.
+      win.find(findQuery, false, !forward, true, false, true, false)
       setFindMatches((m) => (m > 0 ? m : 0))
     } catch (e) {
       // ignore
     }
   }
+
+  // Desktop keyboard shortcuts also work with a connected TV keyboard.
+  // Ignore ordinary keystrokes so websites and form controls keep their input.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey
+      if (mod && event.shiftKey && event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        restoreClosedTab()
+      } else if (mod && event.key.toLowerCase() === 'l') {
+        event.preventDefault()
+        omniboxRef.current?.focus()
+        omniboxRef.current?.select()
+      } else if (mod && event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        addTab()
+      } else if (mod && event.key.toLowerCase() === 'w') {
+        event.preventDefault()
+        closeTab(activeTabId)
+      } else if (mod && event.key.toLowerCase() === 'r') {
+        event.preventDefault()
+        reloadTab()
+      } else if (mod && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        setIsFindOpen(true)
+      } else if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault()
+        goBack()
+      } else if (event.altKey && event.key === 'ArrowRight') {
+        event.preventDefault()
+        goForward()
+      } else if (event.key === 'Escape') {
+        if (isFindOpen) {
+          setIsFindOpen(false)
+        } else if (activeTab?.isLoading) {
+          stopLoading()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeTab?.isLoading, activeTabId, addTab, closeTab, goBack, goForward, isFindOpen, reloadTab, restoreClosedTab, stopLoading])
 
   // INSTALL WEB APP TO PLATFORM (WITH REAL LOGO)
   const installCurrentAsWebApp = (overrideUrl?: string, overrideTitle?: string) => {
@@ -1125,7 +1385,7 @@ export default function ChromiumBrowser({
     const domain = getDomainTitle(cleanUrl)
     const pageTitle = cleanUrl === activeTab?.url ? activeTab.title : ''
     const title = overrideTitle?.trim() || prettySiteName(cleanUrl, pageTitle) || domain
-    const icon = faviconFor(cleanUrl)
+    const icon = activeTab?.icon || faviconFor(cleanUrl)
     const newApp: InstalledApp = {
       id: `app-${Date.now()}`,
       title: title || domain,
@@ -1200,6 +1460,68 @@ export default function ChromiumBrowser({
     saveBookmarks(bookmarks.filter((b) => b.id !== id))
   }
 
+  const exportBookmarks = () => {
+    try {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        bookmarks: bookmarks.map(({ title, url, color }) => ({ title, url, color })),
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = 'vyora-bookmarks.json'
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      showToast(`Exported ${bookmarks.length} bookmarks`)
+    } catch {
+      showToast('Could not export bookmarks')
+    }
+  }
+
+  const importBookmarks = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      if (file.size > 1024 * 1024) throw new Error('Bookmark file is too large')
+      const parsed = JSON.parse(await file.text())
+      const rows = Array.isArray(parsed) ? parsed : parsed?.bookmarks
+      if (!Array.isArray(rows)) throw new Error('Invalid bookmark file')
+      const imported: Bookmark[] = []
+      const seen = new Set(bookmarks.map((item) => item.url))
+      for (const row of rows.slice(0, 500)) {
+        if (!row || typeof row.url !== 'string' || row.url.length > 2048) continue
+        let parsedUrl: URL
+        try { parsedUrl = new URL(row.url) } catch { continue }
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') continue
+        const url = parsedUrl.href
+        if (seen.has(url)) continue
+        seen.add(url)
+        const title = typeof row.title === 'string' ? row.title.trim().slice(0, 120) : ''
+        const color = typeof row.color === 'string' && /^#[0-9a-f]{6}$/i.test(row.color) ? row.color : '#64748b'
+        imported.push({
+          id: `bm-import-${Date.now().toString(36)}-${imported.length}`,
+          title: title || parsedUrl.hostname,
+          url,
+          color,
+        })
+      }
+      if (!imported.length) {
+        showToast('No new valid bookmarks found')
+        return
+      }
+      saveBookmarks([...imported, ...bookmarks].slice(0, 500))
+      showToast(`Imported ${imported.length} bookmarks`)
+    } catch {
+      showToast('Invalid bookmark file')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
   const handleStartManualDownload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!manualDownloadUrl.trim()) return
@@ -1260,7 +1582,8 @@ export default function ChromiumBrowser({
   const getProxySrc = (tab: Tab): string => {
     const target = tab.frameUrl !== undefined ? tab.frameUrl : tab.url
     if (!target) return 'about:blank'
-    return `${API}/webproxy?u=${encodeURIComponent(target)}`
+    const mode = standalone ? appDisplayMode : desktopMode ? 'desktop' : 'auto'
+    return `${API}/webproxy?u=${encodeURIComponent(target)}&mode=${mode}`
   }
 
   /**
@@ -1295,19 +1618,24 @@ export default function ChromiumBrowser({
   const handleIframeLoad = () => {
     if (!activeTab) return
     const tabId = activeTab.id
+    const navKey = activeTab.navKey
     const url = activeTab.url
     setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)),
+      prev.map((t) => (t.id === tabId && t.navKey === navKey ? { ...t, isLoading: false } : t)),
     )
 
     // If the frame stayed blank, the site refused to be framed. Retry once
-    // through the Go proxy, which strips X-Frame-Options / CSP.
+    // through the Go proxy, but only if this is still the same active navigation.
+    // A delayed load from a previous tab must never proxy the newly selected tab.
     if (!url) return
     window.setTimeout(() => {
+      if (activeTabId !== tabId) return
+      const current = tabs.find((t) => t.id === tabId)
+      if (!current || current.navKey !== navKey || current.proxyMode || !current.url) return
       if (!detectBlockedFrame(tabId)) return
       setTabs((prev) =>
         prev.map((t) =>
-          t.id === tabId && !t.proxyMode && t.url
+          t.id === tabId && t.navKey === navKey && !t.proxyMode && t.url
             ? { ...t, proxyMode: true, frameUrl: t.url, navKey: (t.navKey || 0) + 1 }
             : t,
         ),
@@ -1324,7 +1652,7 @@ export default function ChromiumBrowser({
   return (
     <div
       ref={containerRef}
-      className={`chromium-browser ${isFullscreen ? 'chromium-fullscreen' : ''}`}
+      className={`chromium-browser ${isFullscreen ? 'chromium-fullscreen' : ''} ${standalone ? 'chromium-browser-standalone' : ''}`}
       role="region"
       aria-label="Chromium Web Browser"
     >
@@ -1333,6 +1661,22 @@ export default function ChromiumBrowser({
         <div className="chromium-toast" role="alert">
           {toastMessage}
         </div>
+      ) : null}
+
+      {standalone ? (
+        <div className="webapp-mode-switch" role="group" aria-label="Website display mode">
+          {(['auto', 'mobile', 'desktop'] as const).map((mode) => (
+            <button key={mode} type="button" data-focusable className={appDisplayMode === mode ? 'active' : ''} aria-pressed={appDisplayMode === mode} onClick={() => changeAppDisplayMode(mode)}>
+              {mode === 'auto' ? 'Auto' : mode === 'mobile' ? 'Mobile' : 'Desktop'}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {standalone ? (
+        <button type="button" className="webapp-exit" onClick={onClose} data-focusable aria-label="Back to VYORA apps" title="Back to VYORA apps">
+          <Icon name="arrow-left" size={18} />
+        </button>
       ) : null}
 
       {/* 1. TOP TABS STRIP */}
@@ -1589,6 +1933,7 @@ export default function ChromiumBrowser({
               <Icon name="lock" size={14} />
             </span>
             <input
+              ref={omniboxRef}
               type="text"
               className="chromium-omnibox-input"
               value={inputUrl}
@@ -1718,7 +2063,7 @@ export default function ChromiumBrowser({
             type="button"
             className={`chromium-tool-btn ${adShield ? 'active' : ''}`}
             onClick={toggleAdShield}
-            title={adShield ? '🛡️ Ad & Pop-up Shield: ON' : '⚠️ Ad Shield: OFF'}
+            title={adShield ? '🛡️ Pop-up blocker: ON' : '⚠️ Pop-up blocker: OFF'}
             data-focusable
           >
             <Icon name="shield" size={15} />
@@ -1904,6 +2249,34 @@ export default function ChromiumBrowser({
           </div>
 
           <div className="chromium-bookmarks-tools">
+            <input
+              ref={bookmarkImportRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={importBookmarks}
+              aria-label="Import bookmarks file"
+            />
+            <button
+              type="button"
+              className="chromium-bm-add-btn"
+              onClick={exportBookmarks}
+              title="Export bookmarks as JSON"
+              data-focusable
+            >
+              <Icon name="download" size={13} />
+              <span>Export</span>
+            </button>
+            <button
+              type="button"
+              className="chromium-bm-add-btn"
+              onClick={() => bookmarkImportRef.current?.click()}
+              title="Import bookmarks from JSON"
+              data-focusable
+            >
+              <Icon name="upload" size={13} />
+              <span>Import</span>
+            </button>
             {activeTab?.url ? (
               <button
                 type="button"
@@ -2243,7 +2616,7 @@ export default function ChromiumBrowser({
       <div className="chromium-viewport">
         {activeTab?.url ? (
           /* ACTIVE WEBSITE IFRAME */
-          <div className={`chromium-iframe-wrapper ${darkModeWeb ? 'dark-web-active' : ''} ${desktopMode ? 'desktop-canvas-mode' : ''}`}>
+          <div className={`chromium-iframe-wrapper ${darkModeWeb ? 'dark-web-active' : ''} ${desktopMode ? 'desktop-canvas-mode' : ''} ${standalone ? `webapp-layout-${appDisplayMode}` : ''}`}>
             {activeTab.isLoading ? (
               <div className="chrome-loading-bar">
                 <div className="chrome-loading-indeterminate" />
@@ -2285,12 +2658,22 @@ export default function ChromiumBrowser({
                 transformOrigin: 'top left',
               }}
             >
+              {/* Proxied HTML is served from VYORA's own origin. Combining
+                  allow-same-origin with allow-scripts lets hostile page script
+                  escape the sandbox and reach the host app. Proxy documents use
+                  an opaque origin; direct external pages keep normal storage. */}
               <iframe
                 ref={iframeRef}
                 key={`${activeTab.id}-${activeTab.navKey || 0}`}
                 src={getIframeSrc(activeTab)}
                 className="chromium-iframe"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox"
+                sandbox={activeTab.proxyMode
+                  ? (adShield
+                    ? "allow-scripts allow-forms allow-modals allow-downloads allow-presentation"
+                    : "allow-scripts allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox")
+                  : (adShield
+                    ? "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation"
+                    : "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox")}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 referrerPolicy="origin"
                 onLoad={handleIframeLoad}
@@ -2308,14 +2691,14 @@ export default function ChromiumBrowser({
                 </div>
                 <div>
                   <h2>Vyora Browser</h2>
-                  <p className="muted">Search with Google or jump to a favourite</p>
+                  <p className="muted">Choose a search engine or jump to a favourite</p>
                 </div>
               </div>
             </div>
 
             <div className="speeddial-engines-bar" role="radiogroup" aria-label="Choose search engine">
-              {(['google'] as BrowserEngineId[]).map((eId) => {
-                const conf = BROWSER_ENGINES[eId]
+              {BROWSER_ENGINES_LIST.map((conf) => {
+                const eId = conf.id
                 const isSelected = activeTab?.engine === eId
                 return (
                   <button
@@ -2473,7 +2856,7 @@ export default function ChromiumBrowser({
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="search" size={16} />
-                <span>Google Autocomplete Suggestions</span>
+                <span>Five independent search engines</span>
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="plus" size={16} />

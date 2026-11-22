@@ -3,7 +3,7 @@
 Android TV ke liye production-grade IPTV client — real duniya ke channels, real
 flags, real channel logos, aur D-pad (remote) se poora control.
 
-**10,378 channels • 181 countries • 29 themes • 16,507 streams**
+**14,297 channels • 180 countries • 29 themes • 21,121 stream sources**
 
 ---
 
@@ -15,7 +15,7 @@ flags, real channel logos, aur D-pad (remote) se poora control.
 | Real logos | 98.6% channels ka asli logo (Wikimedia, Pluto, broadcaster CDN, imgur…) |
 | Real flags | 176 country flags **bundled locally** (72 KB) - koi CDN latency nahi |
 | Online / Offline | Har channel ka live status: **ONLINE badge upar**, **OFFLINE badge neeche**, offline cards dim |
-| Status engine | Server actually probes the playlist, proxy reports what really played, sweeper covers all 10k channels |
+| Status engine | Server actually probes the playlist, proxy reports what really played, low-priority catalogue sweeper covers all 14k+ channels |
 | Filters | Country (180), Theme/category (29), search, favourites, Global list |
 | Quality | 720p / 1080p / 1440p (2K) / 2160p (4K) + **auto quality** (network speed ke hisaab se) |
 | Remote first | Spatial D-pad navigation, OK = open, BACK = back, CH± = channel, ◀▶ = quality, **M = channel drawer** |
@@ -25,7 +25,8 @@ flags, real channel logos, aur D-pad (remote) se poora control.
 | Auto fallback | Dead/slow source pe automatically next stream try hoti hai |
 | Waiting queue | Offline channel queue me daalein - har minute khud check hota hai |
 | Accessibility | Audio description (TTS), focus announcements, large text, high contrast |
-| Android TV | Native app (ExoPlayer/Media3 + WebView), leanback launcher, built without Gradle |
+| Android TV + Android phones | One native app (ExoPlayer/Media3 + WebView), Leanback + phone launcher, portrait/landscape layouts, built without Gradle |
+| Player selection | 10 playback options; VYORA Player is default; independent defaults for Live TV, Movies, Series and Downloads; Android external-player handoff for VLC, MX, mpv, Kodi, Nova and Just Player |
 
 ---
 
@@ -54,7 +55,7 @@ E:\Vyora TV
 │  │  ├─ lib/{api,bridge,nav,i18n}.ts
 │  │  └─ components/         # Cards, PlayerOverlay, SearchOverlay, SettingsOverlay
 │  └─ public/data/           # dataset copy for the static build
-├─ android/                  # native Android TV app (no Gradle)
+├─ android/                  # native Android TV + phone app (no Gradle)
 │  ├─ app/                   # manifest, java, res
 │  ├─ libs/                  # Media3/ExoPlayer AARs
 │  ├─ tools/pack_apk.py
@@ -116,6 +117,24 @@ adb connect <tv-ip>:5555
 adb install -r android\out\VyoraTV-1.0.0.apk
 ```
 
+### Android phones
+
+The same Android package supports phones and Android TV; a separate phone-only app is not required.
+On phones the activity allows portrait and landscape rotation, keeps Android status/navigation
+bars visible, and uses the phone-first responsive layout: a bottom swipeable navigation bar,
+compact entertainment cards, touch-sized controls, safe-area spacing, and phone-sized player
+drawers. Android TV devices retain immersive full-screen mode and the remote/D-pad interface.
+
+Phone install (after you build the APK locally):
+
+```powershell
+adb devices
+adb install -r android\\out\\VyoraTV-1.0.0.apk
+```
+
+Physical phone testing is still required for real playback, device-specific status-bar insets,
+and external-player handoff. CI checks compile the Android Java sources but do not build an APK.
+
 App mein:
 - Leanback launcher (TV home screen par app icon)
 - ExoPlayer native playback (HLS + MPEG-DASH, Referer/User-Agent support)
@@ -125,7 +144,26 @@ App mein:
 
 ---
 
-## 5. Data pipeline
+## 5. Playback players
+
+VYORA Player is the default in-platform player. Settings lets users choose a default
+player and override it independently for Live TV channels, Movies, Series and
+Downloads. The ten choices are VYORA Player, ExoPlayer/Media3, HLS.js, HTML5,
+VLC, MX Player, mpv, Kodi, Nova Video Player and Just Player. The native
+Media3 engine includes HLS and DASH modules, adapts bitrate when the stream
+manifest provides multiple renditions, and reports measured throughput to the
+network-quality selector.
+
+VLC, MX, mpv, Kodi, Nova and Just Player are external Android apps: the selected
+app must already be installed. VYORA checks package availability and falls back
+to its built-in player with a message when the selected app is unavailable.
+The browser-only HLS.js and HTML5 choices remain in-app. External app support
+depends on the app accepting the stream URL and format; device-level playback
+must be verified on the target Android TV.
+
+---
+ 
+## 6. Data pipeline
 
 `npm run data` yeh karta hai:
 
@@ -146,7 +184,7 @@ curl.exe -L --proxy http://127.0.0.1:8080 -o data\raw\index.m3u https://iptv-org
 
 ---
 
-## 6. Remote (D-pad) map
+## 7. Remote (D-pad) map
 
 | Button | Kaam |
 |---|---|
@@ -161,9 +199,75 @@ curl.exe -L --proxy http://127.0.0.1:8080 -o data\raw\index.m3u https://iptv-org
 
 ---
 
-## 7. Note (legal)
+## 8. Note (legal)
 
 Catalogue sirf **publicly published free-to-air streams** ka reference hai
 (iptv-org ka open directory). Kuch streams broadcaster ki side se geo-blocked ya
 offline hote hain — app unhe "source unavailable" dikhata hai aur agla source
 try karta hai. Apni licensed playlist (M3U) use karna ho to usse import karein.
+
+## Stream source audit (opt-in)
+
+The audit checks HTTP reachability and bounded HLS/DASH manifest shape. It does **not**
+prove that a device can decode a stream or render its first frame. Network checks contact
+third-party providers, so the command requires explicit confirmation and uses conservative
+global request pacing.
+
+```bash
+# Small sample first
+npm run audit:streams -- --confirm-network --country PK --limit 50
+
+# Full catalogue audit; safely resume an interrupted run
+npm run audit:streams -- --confirm-network --resume
+```
+
+Partial progress is checkpointed every 25 completed sources under
+`reports/stream-audit/`. Checkpoints contain result metadata and provider origins only;
+the catalogue URL set is fingerprinted for matching on resume. The report CSV/JSON
+never stores URL paths, query strings, fragments, or playback tokens.
+
+---
+
+## 6. Entertainment hubs & AllSiteHub
+
+The app includes three VOD/music sections alongside Live TV:
+
+| Hub | Catalogue |
+|---|---:|
+| Movies | 2,943 titles |
+| Series | 23 shows with episode entries |
+| Songs & Music | 803 music channels |
+
+Movies, series and songs are served from `server/data/vod/`, mirrored to
+`web/public/data/vod/`, `web/dist/data/vod/` and
+`android/app/assets/data/vod/`. The Go API exposes:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/vod/index` | VOD catalogue totals and genres |
+| `GET /api/vod/movies?genre=&q=&limit=` | Search/filter movies |
+| `GET /api/vod/series?genre=&q=&limit=` | Search/filter series |
+| `GET /api/vod/songs?genre=&q=&limit=` | Search/filter music channels |
+
+Large grids are paginated on the client (48 movies and 240 music channels per
+page) to reduce initial DOM work on lower-powered TV devices. Use **Load More**
+to reveal further results.
+
+AllSiteHub is a built-in platform directory with 64 external websites across
+7 received categories. It is separate from user-installed apps and opens sites
+inside VYORA Browser. External website availability, login, embedded media and
+playback are controlled by each provider; directory inclusion is not a live
+availability guarantee.
+
+### Catalogue commands
+
+```powershell
+npm run build:vod       # regenerate movies, series and music catalogue files
+npm run validate:vod    # validate IDs, URLs, counts and all four data mirrors
+npm run audit:allsitehub # optional HTTP reachability audit of the 64 homepages
+```
+
+The AllSiteHub audit is a bounded HTTP check (3 concurrent requests, 10-second
+timeout); it does not test sign-in, page rendering, video playback or content
+licensing. It can also be started manually from GitHub Actions:
+**AllSiteHub external link audit → Run workflow**.

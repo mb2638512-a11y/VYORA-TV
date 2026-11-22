@@ -4,6 +4,16 @@
     android:versionCode="1"
     android:versionName="1.0.0">
 
+    <queries>
+        <package android:name="org.videolan.vlc" />
+        <package android:name="com.mxtech.videoplayer.ad" />
+        <package android:name="com.mxtech.videoplayer.pro" />
+        <package android:name="is.xyz.mpv" />
+        <package android:name="org.xbmc.kodi" />
+        <package android:name="org.courville.nova" />
+        <package android:name="com.brouken.player" />
+    </queries>
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -33,7 +43,8 @@
             android:exported="true"
             android:icon="@drawable/ic_launcher"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/VyoraTheme">
 
             <intent-filter>

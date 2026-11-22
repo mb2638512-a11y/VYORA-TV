@@ -1,0 +1,46 @@
+name: VYORA browser UI smoke test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - fix/browser-search-engines
+
+permissions:
+  contents: read
+
+jobs:
+  browser-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install temporary Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start VYORA web app
+        run: |
+          npm --workspace web run dev -- --host 127.0.0.1 > /tmp/vyora-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/vyora-vite.log
+          exit 1
+      - name: Test browser UI and native User-Agent bridge
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vyora-browser-smoke
+          path: artifacts/browser-smoke/
+          if-no-files-found: ignore
+          retention-days: 14

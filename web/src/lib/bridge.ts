@@ -14,7 +14,8 @@ type AndroidBridge = {
   isMuted(): boolean
   toggleMute(): void
   openExternal(url: string): void
-  launchPlayer?(url: string, title: string, pkg: string): void
+  launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
+  setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -28,7 +29,10 @@ declare global {
 export const bridge: AndroidBridge | null =
   typeof window !== 'undefined' && window.VyoraBridge ? window.VyoraBridge : null
 
-export const isNative = !!bridge
+// Treat the shell as a native player only when its playback method exists.
+// Lightweight bridge stubs (for browser display-mode integration) must not
+// accidentally disable the in-page player.
+export const isNative = typeof bridge?.play === 'function'
 
 export function nativePlay(url: string, referer = '', ua = '', title = '', logo = '') {
   bridge?.play(url, referer, ua, title, logo)
@@ -52,6 +56,10 @@ export function nativePlayMulti(
   }
   const first = list[0]
   bridge?.play(first.url, first.referer || '', first.ua || '', title, logo)
+}
+
+export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
+  bridge?.setBrowserDisplayMode?.(mode)
 }
 
 export function nativeStop() {
@@ -147,19 +155,19 @@ export function downloadStreamM3u(title: string, streamUrl: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
 
-export function launchExternalStream(playerId: PlayerEngineId, streamUrl: string, title = '') {
+export function launchExternalStream(playerId: PlayerEngineId, streamUrl: string, title = '', referer = '', ua = '') {
   const player = TOP_STREAMING_PLAYERS.find((p) => p.id === playerId)
+  if (playerId === 'internal' || playerId === 'exoplayer' || playerId === 'hlsjs' || playerId === 'html5') {
+    return { launched: false, inPlatform: true }
+  }
   if (bridge?.launchPlayer && player?.pkg) {
-    bridge.launchPlayer(streamUrl, title, player.pkg)
-    return { launched: true, method: 'bridge_launch' }
+    const launched = bridge.launchPlayer(streamUrl, title, player.pkg, referer, ua)
+    return launched
+      ? { launched: true, method: 'bridge_launch' }
+      : { launched: false, reason: 'not_installed', inPlatform: true }
   }
-  const target = getPlayerIntentOrUri(playerId, streamUrl, title)
-  if (isNative) {
-    nativeOpenExternal(target)
-    return { launched: true, method: 'native_open' }
-  }
-  // Web: in-platform playback engine runs directly inside Vyora TV
-  return { launched: false, inPlatform: true }
+  // External apps are Android-only. Never claim a launch on desktop/web.
+  return { launched: false, reason: isNative ? 'unsupported_player' : 'android_only', inPlatform: true }
 }
 
 

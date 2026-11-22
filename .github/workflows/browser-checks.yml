@@ -1,0 +1,107 @@
+name: Browser and Go checks
+
+on:
+  push:
+    branches:
+      - main
+      - fix/browser-search-engines
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    name: Web TypeScript and production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate stream audit script syntax
+        run: node --check scripts/audit-streams.mjs
+      - name: Validate AllSiteHub audit script syntax and catalogue
+        run: |
+          node --check scripts/audit-allsitehub.mjs
+          node scripts/audit-allsitehub.mjs --validate-only
+      - name: Regenerate and validate VOD catalogues and all data mirrors
+        run: |
+          node --check scripts/build-entertainment-catalog.mjs
+          npm run build:vod
+          node --check scripts/validate-vod-catalog.mjs
+          node scripts/validate-vod-catalog.mjs
+      - name: Type-check the web application
+        run: npx tsc --noEmit -p web/tsconfig.json
+      - run: npm --workspace web run build
+
+  go-tests:
+    name: Go backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server-go/go.mod
+          cache-dependency-path: server-go/go.mod
+      - working-directory: server-go
+        run: go test ./...
+
+  android-java-compile:
+    name: Android Java compile (no APK)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36"
+          accept-android-sdk-licenses: true
+      - name: Download pinned Media3 DASH module
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL 'https://dl.google.com/dl/android/maven2/androidx/media3/media3-exoplayer-dash/1.4.1/media3-exoplayer-dash-1.4.1.aar' \
+            -o android/libs/media3-exoplayer-dash-1.4.1.aar
+      - name: Extract AAR class libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/vyora-aar-jars"
+          for aar in android/libs/*.aar; do
+            [ -f "$aar" ] || continue
+            name="$(basename "$aar" .aar)"
+            target="$RUNNER_TEMP/vyora-aar-jars/$name.jar"
+            unzip -p "$aar" classes.jar > "$target" || true
+            if [ ! -s "$target" ]; then rm -f "$target"; fi
+          done
+      - name: Compile Android Java sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP="$ANDROID_HOME/platforms/android-36/android.jar"
+          LIB_CP="$(find android/libs -maxdepth 1 -name '*.jar' -print | paste -sd: -)"
+          AAR_CP="$(find "$RUNNER_TEMP/vyora-aar-jars" -name '*.jar' -print | paste -sd: -)"
+          [ -z "$LIB_CP" ] || CP="$CP:$LIB_CP"
+          [ -z "$AAR_CP" ] || CP="$CP:$AAR_CP"
+          mkdir -p "$RUNNER_TEMP/vyora-classes" "$RUNNER_TEMP/vyora-stub/com/vyora/tv"
+          cat > "$RUNNER_TEMP/vyora-stub/com/vyora/tv/R.java" <<'EOF'
+          package com.vyora.tv;
+          public final class R {
+            public static final class string {
+              public static final int player_hint = 1;
+            }
+          }
+          EOF
+          mapfile -t SOURCES < <(find android/app/java -name '*.java' -print)
+          javac -encoding UTF-8 -source 8 -target 8 -Xlint:none \
+            -classpath "$CP" -d "$RUNNER_TEMP/vyora-classes" \
+            "$RUNNER_TEMP/vyora-stub/com/vyora/tv/R.java" "${SOURCES[@]}"
+          echo "Compiled ${#SOURCES[@]} Android Java source files; no APK was built."

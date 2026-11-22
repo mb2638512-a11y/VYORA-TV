@@ -63,12 +63,23 @@ export function buildProxyUrl(url: string, referer?: string, ua?: string, cid?: 
 /* live channel status (online / offline - Real-Time SSE Stream)        */
 /* ------------------------------------------------------------------ */
 
+export type SourceHealthRecord = {
+  status: 'online' | 'offline' | 'unknown'
+  ts: number
+  ms?: number
+  successCount?: number
+  failureCount?: number
+  lastSuccessTs?: number
+  lastFailureTs?: number
+}
+
 export type HealthRecord = {
   status: 'online' | 'offline' | 'unknown'
   ts: number
   ms?: number
   source?: string
   bestStream?: number
+  sources?: Record<string, SourceHealthRecord>
 }
 
 const healthRegistry = new Map<string, HealthRecord>()
@@ -156,25 +167,47 @@ export async function reportStreamPlayback(
   ok: boolean,
   ms = 0,
   streamIndex = 0,
+  allSourcesFailed = false,
+  recordSource = true,
 ): Promise<void> {
   if (!channelId) return
-  // Immediately reflect in local registry for zero latency
+  const now = Date.now()
   const current = healthRegistry.get(channelId)
+  const sources = { ...(current?.sources || {}) }
+  if (recordSource && streamIndex >= 0) {
+    const key = String(streamIndex)
+    const previous = sources[key] || { status: 'unknown' as const, ts: 0, successCount: 0, failureCount: 0 }
+    sources[key] = {
+      status: ok ? 'online' : 'offline',
+      ts: now,
+      ms,
+      successCount: (previous.successCount || 0) + (ok ? 1 : 0),
+      failureCount: (previous.failureCount || 0) + (ok ? 0 : 1),
+      lastSuccessTs: ok ? now : previous.lastSuccessTs,
+      lastFailureTs: ok ? previous.lastFailureTs : now,
+    }
+  }
   healthRegistry.set(channelId, {
-    status: ok ? 'online' : 'offline',
-    ts: Date.now(),
-    ms,
-    source: 'playback',
-    bestStream: ok ? streamIndex : current?.bestStream ?? 0,
+    status: allSourcesFailed ? 'offline' : ok ? 'online' : current?.status || 'unknown',
+    ts: now,
+    ms: ok || allSourcesFailed ? ms : current?.ms,
+    source: allSourcesFailed ? 'playback-exhausted' : 'playback',
+    bestStream: ok ? streamIndex : current?.bestStream,
+    sources,
   })
   notifyHealthListeners()
 
   if (mode === 'server') {
     try {
-      await fetch(
-        `${API}/status/report?id=${encodeURIComponent(channelId)}&ok=${ok ? '1' : '0'}&ms=${ms}&stream=${streamIndex}`,
-        { cache: 'no-store' },
-      )
+      const params = new URLSearchParams({
+        id: channelId,
+        ok: ok ? '1' : '0',
+        ms: String(ms),
+        stream: String(streamIndex),
+      })
+      if (allSourcesFailed) params.set('exhausted', '1')
+      if (!recordSource) params.set('record', '0')
+      await fetch(`${API}/status/report?${params.toString()}`, { cache: 'no-store' })
     } catch {
       /* best effort */
     }
@@ -638,10 +671,13 @@ export function orderStreams(ch: Channel, maxQuality?: string): Channel {
   const rec = healthRegistry.get(ch.id)
   const bestIdx = typeof rec?.bestStream === 'number' ? rec.bestStream : -1
   const cap = maxQuality && maxQuality !== 'auto' ? qualityRank(maxQuality) : 0
-  const list = [...(ch.streams || [])]
+  const list = (ch.streams || []).map((stream, index) => ({
+    ...stream,
+    sourceIndex: typeof stream.sourceIndex === 'number' ? stream.sourceIndex : index,
+  }))
   list.sort((a, b) => {
-    const origIdxA = ch.streams.indexOf(a)
-    const origIdxB = ch.streams.indexOf(b)
+    const origIdxA = typeof a.sourceIndex === 'number' ? a.sourceIndex : ch.streams.indexOf(a)
+    const origIdxB = typeof b.sourceIndex === 'number' ? b.sourceIndex : ch.streams.indexOf(b)
     const bestBonusA = origIdxA === bestIdx ? 10000 : 0
     const bestBonusB = origIdxB === bestIdx ? 10000 : 0
     const ha = h[a.url]

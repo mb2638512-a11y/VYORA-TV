@@ -12,10 +12,14 @@
     "dev:web": "npm --workspace web run dev",
     "dev:server": "node server/src/index.js",
     "build:go": "cd server-go && go build -o vyora-tv.exe .",
-    "build": "npm run data && npm --workspace web run build && npm run build:go",
+    "build": "npm run build:vod && npm run data && npm --workspace web run build && npm run build:go",
     "start": "server-go\\vyora-tv.exe -port 8787 -data server/data -web web/dist",
     "start:node": "node server/src/index.js",
-    "apk": "powershell -ExecutionPolicy Bypass -File android/build-apk.ps1"
+    "apk": "powershell -ExecutionPolicy Bypass -File android/build-apk.ps1",
+    "audit:streams": "node scripts/audit-streams.mjs",
+    "build:vod": "node scripts/build-entertainment-catalog.mjs",
+    "validate:vod": "node scripts/validate-vod-catalog.mjs",
+    "audit:allsitehub": "node scripts/audit-allsitehub.mjs"
   },
   "engines": {
     "node": ">=20"

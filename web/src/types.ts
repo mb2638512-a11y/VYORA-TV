@@ -5,6 +5,8 @@ export type Stream = {
   label: string
   referer?: string
   ua?: string
+  /** Original source position before network/health sorting. */
+  sourceIndex?: number
   /** true when the source is an HLS playlist */
   hls?: boolean
   /** true when the source is an MPEG-DASH manifest */
@@ -103,12 +105,9 @@ export type Series = {
   source?: string
 }
 
-// Google is the only search engine. The previous build exposed five engines
-// but silently served DuckDuckGo for all of them (Google answers plain HTTP
-// clients with a JavaScript-only shell that has no result markup, so the
-// server-side scraper found nothing and fell back). Search is now rendered by
-// the browser's own engine, so one engine is all the app needs.
-export type BrowserEngineId = 'google'
+// Each provider has its own real search URL. Results are never silently
+// replaced by another provider.
+export type BrowserEngineId = 'google' | 'bing' | 'duckduckgo' | 'yahoo' | 'brave'
 
 
 export type Lang = 'en' | 'ur'
@@ -120,6 +119,7 @@ export type InstalledApp = {
   icon?: string
   category?: string
   color?: string
+  displayMode?: 'auto' | 'mobile' | 'desktop'
   installedAt: number
 }
 
@@ -152,8 +152,9 @@ export type View =
   | { name: 'series'; genre?: string }
   | { name: 'songs'; genre?: string }
   | { name: 'global' }
-  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId }
+  | { name: 'browser'; initialUrl?: string; initialEngine?: BrowserEngineId; standalone?: boolean; initialDisplayMode?: 'auto' | 'mobile' | 'desktop' }
   | { name: 'apps' }
+  | { name: 'allsitehub' }
   | { name: 'downloads' }
 
 export type Accessibility = {
@@ -223,52 +224,14 @@ export type VideoScaling = 'fit' | 'fill' | 'zoom' | '4:3'
 export type AudioMode = 'standard' | 'night' | 'dialog'
 
 export const TOP_STREAMING_PLAYERS: PlayerInfo[] = [
-  {
-    id: 'internal',
-    name: 'Vyora Cinema Turbo Engine',
-    badge: 'Platform Core (Recommended)',
-    description: 'Proprietary ultra-low latency engine with RAM pre-warming, dual-lane manifest proxy and sub-second live channel switching.',
-    platforms: 'all',
-    icon: 'play',
-  },
-  {
-    id: 'exoplayer',
-    name: 'ExoPlayer Media3 Pro',
-    badge: 'Native Android TV Core',
-    description: 'Google Media3 hardware-accelerated video pipeline with multi-source candidate racing and zero-copy hardware surface rendering.',
-    platforms: 'all',
-    icon: 'tv',
-  },
-  {
-    id: 'hlsjs',
-    name: 'Hls.js Adaptive Stream Engine',
-    badge: 'Dynamic Bitrate Ladder',
-    description: 'Industry-standard adaptive streaming core with network jitter compensation, automatic recovery watchdogs, and 240p-1080p ladder.',
-    platforms: 'all',
-    icon: 'signal',
-  },
-  {
-    id: 'html5',
-    name: 'HTML5 Native Hardware Engine',
-    badge: 'Zero CPU Overhead',
-    description: 'Direct GPU decoding via browser media pipeline with lowest power consumption, minimal memory footprint, and native OS sync.',
-    platforms: 'all',
-    icon: 'monitor',
-  },
-  {
-    id: 'stadium',
-    name: 'Ultra-Low Latency Stadium Live',
-    badge: 'Real-Time Sports Feed',
-    description: 'Aggressive 800ms buffer tuning designed for live stadium sports broadcasts, news tickers, and real-time audio synchronization.',
-    platforms: 'all',
-    icon: 'sparkles',
-  },
-  {
-    id: 'failover',
-    name: 'Auto-Failover Resilient Engine',
-    badge: 'High Reliability',
-    description: 'High-availability stream supervisor that actively tests alternative candidate sources, removes dead variants, and prevents black screens.',
-    platforms: 'all',
-    icon: 'refresh',
-  },
+  { id: 'internal', name: 'VYORA Player', badge: 'Default • Platform built-in', description: 'VYORA’s own player. Default for Live TV, Movies and Series with automatic source recovery.', platforms: 'all', icon: 'play' },
+  { id: 'exoplayer', name: 'ExoPlayer / Media3 Direct', badge: 'Native Android TV • Direct mode', description: 'Direct single-source Media3 playback. VYORA Player remains the managed mode with multi-source racing and automatic failover.', platforms: 'android', icon: 'tv' },
+  { id: 'hlsjs', name: 'HLS.js Player', badge: 'In-app web engine', description: 'Adaptive HLS playback inside VYORA on supported browsers and WebViews.', platforms: 'all', icon: 'signal' },
+  { id: 'html5', name: 'HTML5 Player', badge: 'In-app web engine', description: 'Browser-native video playback for supported direct media URLs.', platforms: 'all', icon: 'monitor' },
+  { id: 'vlc', name: 'VLC Media Player', badge: 'External Android app', description: 'Open streams in VLC when installed on the Android device.', pkg: 'org.videolan.vlc', platforms: 'android', icon: 'play-circle' },
+  { id: 'mx', name: 'MX Player', badge: 'External Android app', description: 'Open compatible streams in MX Player when installed.', pkg: 'com.mxtech.videoplayer.ad', platforms: 'android', icon: 'monitor-play' },
+  { id: 'mpv', name: 'mpv Player', badge: 'External Android app', description: 'Open compatible direct media streams in mpv when installed.', pkg: 'is.xyz.mpv', platforms: 'android', icon: 'film' },
+  { id: 'kodi', name: 'Kodi', badge: 'External Android app', description: 'Send compatible streams to Kodi when installed.', pkg: 'org.xbmc.kodi', platforms: 'android', icon: 'tv' },
+  { id: 'nova', name: 'Nova Video Player', badge: 'External Android app', description: 'Open compatible movie and episode streams in Nova when installed.', pkg: 'org.courville.nova', platforms: 'android', icon: 'clapperboard' },
+  { id: 'just', name: 'Just (Video) Player', badge: 'External Android app', description: 'Open compatible streams in Just Player when installed.', pkg: 'com.brouken.player', platforms: 'android', icon: 'play-square' },
 ]

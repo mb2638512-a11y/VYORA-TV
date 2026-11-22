@@ -17,6 +17,7 @@ export function TopBar({
   menuOpen?: boolean
 }) {
   return (
+    <>
     <header className="topbar">
       <div className="topbar-left">
         {onMenuToggle ? (
@@ -63,5 +64,7 @@ export function TopBar({
         ) : null}
       </div>
     </header>
+    <div className="mobile-bottom-nav">{left}</div>
+    </>
   )
 }

@@ -13,7 +13,7 @@ import type {
 } from '../types'
 import { TOP_STREAMING_PLAYERS } from '../types'
 import { categoryName } from '../lib/i18n'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 import { isNative, downloadStreamM3u, launchExternalStream } from '../lib/bridge'
 
 export type Settings = {
@@ -121,7 +121,13 @@ export function SettingsOverlay({
   }
 
   const handleSetPlayer = (key: 'defaultPlayer' | 'channelsPlayer' | 'moviesPlayer' | 'seriesPlayer' | 'downloadsPlayer', val: PlayerEngineId) => {
-    selectActivePlayer(val)
+    const updated: Settings = key === 'defaultPlayer'
+      ? { ...settings, defaultPlayer: val, channelsPlayer: val, moviesPlayer: val, seriesPlayer: val, downloadsPlayer: val }
+      : { ...settings, [key]: val }
+    setSettings(updated)
+    try { localStorage.setItem('vyora.settings', JSON.stringify(updated)) } catch {}
+    const player = TOP_STREAMING_PLAYERS.find((item) => item.id === val)
+    showToast(`${key === 'channelsPlayer' ? 'Live channels' : key === 'moviesPlayer' ? 'Movies' : key === 'seriesPlayer' ? 'Series' : key === 'downloadsPlayer' ? 'Downloads' : 'Default'} player: ${player?.name || val}`)
   }
 
   const handleTestPlayer = (playerId: PlayerEngineId) => {
@@ -218,7 +224,7 @@ export function SettingsOverlay({
     }
   }
 
-  const tabs: Array<{ id: TabId; label: string; icon: string; badge?: string }> = [
+  const tabs: Array<{ id: TabId; label: string; icon: IconName; badge?: string }> = [
     { id: 'players', label: 'Player Engines', icon: 'play', badge: '10' },
     { id: 'display', label: 'Panels & Layout', icon: 'tv' },
     { id: 'turbo', label: 'Turbo & Buffers', icon: 'bolt' },
@@ -286,7 +292,7 @@ export function SettingsOverlay({
               <div className="active-player-banner">
                 <div className="active-player-left">
                   <div className="active-player-icon-box">
-                    <Icon name={activePlayer.icon} size={28} />
+                    <Icon name={activePlayer.icon as IconName} size={28} />
                   </div>
                   <div>
                     <div className="active-player-subtitle">CURRENT ACTIVE STREAMING ENGINE</div>
@@ -307,12 +313,40 @@ export function SettingsOverlay({
               {/* Platform Streaming Engines Cards Grid */}
               <section className="settings-section">
                 <div className="section-head-with-badge">
-                  <h3><Icon name="sparkles" size={18} /> Platform Native Streaming Engines ({TOP_STREAMING_PLAYERS.length} Real Cores)</h3>
+                  <h3><Icon name="sparkles" size={18} /> Available Playback Players ({TOP_STREAMING_PLAYERS.length} Options)</h3>
                   <span className="badge-counter">1-Click Selection</span>
                 </div>
                 <p className="settings-hint">
-                  Click on any engine card below to immediately activate it for all channels and streams.
+                  Choose a default player for everything, or set separate players for Live TV, Movies and Series above. External apps must be installed on the Android TV device.
                 </p>
+
+                <div className="player-category-preferences">
+                  <label>Default player
+                    <select data-focusable value={settings.defaultPlayer || 'internal'} onChange={(e) => handleSetPlayer('defaultPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Live TV channels
+                    <select data-focusable value={settings.channelsPlayer || 'internal'} onChange={(e) => handleSetPlayer('channelsPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Movies
+                    <select data-focusable value={settings.moviesPlayer || 'internal'} onChange={(e) => handleSetPlayer('moviesPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Series
+                    <select data-focusable value={settings.seriesPlayer || 'internal'} onChange={(e) => handleSetPlayer('seriesPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Downloads
+                    <select data-focusable value={settings.downloadsPlayer || 'internal'} onChange={(e) => handleSetPlayer('downloadsPlayer', e.target.value as PlayerEngineId)}>
+                      {TOP_STREAMING_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                </div>
 
                 <div className="top-players-grid">
                   {TOP_STREAMING_PLAYERS.map((player) => {
@@ -330,7 +364,7 @@ export function SettingsOverlay({
                       >
                         <div className="player-card-head">
                           <div className="player-icon-box">
-                            <Icon name={player.icon} size={22} />
+                            <Icon name={player.icon as IconName} size={22} />
                           </div>
                           <div className="player-title-box">
                             <h4 className="player-name">{player.name}</h4>

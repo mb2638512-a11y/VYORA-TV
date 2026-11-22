@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"html"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -31,6 +31,131 @@ var (
 	proxyAssetCache   = make(map[string]CachedAsset)
 	proxyAssetCacheMu sync.RWMutex
 )
+
+var ErrUnsafeProxyTarget = fmt.Errorf("proxy target must resolve only to public IP addresses")
+
+var blockedProxyIPPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("2001:2::/48"),
+	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("2001:10::/28"),
+	netip.MustParsePrefix("2001:20::/28"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
+}
+
+// isPublicRoutableIP rejects private, local, and special-use ranges that
+// net.IP.IsGlobalUnicast alone can still classify as unicast.
+func isPublicRoutableIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	addr, err := netip.ParseAddr(ip.String())
+	if err != nil {
+		return false
+	}
+	addr = addr.Unmap()
+	if !addr.IsValid() || !addr.IsGlobalUnicast() || addr.IsPrivate() ||
+		addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() ||
+		addr.IsMulticast() || addr.IsUnspecified() {
+		return false
+	}
+	for _, prefix := range blockedProxyIPPrefixes {
+		if prefix.Contains(addr) {
+			return false
+		}
+	}
+	return true
+}
+
+// validatePublicProxyURL prevents the browser's server-side fetcher from being
+// used to reach localhost, private LANs, link-local services, or cloud metadata.
+// It is applied before the first request and on every redirect.
+func validatePublicProxyURL(ctx context.Context, target *url.URL) error {
+	if target == nil || (target.Scheme != "http" && target.Scheme != "https") || target.Hostname() == "" || target.User != nil {
+		return ErrUnsafeProxyTarget
+	}
+	host := strings.TrimSuffix(strings.ToLower(target.Hostname()), ".")
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") ||
+		host == "metadata.google.internal" || strings.HasSuffix(host, ".local") ||
+		strings.HasSuffix(host, ".internal") {
+		return ErrUnsafeProxyTarget
+	}
+
+	var ips []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		ips = []net.IP{ip}
+	} else {
+		resolved, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil || len(resolved) == 0 {
+			return ErrUnsafeProxyTarget
+		}
+		for _, item := range resolved {
+			ips = append(ips, item.IP)
+		}
+	}
+	for _, ip := range ips {
+		if !isPublicRoutableIP(ip) {
+			return ErrUnsafeProxyTarget
+		}
+	}
+	return nil
+}
+
+func browserProxyRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) >= 12 {
+		return http.ErrUseLastResponse
+	}
+	if err := validatePublicProxyURL(req.Context(), req.URL); err != nil {
+		return err
+	}
+	return nil
+}
+
+// safeBrowserDialContext pins the actual TCP connection to an IP that was
+// checked as globally routable. This closes the DNS-rebinding gap between URL
+// validation and the transport's own hostname resolution.
+func safeBrowserDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, ErrUnsafeProxyTarget
+	}
+	host = strings.TrimSuffix(strings.ToLower(host), ".")
+	var ips []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		ips = []net.IP{ip}
+	} else {
+		resolved, lookupErr := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if lookupErr != nil || len(resolved) == 0 {
+			return nil, ErrUnsafeProxyTarget
+		}
+		for _, item := range resolved {
+			ips = append(ips, item.IP)
+		}
+	}
+	dialer := &net.Dialer{Timeout: 8 * time.Second, KeepAlive: 30 * time.Second}
+	var lastErr error
+	for _, ip := range ips {
+		if !isPublicRoutableIP(ip) {
+			return nil, ErrUnsafeProxyTarget
+		}
+		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if dialErr == nil {
+			return conn, nil
+		}
+		lastErr = dialErr
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, ErrUnsafeProxyTarget
+}
 
 func getCachedAsset(u string) (CachedAsset, bool) {
 	proxyAssetCacheMu.RLock()
@@ -67,10 +192,7 @@ var (
 	// Dedicated high-performance browser web client with direct internet connection (bypassing dead 8080 proxy)
 	browserTransport = &http.Transport{
 		Proxy: nil, // DIRECT INTERNET: never route through local 8080 proxy
-		DialContext: (&net.Dialer{
-			Timeout:   8 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		DialContext: safeBrowserDialContext,
 		MaxIdleConns:          200,
 		MaxIdleConnsPerHost:   30,
 		IdleConnTimeout:       90 * time.Second,
@@ -78,9 +200,6 @@ var (
 		ResponseHeaderTimeout: 18 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableCompression:    false,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
 	}
 
 	browserJar, _ = cookiejar.New(nil)
@@ -89,44 +208,9 @@ var (
 		Transport: browserTransport,
 		Jar:       browserJar,
 		Timeout:   25 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 12 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
+		CheckRedirect: browserProxyRedirectPolicy,
 	}
 
-	tunnelURL, _ = url.Parse("http://127.0.0.1:8080")
-
-	browserTunnelTransport = &http.Transport{
-		Proxy: http.ProxyURL(tunnelURL),
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DisableCompression:    false,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-
-	browserTunnelClient = &http.Client{
-		Transport: browserTunnelTransport,
-		Jar:       browserJar,
-		Timeout:   25 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 12 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
-	}
 )
 
 
@@ -209,6 +293,12 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validatePublicProxyURL(r.Context(), parsed); err != nil {
+		log.Printf("[WEBPROXY] Rejected non-public destination %q", parsed.Hostname())
+		writeBrowserError(w, "Address blocked for safety", "This browser cannot connect to localhost, private network addresses, or internal services.", targetURL)
+		return
+	}
+
 	// A real document navigation carries an HTML Accept / Sec-Fetch-Dest=document.
 	// Anything else is an in-page API call (fetch/XHR) that the injected same-origin
 	// bridge routed here. Sub-requests must never receive the branded error page or
@@ -280,39 +370,11 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 		upReq.Header.Set("Sec-Fetch-Site", "same-origin")
 	}
 
+	// The browser proxy uses only browserClient: it validates every redirect
+	// and pins DNS results to public IPs. Falling back to the legacy tunnel or
+	// directClient would bypass those SSRF protections (and directClient disables
+	// TLS certificate verification), so failed upstream requests fail closed.
 	resp, doErr := browserClient.Do(upReq)
-	if doErr != nil || (resp != nil && (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden || resp.StatusCode >= 500)) {
-		// Try tunnel client fallback
-		log.Printf("[WEBPROXY] Primary fetch (status=%v, err=%v) for %s. Retrying via tunnel proxy...",
-			func() int {
-				if resp != nil {
-					return resp.StatusCode
-				}
-				return 0
-			}(), doErr, targetURL)
-		upReqTunnel, tErr := http.NewRequestWithContext(ctx, r.Method, targetURL, bytes.NewReader(reqBody))
-		if tErr == nil {
-			upReqTunnel.Header = upReq.Header.Clone()
-			tResp, tErr := browserTunnelClient.Do(upReqTunnel)
-			if tErr == nil && tResp != nil {
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
-				resp = tResp
-				doErr = nil
-				log.Printf("[WEBPROXY] Tunnel succeeded for %s with status %d", targetURL, tResp.StatusCode)
-			}
-		}
-	}
-
-	if doErr != nil && pm.directClient != nil {
-		log.Printf("[WEBPROXY] Primary client failed for %s: %v. Retrying directClient...", targetURL, doErr)
-		upReqDirect, dErr := http.NewRequestWithContext(ctx, r.Method, targetURL, bytes.NewReader(reqBody))
-		if dErr == nil {
-			upReqDirect.Header = upReq.Header.Clone()
-			resp, doErr = pm.directClient.Do(upReqDirect)
-		}
-	}
 
 	// NO SILENT SEARCH-ENGINE FALLBACK.
 	//
@@ -476,7 +538,7 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 						var uParam = parsed.searchParams.get('u');
 						if (uParam && uParam.indexOf('a1') === 0) {
 							var b64 = uParam.slice(2).replace(/-/g, '+').replace(/_/g, '/');
-							while (b64.length % 4 !== 0) b64 += '=';
+							while (b64.length %% 4 !== 0) b64 += '=';
 							try {
 								var decoded = atob(b64);
 								if (decoded) {
@@ -576,15 +638,41 @@ func (pm *ProxyManager) ProxyWeb(w http.ResponseWriter, r *http.Request) {
 			} catch(e) {}
 
 			// Synchronize page title & URL with parent
-			function syncState() {
+			function syncState(manifest) {
+				var iconLink = document.querySelector('link[rel~="icon"], link[rel="apple-touch-icon"]');
+				var iconUrl = '';
+				try { iconUrl = iconLink ? new URL(iconLink.getAttribute('href') || '', document.baseURI).href : ''; } catch (e) {}
+				var themeMeta = document.querySelector('meta[name="theme-color"]');
+				var appName = document.title || window.location.hostname;
+				if (manifest && typeof manifest === 'object') {
+					appName = manifest.name || manifest.short_name || appName;
+					if (Array.isArray(manifest.icons) && manifest.icons.length) {
+						var icons = manifest.icons.slice().sort(function(a, b) {
+							var score = function(icon) { return /512/.test(icon.sizes || '') ? 3 : /192/.test(icon.sizes || '') ? 2 : 1; };
+							return score(b) - score(a);
+						});
+						try { iconUrl = new URL(icons[0].src, manifest.__url || document.baseURI).href; } catch (e) {}
+					}
+				}
 				sendToHost({
 					type: 'VYORA_PAGE_SYNC',
 					url: window.__VYORA_CURRENT_URL__,
-					title: document.title || window.location.hostname
+					title: appName,
+					icon: iconUrl,
+					themeColor: themeMeta ? themeMeta.getAttribute('content') || '' : (manifest && manifest.theme_color) || ''
 				});
 			}
-			if (document.readyState === 'complete') syncState();
-			else window.addEventListener('load', syncState);
+			function loadAppManifest() {
+				var link = document.querySelector('link[rel="manifest"]');
+				if (!link) return;
+				var manifestUrl = '';
+				try { manifestUrl = new URL(link.getAttribute('href') || '', document.baseURI).href; } catch (e) { return; }
+				fetch(manifestUrl).then(function(response) { if (!response.ok) throw new Error('manifest unavailable'); return response.json(); }).then(function(manifest) {
+					if (manifest && typeof manifest === 'object') { manifest.__url = manifestUrl; syncState(manifest); }
+				}).catch(function() {});
+			}
+			if (document.readyState === 'complete') { syncState(); loadAppManifest(); }
+			else window.addEventListener('load', function() { syncState(); loadAppManifest(); });
 
 			// 2. Intercept clicks: keep navigation inside proxy, unpack redirects, and notify parent
 			document.addEventListener('click', function(e) {
@@ -811,7 +899,7 @@ func writeBrowserError(w http.ResponseWriter, title, detail, target string) {
 		<code>%s</code>
 		<div class="row">
 			<button class="primary" onclick="location.reload()">Retry</button>
-			<button onclick="try{parent.postMessage({type:'VYORA_NAVIGATE',url:'https://html.duckduckgo.com/html/'},'*')}catch(e){}">Back to Search</button>
+			<button onclick="history.back()">Back to Previous Page</button>
 		</div>
 	</div></body></html>`, html.EscapeString(title), html.EscapeString(title), html.EscapeString(detail), html.EscapeString(target))
 }

@@ -219,14 +219,14 @@ func main() {
 			// The race order puts the health-proven source first, but the
 			// mapping back to channel.streams is kept so the index we report
 			// is the real one the player has to use.
-			ordered := make([]Stream, 0, len(ch.Streams))
-			origIdx := make([]int, 0, len(ch.Streams))
-			ordered = append(ordered, ch.Streams[bestIdx])
-			origIdx = append(origIdx, bestIdx)
-			for i, s := range ch.Streams {
-				if i != bestIdx {
-					ordered = append(ordered, s)
-					origIdx = append(origIdx, i)
+			ordered, origIdx := health.OrderStreams(ch)
+			if rec != nil && len(rec.Sources) == 0 && bestIdx != 0 {
+				ordered = make([]Stream, 0, len(ch.Streams))
+				origIdx = make([]int, 0, len(ch.Streams))
+				ordered = append(ordered, ch.Streams[bestIdx])
+				origIdx = append(origIdx, bestIdx)
+				for i, stream := range ch.Streams {
+					if i != bestIdx { ordered = append(ordered, stream); origIdx = append(origIdx, i) }
 				}
 			}
 
@@ -290,17 +290,15 @@ func main() {
 				return
 			}
 
-			candidates := ch.Streams
-			if rec := health.Get(cid); rec != nil && rec.BestStream >= 0 && rec.BestStream < len(candidates) {
-				// Put the proven stream first, the rest keep their order.
-				ordered := make([]Stream, 0, len(candidates))
-				ordered = append(ordered, candidates[rec.BestStream])
-				for i, s := range candidates {
-					if i != rec.BestStream {
-						ordered = append(ordered, s)
-					}
+			candidates, originalIndices := health.OrderStreams(ch)
+			if rec := health.Get(cid); rec != nil && len(rec.Sources) == 0 && rec.BestStream > 0 && rec.BestStream < len(candidates) {
+				candidates = make([]Stream, 0, len(ch.Streams))
+				originalIndices = make([]int, 0, len(ch.Streams))
+				candidates = append(candidates, ch.Streams[rec.BestStream])
+				originalIndices = append(originalIndices, rec.BestStream)
+				for i, stream := range ch.Streams {
+					if i != rec.BestStream { candidates = append(candidates, stream); originalIndices = append(originalIndices, i) }
 				}
-				candidates = ordered
 			}
 
 			limit := 4
@@ -312,9 +310,9 @@ func main() {
 
 			idx, ok, ms := proxyMgr.RaceStreams(candidates, cid, limit)
 			if !ok {
-				if health != nil {
-					health.Set(cid, "offline", ms, "race", 0)
-				}
+				// RaceStreams only checks the bounded candidate window (default 4),
+				// not necessarily every catalogue source. Do not mark the channel
+				// offline until the player reports full playback exhaustion.
 				writeJSON(w, http.StatusBadGateway, map[string]interface{}{
 					"error": "all-sources-failed",
 					"ms":    ms,
@@ -323,8 +321,9 @@ func main() {
 			}
 
 			st := candidates[idx]
+			realIndex := originalIndices[idx]
 			w.Header().Set("Location", buildProxyURL(st.URL, st.Referer, st.UA, cid))
-			w.Header().Set("X-Vyora-Stream", strconv.Itoa(idx))
+			w.Header().Set("X-Vyora-Stream", strconv.Itoa(realIndex))
 			w.Header().Set("X-Vyora-Ms", strconv.Itoa(ms))
 			w.Header().Set("Cache-Control", "no-store")
 			w.WriteHeader(http.StatusFound)
@@ -397,7 +396,12 @@ func main() {
 			ms, _ := strconv.Atoi(r.URL.Query().Get("ms"))
 			streamIdx, _ := strconv.Atoi(r.URL.Query().Get("stream"))
 			if id != "" {
-				health.Report(id, ok, ms, streamIdx)
+				if r.URL.Query().Get("record") != "0" {
+					health.ReportSource(id, ok, ms, streamIdx)
+				}
+				if r.URL.Query().Get("exhausted") == "1" || r.URL.Query().Get("exhausted") == "true" {
+					health.MarkChannelOffline(id, ms)
+				}
 			}
 			writeJSON(w, http.StatusOK, map[string]interface{}{
 				"ok":     true,

@@ -15,7 +15,7 @@ import {
   requestLookahead,
   resolveFastestStream,
 } from '../lib/api'
-import { downloadStreamM3u, isNative, launchExternalStream, nativePlayMulti, nativeStop } from '../lib/bridge'
+import { downloadStreamM3u, isNative, launchExternalStream, nativePlay, nativePlayMulti, nativeStop } from '../lib/bridge'
 import { Icon } from './Icon'
 
 type Props = {
@@ -172,8 +172,12 @@ export function PlayerOverlay({
     manifestParsedRef.current = false
     fragLoadedRef.current = false
     const best = statuses[channel.id]?.bestStream
-    const initialIdx =
-      typeof best === 'number' && best >= 0 && best < (channel.streams?.length || 0) ? best : 0
+    // Backend health indexes refer to the original catalogue order. The app
+    // may have reordered streams by network quality, so map by source identity.
+    const mappedBest = typeof best === 'number'
+      ? (channel.streams || []).findIndex((s) => s.sourceIndex === best)
+      : -1
+    const initialIdx = mappedBest >= 0 ? mappedBest : 0
     setStreamIndex(initialIdx)
     setStatus('loading')
     setBuffering(false)
@@ -193,14 +197,21 @@ export function PlayerOverlay({
     // only start the player once the winner is known -> no restart, no blank
     // screen, first frame in milliseconds.
     setResolvedIdx(null)
-    if (channel.streams && channel.streams.length > 1) {
+    // Native Media3 already races the full source list and uses persisted
+    // per-source playback evidence. A separate HTTP resolve race here is
+    // redundant and can change streamIndex after native playback has started,
+    // restarting the player and wasting the first connection attempt.
+    if (isNative) {
+      setResolvedIdx(initialIdx)
+    } else if (channel.streams && channel.streams.length > 1) {
       resolveFastestStream(channel.id)
         .then((res) => {
           if (!res || !res.ok || typeof res.streamIndex !== 'number') {
             setResolvedIdx((cur) => (cur === null ? initialIdx : cur))
             return
           }
-          const idx = res.streamIndex
+          const originalIndex = res.streamIndex
+          const idx = (channel.streams || []).findIndex((s) => s.sourceIndex === originalIndex)
           if (idx < 0 || idx >= (channel.streams?.length || 0)) {
             setResolvedIdx((cur) => (cur === null ? initialIdx : cur))
             return
@@ -283,10 +294,15 @@ export function PlayerOverlay({
 
   const handleStreamFailure = useCallback(() => {
     markStream(stream?.url || '', false)
-    if (tryNextStream()) return
+    const failedIndex = stream?.sourceIndex ?? streamIndex
+    if (tryNextStream()) {
+      void reportStreamPlayback(channel.id, false, 0, failedIndex)
+      return
+    }
 
     // Allow multiple retry passes (up to 4 full passes across all streams) before giving up!
     if (cycleCountRef.current < 4) {
+      void reportStreamPlayback(channel.id, false, 0, failedIndex)
       cycleCountRef.current++
       triedRef.current.clear()
       networkFailsRef.current = 0
@@ -301,12 +317,70 @@ export function PlayerOverlay({
       return
     }
 
-    // Only after genuine extensive multi-cycle exhaustion show offline screen
-    void reportStreamPlayback(channel.id, false, 0, streamIndex)
+    // The last source failed too: only now mark the whole channel offline.
+    void reportStreamPlayback(channel.id, false, 0, failedIndex, true)
     setStatus('error')
     setOffline(true)
     setMessage(t('offlineHint'))
   }, [stream, tryNextStream, channel.id, streamIndex, t])
+
+  // Native Media3 reports the real first frame rather than pretending that
+  // calling play() means the stream is already visible.
+  useEffect(() => {
+    if (!isNative) return
+
+    const onFirstFrame = (event: Event) => {
+      const detail = (event as CustomEvent<{ url?: string; startupMs?: number }>).detail
+      const url = detail?.url || ''
+      const sourceIndex = channel.streams.findIndex((item) => item.url === url)
+      if (sourceIndex < 0) return
+      const source = channel.streams[sourceIndex]
+      hasPlayedRef.current = true
+      setStatus('playing')
+      setBuffering(false)
+      setOffline(false)
+      markStream(url, true)
+      void reportStreamPlayback(
+        channel.id,
+        true,
+        Number(detail.startupMs || 0),
+        source.sourceIndex ?? sourceIndex,
+      )
+    }
+
+    const onSourceFailed = (event: Event) => {
+      const detail = (event as CustomEvent<{ url?: string; elapsedMs?: number }>).detail
+      const url = detail?.url || ''
+      const source = channel.streams.find((item) => item.url === url)
+      if (!source) return
+      markStream(url, false)
+      void reportStreamPlayback(
+        channel.id,
+        false,
+        Number(detail?.elapsedMs || 0),
+        source.sourceIndex ?? channel.streams.indexOf(source),
+      )
+    }
+
+    const onAllSourcesFailed = () => {
+      setBuffering(false)
+      setStatus('error')
+      setOffline(true)
+      setMessage(t('offlineHint'))
+      // Each native candidate already emitted its own source-failed event.
+      // This final event changes only the channel-level status.
+      void reportStreamPlayback(channel.id, false, 0, -1, true, false)
+    }
+
+    window.addEventListener('vyora-native-first-frame', onFirstFrame)
+    window.addEventListener('vyora-native-source-failed', onSourceFailed)
+    window.addEventListener('vyora-native-sources-failed', onAllSourcesFailed)
+    return () => {
+      window.removeEventListener('vyora-native-first-frame', onFirstFrame)
+      window.removeEventListener('vyora-native-source-failed', onSourceFailed)
+      window.removeEventListener('vyora-native-sources-failed', onAllSourcesFailed)
+    }
+  }, [channel.id, channel.streams, stream, streamIndex, t])
 
   /* Main stream loading and playback engine */
   useEffect(() => {
@@ -322,14 +396,52 @@ export function PlayerOverlay({
     setOffline(false)
     networkFailsRef.current = 0
 
-    if (isNative) {
-      // Hand over every source: the native player races them and shows the
-      // first one that works (no black screen on a dead CDN).
-      const candidates = (channel.streams || [])
-        .slice(0, 4)
-        .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
-      nativePlayMulti(candidates, channel.name, channel.logo)
-      setStatus('playing')
+    const externalPlayer = ['vlc', 'mx', 'mpv', 'kodi', 'nova', 'just'].includes(activeEngineId)
+    if (externalPlayer) {
+      if (isNative) {
+        const result = launchExternalStream(activeEngineId, stream.url, channel.name, stream.referer || '', stream.ua || '')
+        if (result.launched) {
+          nativeStop()
+          setStatus('playing')
+          setToast(`Opened in ${currentEngine.name}`)
+          return
+        }
+        setToast(`${currentEngine.name} could not open this stream. Falling back to VYORA Player.`)
+      } else {
+        setToast('External Android players are available in the Android TV app. Using VYORA Player here.')
+      }
+      setActiveEngineId('internal')
+      return
+    }
+
+    if (isNative && (activeEngineId === 'hlsjs' || activeEngineId === 'html5')) {
+      // Hide the native SurfaceView so the selected WebView engine is visible.
+      nativeStop()
+    }
+
+    if (isNative && activeEngineId !== 'hlsjs' && activeEngineId !== 'html5') {
+      if (activeEngineId === 'exoplayer') {
+        // Direct ExoPlayer mode: play only the selected source and let Media3
+        // report/fail this source; VYORA Player retains multi-source racing.
+        nativePlay(stream.url, stream.referer || '', stream.ua || '', channel.name, channel.logo)
+      } else {
+        // VYORA-managed mode starts with the health-preferred source, then
+        // keeps every distinct channel source available for automatic recovery.
+        // The native player staggers retries so this larger candidate list does
+        // not create a burst of parallel traffic on slow connections.
+        const allSources = channel.streams || []
+        const preferredIndex = Math.min(Math.max(streamIndex, 0), Math.max(0, allSources.length - 1))
+        const orderedSources = preferredIndex > 0
+          ? [allSources[preferredIndex], ...allSources.filter((_, i) => i !== preferredIndex)]
+          : allSources
+        const candidates = orderedSources
+          .filter((s) => typeof s?.url === 'string' && s.url.trim().length > 0)
+          .filter((s, i, all) => all.findIndex((item) => item.url === s.url) === i)
+          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
+        nativePlayMulti(candidates, channel.name, channel.logo)
+      }
+      setStatus('loading')
+      setBuffering(true)
       return
     }
 
@@ -340,8 +452,10 @@ export function PlayerOverlay({
     )
 
     if (isEmbed) {
-      setStatus('playing')
-      setBuffering(false)
+      // The provider page has not loaded yet; let the iframe's load event
+      // move the UI out of its loading state instead of claiming playback early.
+      setStatus('loading')
+      setBuffering(true)
       setIsMuted(false)
       return () => {}
     }
@@ -411,7 +525,7 @@ export function PlayerOverlay({
         watchdogRef.current = null
       }
       markStream(stream.url, true)
-      void reportStreamPlayback(channel.id, true, 0, streamIndex)
+      void reportStreamPlayback(channel.id, true, 0, stream?.sourceIndex ?? streamIndex)
       void notifyPlaybackActive(channel.id)
 
       // Predictive Lookahead: prefetch next and previous channel in low-priority background
@@ -521,7 +635,7 @@ export function PlayerOverlay({
       }
     }
 
-    if (isHls && Hls.isSupported()) {
+    if (isHls && Hls.isSupported() && activeEngineId !== 'html5') {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
@@ -666,7 +780,7 @@ export function PlayerOverlay({
       video.removeEventListener('error', onError)
       video.pause()
     }
-  }, [channel.id, streamIndex, t, tryNextStream, retryNonce, resolvedIdx])
+  }, [channel.id, streamIndex, t, tryNextStream, retryNonce, resolvedIdx, activeEngineId])
 
   /* Auto quality: re-cap the ABR when the measured bandwidth changes
      (without restarting the stream). */
@@ -962,6 +1076,16 @@ export function PlayerOverlay({
               title={channel.name}
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => {
+                setStatus('playing')
+                setBuffering(false)
+              }}
+              onError={() => {
+                setStatus('error')
+                setBuffering(false)
+                setToast('This embedded player could not be loaded')
+              }}
               style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
             />
           ) : (
@@ -1301,8 +1425,46 @@ export function PlayerOverlay({
                   <Icon name="list" size={16} />
                   <span>Channels</span>
                 </button>
+                <button
+                  className="hud-action-btn hud-btn-player"
+                  onClick={() => setShowPlayerPicker((open) => !open)}
+                  data-focusable
+                  aria-expanded={showPlayerPicker}
+                  title="Choose playback engine"
+                >
+                  <Icon name="play-circle" size={16} />
+                  <span>Player</span>
+                </button>
               </div>
 
+              {showPlayerPicker ? (
+                <div className="player-engine-picker" role="dialog" aria-label="Choose player">
+                  <div className="player-engine-picker-head">
+                    <strong>Choose Player</strong>
+                    <button type="button" data-focusable onClick={() => setShowPlayerPicker(false)} aria-label="Close player picker">×</button>
+                  </div>
+                  <div className="player-engine-picker-list">
+                    {TOP_STREAMING_PLAYERS.map((player) => (
+                      <button
+                        key={player.id}
+                        type="button"
+                        data-focusable
+                        className={`player-engine-picker-item ${activeEngineId === player.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setActiveEngineId(player.id)
+                          onSelectPlayer?.(player.id)
+                          setShowPlayerPicker(false)
+                          setToast(`Player preference set to ${player.name}`)
+                        }}
+                      >
+                        <span>{player.name}</span>
+                        <small>{player.badge}</small>
+                        {activeEngineId === player.id ? <b>✓</b> : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="player-clock">{new Date().toLocaleTimeString()}</div>
               {nowPlaying ? (
                 <div className="player-now">

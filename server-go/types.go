@@ -63,14 +63,26 @@ type BootstrapIndex struct {
 	Categories  []Category `json:"categories"`
 }
 
-// HealthRecord represents real-time channel stream status.
+// SourceHealthRecord stores recent playback evidence for one source index.
+type SourceHealthRecord struct {
+	Status         string `json:"status"`
+	TS             int64  `json:"ts"`
+	MS             int    `json:"ms"`
+	SuccessCount   int    `json:"successCount,omitempty"`
+	FailureCount   int    `json:"failureCount,omitempty"`
+	LastSuccessTS  int64  `json:"lastSuccessTs,omitempty"`
+	LastFailureTS  int64  `json:"lastFailureTs,omitempty"`
+}
+
+// HealthRecord represents real-time channel and per-source stream status.
 type HealthRecord struct {
-	ID         string `json:"id"`
-	Status     string `json:"status"` // "online" | "offline" | "unknown"
-	TS         int64  `json:"ts"`
-	MS         int    `json:"ms"`
-	Source     string `json:"source"`
-	BestStream int    `json:"bestStream"`
+	ID         string                        `json:"id"`
+	Status     string                        `json:"status"` // "online" | "offline" | "unknown"
+	TS         int64                         `json:"ts"`
+	MS         int                           `json:"ms"`
+	Source     string                        `json:"source"`
+	BestStream int                           `json:"bestStream"`
+	Sources    map[int]SourceHealthRecord    `json:"sources,omitempty"`
 }
 
 // HealthStats represents an aggregate summary of channel statuses.

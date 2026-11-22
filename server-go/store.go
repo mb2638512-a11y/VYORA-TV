@@ -394,6 +394,24 @@ func (s *Store) getSearchTextLocked(ch *Channel) string {
 	return hay.String()
 }
 
+// ChannelCount returns the number of channels in the loaded catalogue.
+func (s *Store) ChannelCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.allChannels)
+}
+
+// GetChannelAt returns a channel by stable catalogue position for background
+// sweeps. The returned channel data is immutable after Store.Load.
+func (s *Store) GetChannelAt(index int) *Channel {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if index < 0 || index >= len(s.allChannels) {
+		return nil
+	}
+	return s.allChannels[index]
+}
+
 func (s *Store) Stats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

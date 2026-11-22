@@ -3038,6 +3038,67 @@ button {
    CHROMIUM BROWSER APPLICATION COMPONENT
    ========================================================================== */
 
+
+/* Installed web apps run as their own full-screen VYORA surface. Keep the
+   shared WebView/proxy engine, but remove every browser-only control. */
+.chromium-browser-standalone {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #000 !important;
+}
+.chromium-browser-standalone > :not(.chromium-viewport):not(.webapp-exit):not(.chromium-toast) {
+  display: none !important;
+}
+.chromium-browser-standalone > .chromium-viewport {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+.chromium-browser-standalone .chromium-iframe-wrapper,
+.chromium-browser-standalone .chromium-iframe-scaler {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  transform: none !important;
+}
+.chromium-browser-standalone .chromium-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+}
+.webapp-exit {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 10002;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 14px;
+  color: #fff;
+  background: rgba(12,18,28,.62);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+}
+.chromium-browser-standalone .chromium-toast {
+  z-index: 10003;
+}
+
 .chromium-browser {
   display: flex;
   flex-direction: column;
@@ -7065,3 +7126,56 @@ button {
 
 
 
+
+/* Per-installed-app viewport presets. Desktop uses a wide 1280px canvas
+   scaled to fit the TV/phone screen; Auto and Mobile stay responsive. */
+.webapp-mode-switch {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 10002;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 13px;
+  background: rgba(12,18,28,.72);
+  backdrop-filter: blur(12px);
+}
+.webapp-mode-switch button {
+  min-width: 54px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 9px;
+  color: rgba(255,255,255,.78);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.webapp-mode-switch button.active {
+  color: #fff;
+  background: rgba(59,130,246,.78);
+}
+.chromium-browser-standalone .webapp-layout-desktop .chromium-iframe-scaler {
+  width: 1280px !important;
+  min-width: 1280px !important;
+  height: 100% !important;
+  transform: scale(.8) !important;
+  transform-origin: top left !important;
+}
+.chromium-browser-standalone .webapp-layout-desktop .chromium-iframe {
+  width: 1280px !important;
+  min-width: 1280px !important;
+  height: 100% !important;
+}
+.chromium-browser-standalone .webapp-layout-mobile .chromium-iframe,
+.chromium-browser-standalone .webapp-layout-auto .chromium-iframe {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.chromium-browser-standalone .webapp-mode-switch button:focus-visible,
+.chromium-browser-standalone .webapp-exit:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}

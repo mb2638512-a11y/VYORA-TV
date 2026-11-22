@@ -34,12 +34,14 @@ public class MainActivity extends Activity {
     private TvPlayer player;
     private LocalServer localServer;
     private TextToSpeech tts;
+    private String defaultWebUserAgent;
     private boolean ttsReady = false;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureWindowForDevice();
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -73,6 +75,42 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         player = new TvPlayer(this, surface);
+        player.setPlaybackListener(new TvPlayer.PlaybackListener() {
+            @Override
+            public void onFirstFrame(String url, long startupMs) {
+                runOnUiThread(() -> {
+                    if (web == null) return;
+                    String safeUrl = org.json.JSONObject.quote(url == null ? "" : url);
+                    web.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('vyora-native-first-frame',{detail:{url:"
+                                    + safeUrl + ",startupMs:" + startupMs + "}}));",
+                            null);
+                });
+            }
+
+            @Override
+            public void onSourceFailed(String url, long elapsedMs) {
+                runOnUiThread(() -> {
+                    if (web == null) return;
+                    String safeUrl = org.json.JSONObject.quote(url == null ? "" : url);
+                    web.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('vyora-native-source-failed',{detail:{url:"
+                                    + safeUrl + ",elapsedMs:" + elapsedMs + "}}));",
+                            null);
+                });
+            }
+
+            @Override
+            public void onAllSourcesFailed() {
+                runOnUiThread(() -> {
+                    if (web != null) {
+                        web.evaluateJavascript(
+                                "window.dispatchEvent(new Event('vyora-native-sources-failed'));",
+                                null);
+                    }
+                });
+            }
+        });
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -91,7 +129,8 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " VyoraTV/1.0 (Android TV)");
+        defaultWebUserAgent = WebSettings.getDefaultUserAgent(this);
+        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android)");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -121,13 +160,43 @@ public class MainActivity extends Activity {
          * bundle over http://127.0.0.1:<port> and implements the API, so the UI
          * is same-origin with the engine and everything works.
          */
-        localServer = new LocalServer(this);
+        localServer = new LocalServer(this, player);
         int port = localServer.start();
         if (port > 0) {
             web.loadUrl("http://127.0.0.1:" + port + "/index.html");
         } else {
             Log.w(TAG, "local server unavailable, falling back to bundled file");
             web.loadUrl(INDEX_URL);
+        }
+    }
+
+    /** Keep TV immersive while allowing phone status/navigation bars and portrait layout. */
+    private void configureWindowForDevice() {
+        boolean tv = getPackageManager().hasSystemFeature("android.software.leanback");
+        getWindow().setStatusBarColor(Color.rgb(6, 7, 13));
+        getWindow().setNavigationBarColor(Color.rgb(6, 7, 13));
+        View decor = getWindow().getDecorView();
+        if (tv) {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        } else {
+            decor.setSystemUiVisibility(0);
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+    }
+
+    /** Apply a real WebView User-Agent, not only a CSS viewport width. */
+    public void setBrowserDisplayMode(String mode) {
+        if (web == null) return;
+        WebSettings settings = web.getSettings();
+        if ("desktop".equalsIgnoreCase(mode)) {
+            settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 VyoraTV/1.0");
+        } else if ("mobile".equalsIgnoreCase(mode)) {
+            settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 VyoraTV/1.0");
+        } else {
+            settings.setUserAgentString((defaultWebUserAgent == null ? WebSettings.getDefaultUserAgent(this) : defaultWebUserAgent)
+                    + " VyoraTV/1.0 (Android)");
         }
     }
 
@@ -251,9 +320,17 @@ public class MainActivity extends Activity {
     /* ---------------- remote keys ---------------- */
 
     private void dispatchKey(String key) {
-        web.evaluateJavascript(
-                "window.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true}));",
-                null);
+        // Deliver remote input to the focused DOM control so React handlers,
+        // text fields, and TV spatial-navigation logic see the same target.
+        // Enter activates focused controls explicitly because synthetic DOM
+        // KeyboardEvents do not trigger the browser's native default click.
+        String script = "(function(){"
+                + "var key='" + key + "';"
+                + "var target=document.activeElement||document.body;"
+                + "if(key==='Enter'&&target&&target.matches('button:not([disabled]),a[href],[role=button],[role=tab]')){target.click();return;}"
+                + "target.dispatchEvent(new KeyboardEvent('keydown',{key:key,bubbles:true,cancelable:true}));"
+                + "})()";
+        web.evaluateJavascript(script, null);
     }
 
     @Override
@@ -278,20 +355,7 @@ public class MainActivity extends Activity {
                 dispatchKey("Enter");
                 return true;
             case KeyEvent.KEYCODE_BACK:
-                if (player != null && player.isActive()) {
-                    stopPlayback();
-                    // let the web UI close its player overlay too
-                    dispatchKey("Escape");
-                    return true;
-                }
-                // let the web layer decide; exit only if it does not handle it
-                web.evaluateJavascript(
-                        "(function(){try{return window.__vyoraBack ? window.__vyoraBack() : 'exit';}catch(e){return 'exit';}})()",
-                        value -> {
-                            if (value == null || !"true".equals(value.replace("\"", ""))) {
-                                finish();
-                            }
-                        });
+                handleBackNavigation();
                 return true;
             case KeyEvent.KEYCODE_VOLUME_UP:
                 setPlayerVolume(getPlayerVolume() + 0.1f);
@@ -305,6 +369,36 @@ public class MainActivity extends Activity {
             default:
                 return super.onKeyDown(keyCode, event);
         }
+    }
+
+    /**
+     * Route Android phone gesture/back-button and TV remote BACK through the
+     * web app first. Only finish the Activity when the web UI has no prior
+     * screen to return to.
+     */
+    private void handleBackNavigation() {
+        if (player != null && player.isActive()) {
+            stopPlayback();
+            dispatchKey("Escape");
+            return;
+        }
+        if (web == null) {
+            finish();
+            return;
+        }
+        web.evaluateJavascript(
+                "(function(){try{return window.__vyoraBack ? window.__vyoraBack() : 'exit';}catch(e){return 'exit';}})()",
+                value -> {
+                    if (value == null || !"true".equals(value.replace("\"", ""))) {
+                        finish();
+                    }
+                });
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        handleBackNavigation();
     }
 
     @Override

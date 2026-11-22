@@ -22,10 +22,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 const SERVER_VOD = path.join(ROOT, 'server', 'data', 'vod')
 const WEB_VOD = path.join(ROOT, 'web', 'public', 'data', 'vod')
+const WEB_DIST_VOD = path.join(ROOT, 'web', 'dist', 'data', 'vod')
+const ANDROID_VOD = path.join(ROOT, 'android', 'app', 'assets', 'data', 'vod')
 const CHANNELS_DIR = path.join(ROOT, 'server', 'data', 'channels')
 
-fs.mkdirSync(SERVER_VOD, { recursive: true })
-fs.mkdirSync(WEB_VOD, { recursive: true })
+for (const directory of [SERVER_VOD, WEB_VOD, WEB_DIST_VOD, ANDROID_VOD]) {
+  fs.mkdirSync(directory, { recursive: true })
+}
 
 // --------------------------------------------------------------------------
 // 1. TOP & TRENDING BLOCKBUSTER MOVIES (2024 - 2026 & Modern Hits)
@@ -727,14 +730,17 @@ async function buildCatalog() {
   // --------------------------------------------------------------------------
   // 5. WRITE JSON DATASETS TO SERVER AND WEB
   // --------------------------------------------------------------------------
-  fs.writeFileSync(path.join(SERVER_VOD, 'movies.json'), JSON.stringify(allMovies, null, 2), 'utf8')
-  fs.writeFileSync(path.join(WEB_VOD, 'movies.json'), JSON.stringify(allMovies, null, 2), 'utf8')
-
-  fs.writeFileSync(path.join(SERVER_VOD, 'series.json'), JSON.stringify(allSeries, null, 2), 'utf8')
-  fs.writeFileSync(path.join(WEB_VOD, 'series.json'), JSON.stringify(allSeries, null, 2), 'utf8')
-
-  fs.writeFileSync(path.join(SERVER_VOD, 'songs.json'), JSON.stringify(allSongs, null, 2), 'utf8')
-  fs.writeFileSync(path.join(WEB_VOD, 'songs.json'), JSON.stringify(allSongs, null, 2), 'utf8')
+  const datasets = {
+    'movies.json': allMovies,
+    'series.json': allSeries,
+    'songs.json': allSongs,
+  }
+  for (const [filename, payload] of Object.entries(datasets)) {
+    const json = JSON.stringify(payload, null, 2)
+    for (const directory of [SERVER_VOD, WEB_VOD, WEB_DIST_VOD, ANDROID_VOD]) {
+      fs.writeFileSync(path.join(directory, filename), json, 'utf8')
+    }
+  }
 
   const indexPayload = {
     generatedAt: new Date().toISOString(),
@@ -750,8 +756,10 @@ async function buildCatalog() {
     songGenres: ["All", "Bollywood & Desi", "Pop Hits", "Rock & Metal", "EDM & Electronic", "Hip-Hop & R&B", "Lo-Fi & Ambient", "80s & 90s Classics", "Jazz & Classical"]
   }
 
-  fs.writeFileSync(path.join(SERVER_VOD, 'index.json'), JSON.stringify(indexPayload, null, 2), 'utf8')
-  fs.writeFileSync(path.join(WEB_VOD, 'index.json'), JSON.stringify(indexPayload, null, 2), 'utf8')
+  const indexJson = JSON.stringify(indexPayload, null, 2)
+  for (const directory of [SERVER_VOD, WEB_VOD, WEB_DIST_VOD, ANDROID_VOD]) {
+    fs.writeFileSync(path.join(directory, 'index.json'), indexJson, 'utf8')
+  }
 
   console.log('[catalog] SUCCESS! Generated full entertainment catalog.')
 }

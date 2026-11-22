@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Bootstrap, BrowserEngineId, Channel, Country, CustomPlaylist, DownloadItem, InstalledApp, Movie, PlayerEngineId, Series, View } from './types'
+import type { Bootstrap, BrowserEngineId, Channel, Country, CustomPlaylist, DownloadItem, InstalledApp, Movie, PlayerEngineId, Series, Stream, View } from './types'
 import { TOP_STREAMING_PLAYERS } from './types'
 import {
   currentMode,
@@ -31,7 +31,7 @@ import {
 } from './lib/api'
 import { installNavigation } from './lib/nav'
 import { categoryName, translate } from './lib/i18n'
-import { downloadStreamM3u, isNative, launchExternalStream, nativeInstallApk, speak } from './lib/bridge'
+import { downloadStreamM3u, isNative, nativeInstallApk, speak } from './lib/bridge'
 import { useChannelHealth, statusOf } from './hooks/useChannelHealth'
 import { TopBar } from './components/TopBar'
 import { Icon } from './components/Icon'
@@ -42,6 +42,7 @@ import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
 import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BrandLogo, faviconFor } from './components/ChromiumBrowser'
+import { AllSiteHub, ALLSITEHUB_CATEGORIES, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
 
 /**
  * Icon of an installed web app.
@@ -225,6 +226,8 @@ export default function App() {
   const [recentList, setRecentList] = useState<Channel[]>([])
   const [queue, setQueue] = useState<string[]>(() => readJSON<string[]>(QUEUE_KEY, []))
   const [shownCount, setShownCount] = useState(240)
+  const [movieShownCount, setMovieShownCount] = useState(48)
+  const [songsShownCount, setSongsShownCount] = useState(240)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [movies, setMovies] = useState<Movie[]>([])
   const [series, setSeries] = useState<Series[]>([])
@@ -363,10 +366,6 @@ export default function App() {
   }
 
   const handlePlayDownloadedMovie = useCallback((url: string, title: string) => {
-    const assignedPlayer = settings.downloadsPlayer || settings.defaultPlayer || 'internal'
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, url, title)
-    }
     const virtualCh: Channel = {
       id: `download-${Date.now()}`,
       name: title,
@@ -394,7 +393,7 @@ export default function App() {
       ],
     }
     setPlaying(virtualCh)
-  }, [settings.downloadsPlayer, settings.defaultPlayer])
+  }, [])
 
   const handleDeleteDownload = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
@@ -698,7 +697,6 @@ export default function App() {
 
   const play = useCallback(
     (ch: Channel) => {
-      const assignedPlayer = settings.channelsPlayer || settings.defaultPlayer || 'internal'
       const ordered = orderStreams(ch, network.quality)
       setRecent((list) => [ch.id, ...list.filter((x) => x !== ch.id)].slice(0, 30))
 
@@ -711,14 +709,9 @@ export default function App() {
         )
       }
 
-      if (isNative && assignedPlayer !== 'internal') {
-        const streamUrl = ordered.streams?.[0]?.url || `http://${window.location.host}/api/play?cid=${ch.id}`
-        launchExternalStream(assignedPlayer, streamUrl, ch.name)
-      }
-
       setPlaying(ordered)
     },
-    [settings.channelsPlayer, settings.defaultPlayer, settings.a11y.audioDescription, settings.lang, countryByCode, network.quality],
+    [settings.a11y.audioDescription, settings.lang, countryByCode, network.quality],
   )
 
   const closePlayer = useCallback(() => {
@@ -955,6 +948,77 @@ export default function App() {
     }
   }, [playing, overlay, view])
 
+  /* ---------------- Android TV directional focus navigation ---------------- */
+  useEffect(() => {
+    const onRemoteArrow = (event: KeyboardEvent) => {
+      if (playing || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
+
+      const active = document.activeElement as HTMLElement | null
+      // Keep text editing, native form controls, and third-party web frames in
+      // control of their own directional keys.
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        active instanceof HTMLIFrameElement ||
+        active?.isContentEditable
+      ) return
+
+      const candidates = Array.from(document.querySelectorAll<HTMLElement>(
+        '[data-focusable], button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [role="button"][tabindex], [role="tab"][tabindex]'
+      )).filter((element) => {
+        if (element.tabIndex < 0 || element.hasAttribute('disabled') ||
+          element.closest('[aria-hidden="true"], [inert]')) return false
+        const style = window.getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        return style.display !== 'none' && style.visibility !== 'hidden' &&
+          Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0
+      })
+
+      if (!candidates.length) return
+      const currentIndex = active ? candidates.indexOf(active) : -1
+      if (currentIndex < 0) {
+        event.preventDefault()
+        candidates[0].focus()
+        candidates[0].scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        return
+      }
+
+      const currentRect = candidates[currentIndex].getBoundingClientRect()
+      const currentX = currentRect.left + currentRect.width / 2
+      const currentY = currentRect.top + currentRect.height / 2
+      let nearest: HTMLElement | null = null
+      let nearestScore = Number.POSITIVE_INFINITY
+
+      for (const candidate of candidates) {
+        if (candidate === active) continue
+        const rect = candidate.getBoundingClientRect()
+        const dx = rect.left + rect.width / 2 - currentX
+        const dy = rect.top + rect.height / 2 - currentY
+        const primary = event.key === 'ArrowRight' ? dx
+          : event.key === 'ArrowLeft' ? -dx
+          : event.key === 'ArrowDown' ? dy : -dy
+        if (primary <= 4) continue
+        const secondary = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
+          ? Math.abs(dy) : Math.abs(dx)
+        const score = primary + secondary * 1.6
+        if (score < nearestScore) {
+          nearest = candidate
+          nearestScore = score
+        }
+      }
+
+      if (!nearest) return
+      event.preventDefault()
+      event.stopPropagation()
+      nearest.focus()
+      nearest.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+
+    window.addEventListener('keydown', onRemoteArrow, true)
+    return () => window.removeEventListener('keydown', onRemoteArrow, true)
+  }, [playing])
+
   /* ---------------- keyboard shortcuts (browser desktop use) ---------------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1111,7 +1175,7 @@ export default function App() {
     return { counts, list: ['all', ...sorted] }
   }, [series])
 
-  const seriesFiltered = useMemo(() => {
+  const visibleSeries = useMemo(() => {
     let list = series
     if (seriesGenre !== 'all') {
       const gLower = seriesGenre.toLowerCase()
@@ -1128,7 +1192,6 @@ export default function App() {
     }
     return list
   }, [series, seriesGenre, seriesSearch])
-  const visibleSeries = seriesFiltered
 
   const songsFiltered = useMemo(() => {
     let list = songs
@@ -1151,11 +1214,16 @@ export default function App() {
     return list
   }, [songs, songsGenre, songsSearch])
 
+  // Keep large VOD grids lightweight on Android TV and low-memory devices.
+  useEffect(() => {
+    setMovieShownCount(48)
+  }, [movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+
+  useEffect(() => {
+    setSongsShownCount(240)
+  }, [songsGenre, songsSearch])
+
   const playMovie = useCallback((m: Movie) => {
-    const assignedPlayer = settings.moviesPlayer || settings.defaultPlayer || 'internal'
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, m.url, m.title)
-    }
     const streamsList: Stream[] = m.streams && m.streams.length > 0
       ? m.streams
       : [
@@ -1183,14 +1251,10 @@ export default function App() {
       streams: streamsList,
     }
     setPlaying(movieChannel)
-  }, [settings.moviesPlayer, settings.defaultPlayer])
+  }, [])
 
   const playEpisode = useCallback((s: Series, ep: any) => {
-    const assignedPlayer = settings.seriesPlayer || settings.defaultPlayer || 'internal'
     const fullTitle = `${s.title} - S${ep.season}E${ep.episode}: ${ep.title}`
-    if (assignedPlayer !== 'internal') {
-      launchExternalStream(assignedPlayer, ep.url, fullTitle)
-    }
     const episodeChannel: Channel = {
       id: `series-${ep.id}`,
       name: fullTitle,
@@ -1216,7 +1280,7 @@ export default function App() {
     }
     setPlaying(episodeChannel)
     setSelectedSeries(null)
-  }, [settings.seriesPlayer, settings.defaultPlayer])
+  }, [])
 
   const favouriteChannels = useMemo(
     () => channels.filter((c) => favourites.includes(c.id)),
@@ -1416,6 +1480,13 @@ export default function App() {
               }}
             >
               <Icon name="apps" size={16} /> {t('apps')}
+            </button>
+            <button
+              className={`topnav-btn ${view.name === 'allsitehub' ? 'active' : ''}`}
+              data-focusable
+              onClick={() => { setView({ name: 'allsitehub' }); setMobileNavOpen(false) }}
+            >
+              <Icon name="grid" size={16} /> AllSiteHub
             </button>
             <button
               className={`topnav-btn ${view.name === 'downloads' ? 'active' : ''}`}
@@ -1764,6 +1835,20 @@ export default function App() {
               </div>
             </section>
 
+            <section className="row allsitehub-featured-row">
+              <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                <h2 className="row-title"><Icon name="grid" size={22}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT} sites · {ALLSITEHUB_CATEGORIES.length} categories)</span></h2>
+                <button className="btn btn-primary" data-focusable onClick={() => setView({ name: 'allsitehub' })}>See All <Icon name="arrow-right" size={15}/></button>
+              </div>
+              <div className="apps-grid">
+                <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
+                  <div className="app-card-badge"><Icon name="grid" size={34}/></div>
+                  <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} of 8 categories</span></div></div>
+                  <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
+                </div>
+              </div>
+            </section>
+
             <section className="row home-filter-section">
               <div className="home-filter-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <h2 className="row-title">
@@ -1868,7 +1953,7 @@ export default function App() {
                       key={app.id}
                       className="app-card installed-app-card"
                       data-focusable
-                      onClick={() => setView({ name: 'browser', initialUrl: app.url })}
+                      onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })}
                     >
                       <button
                         className="app-del-btn"
@@ -1895,7 +1980,7 @@ export default function App() {
                         data-focusable
                         onClick={(e) => {
                           e.stopPropagation()
-                          setView({ name: 'browser', initialUrl: app.url })
+                          setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })
                         }}
                       >
                         Launch
@@ -2324,11 +2409,22 @@ export default function App() {
               <div className="empty"><Icon name="film" size={24} /> No movies match your filter</div>
             ) : (
               <div className="grid grid-movies">
-                {movieboxFiltered.map((m) => (
+                {movieboxFiltered.slice(0, movieShownCount).map((m) => (
                   <MovieCard key={m.id} movie={m} onPlay={playMovie} />
                 ))}
               </div>
             )}
+            {movieboxFiltered.length > movieShownCount ? (
+              <div className="loader-anchor">
+                <button
+                  className="btn btn-primary load-more"
+                  data-focusable
+                  onClick={() => setMovieShownCount((n) => n + 48)}
+                >
+                  {t('loadMore')} ({movieShownCount}/{movieboxFiltered.length})
+                </button>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -2408,11 +2504,11 @@ export default function App() {
               </div>
             </div>
 
-            {seriesFiltered.length === 0 ? (
+            {visibleSeries.length === 0 ? (
               <div className="empty"><Icon name="grid" size={24} /> No series match your filter</div>
             ) : (
               <div className="grid grid-movies">
-                {seriesFiltered.map((s) => (
+                {visibleSeries.map((s) => (
                   <SeriesCard key={s.id} series={s} onOpen={(sel) => setSelectedSeries(sel)} />
                 ))}
               </div>
@@ -2501,7 +2597,7 @@ export default function App() {
               <div className="empty"><Icon name="volume" size={24} /> No music channels match your filter</div>
             ) : (
               <div className="grid grid-channels">
-                {songsFiltered.map((ch) => (
+                {songsFiltered.slice(0, songsShownCount).map((ch) => (
                   <ChannelCard
                     key={ch.id}
                     channel={ch}
@@ -2515,6 +2611,17 @@ export default function App() {
                 ))}
               </div>
             )}
+            {songsFiltered.length > songsShownCount ? (
+              <div className="loader-anchor">
+                <button
+                  className="btn btn-primary load-more"
+                  data-focusable
+                  onClick={() => setSongsShownCount((n) => n + 240)}
+                >
+                  {t('loadMore')} ({songsShownCount}/{songsFiltered.length})
+                </button>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -2852,6 +2959,16 @@ export default function App() {
           <ChromiumBrowser
             initialUrl={(view as any).initialUrl}
             initialEngine={(view as any).initialEngine}
+            standalone={(view as any).standalone === true}
+            initialDisplayMode={(view as any).initialDisplayMode || 'auto'}
+            onDisplayModeChange={(mode) => {
+              const appUrl = (view as any).initialUrl
+              setInstalledApps((prev) => {
+                const updated = prev.map((app) => app.url === appUrl ? { ...app, displayMode: mode } : app)
+                try { localStorage.setItem('vyora_installed_apps_v1', JSON.stringify(updated)) } catch {}
+                return updated
+              })
+            }}
             onClose={() => setView({ name: 'home' })}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
@@ -2868,6 +2985,12 @@ export default function App() {
               </h2>
             </div>
 
+            <div style={{marginBottom:24}}>
+              <div className="home-filter-head" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                <div><h3 className="row-title"><Icon name="grid" size={21}/> AllSiteHub <span className="muted">({ALLSITEHUB_SITE_COUNT})</span></h3><p className="muted">Protected built-in platform app · Cannot be uninstalled</p></div>
+                <button className="btn btn-primary" data-focusable onClick={()=>setView({name:'allsitehub'})}>Open AllSiteHub</button>
+              </div>
+            </div>
             <div className="apps-grid">
               <div
                 className="app-card featured-app-card"
@@ -2905,7 +3028,7 @@ export default function App() {
                   key={app.id}
                   className="app-card installed-app-card"
                   data-focusable
-                  onClick={() => setView({ name: 'browser', initialUrl: app.url })}
+                  onClick={() => setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })}
                 >
                   <button
                     className="app-del-btn"
@@ -2932,7 +3055,7 @@ export default function App() {
                     data-focusable
                     onClick={(e) => {
                       e.stopPropagation()
-                      setView({ name: 'browser', initialUrl: app.url })
+                      setView({ name: 'browser', initialUrl: app.url, standalone: true, initialDisplayMode: app.displayMode || 'auto' })
                     }}
                   >
                     Launch
@@ -2967,6 +3090,10 @@ export default function App() {
               </div>
             </div>
           </section>
+        ) : null}
+
+        {view.name === 'allsitehub' ? (
+          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url })} />
         ) : null}
 
         {view.name === 'downloads' ? (
@@ -3242,30 +3369,42 @@ export default function App() {
           onCycleStream={() => undefined}
           onQueue={addToQueue}
           autoSkipOffline={settings.autoSkipOffline ?? false}
-          assignedPlayerId={settings.channelsPlayer || settings.defaultPlayer || 'internal'}
+          assignedPlayerId={
+            playing.id.startsWith('download-')
+              ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+              : playing.categories?.includes('movies')
+                ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('series')
+                  ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                  : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+          }
           assignedPlayerName={
-            TOP_STREAMING_PLAYERS.find(
-              (p) => p.id === (settings.channelsPlayer || settings.defaultPlayer || 'internal'),
-            )?.name
+            TOP_STREAMING_PLAYERS.find((p) => p.id === (
+              playing.id.startsWith('download-') ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('movies') ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                  : playing.categories?.includes('series') ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                    : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+            ))?.name
           }
           assignedPlayerBadge={
-            TOP_STREAMING_PLAYERS.find(
-              (p) => p.id === (settings.channelsPlayer || settings.defaultPlayer || 'internal'),
-            )?.badge
+            TOP_STREAMING_PLAYERS.find((p) => p.id === (
+              playing.id.startsWith('download-') ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
+                : playing.categories?.includes('movies') ? settings.moviesPlayer || settings.defaultPlayer || 'internal'
+                  : playing.categories?.includes('series') ? settings.seriesPlayer || settings.defaultPlayer || 'internal'
+                    : settings.channelsPlayer || settings.defaultPlayer || 'internal'
+            ))?.badge
           }
           onSelectPlayer={(playerId) => {
-            const updated: Settings = {
-              ...settings,
-              channelsPlayer: playerId,
-              defaultPlayer: playerId,
-              moviesPlayer: playerId,
-              seriesPlayer: playerId,
-              downloadsPlayer: playerId,
-            }
+            const key = playing.id.startsWith('download-')
+              ? 'downloadsPlayer'
+              : playing.categories?.includes('movies')
+                ? 'moviesPlayer'
+                : playing.categories?.includes('series')
+                  ? 'seriesPlayer'
+                  : 'channelsPlayer'
+            const updated = { ...settings, [key]: playerId }
             setSettings(updated)
-            try {
-              localStorage.setItem('vyora.settings', JSON.stringify(updated))
-            } catch {}
+            try { localStorage.setItem('vyora.settings', JSON.stringify(updated)) } catch {}
           }}
         />
       ) : null}
