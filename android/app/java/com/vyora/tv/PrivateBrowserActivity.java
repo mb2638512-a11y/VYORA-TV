@@ -21,7 +21,7 @@ public final class PrivateBrowserActivity extends BrowserActivity {
 
     @Override protected void onDestroy() {
         // Destroy and clear private renderers/storage before the private process exits.
-        clearPrivateBrowsingData();
+        if (isFinishing()) clearPrivateBrowsingData();
         super.onDestroy();
     }
 }
