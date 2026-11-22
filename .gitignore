@@ -5,6 +5,8 @@ web/node_modules/
 
 # Build artifacts & temp
 android/build/
+android/out/*.idsig
+android/libs/media3-exoplayer-dash-*.aar
 server-go/vyora-tv-new.exe
 server-go/tmp*.log
 .kilo/
