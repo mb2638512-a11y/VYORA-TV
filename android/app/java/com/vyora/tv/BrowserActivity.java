@@ -28,6 +28,8 @@ import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceResponse;
+import java.io.ByteArrayInputStream;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -93,6 +95,7 @@ public class BrowserActivity extends Activity {
     private Button backButton, forwardButton, reloadButton, homeButton, goButton, addButton, closeButton;
     private ProgressBar progress;
     private SharedPreferences prefs;
+    private BrowserHostBlocker hostBlocker;
     private int activeIndex = 0;
     private boolean tv = false;
     private String initialMode = "auto";
@@ -106,6 +109,8 @@ public class BrowserActivity extends Activity {
         tv = getPackageManager().hasSystemFeature("android.software.leanback");
         if (tv) setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        hostBlocker = BrowserHostBlocker.get(this);
+        hostBlocker.start();
         initialMode = getIntent().getStringExtra("displayMode");
         if (initialMode == null) initialMode = "auto";
         loadEngines();
@@ -291,6 +296,15 @@ public class BrowserActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(tab.web,true);
         tab.web.setBackgroundColor(Color.WHITE);
         tab.web.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // Only block known ad/tracker hosts on subresources. Never block the
+                // top-level page, so a stale list cannot make a destination unopenable.
+                if (!request.isForMainFrame() && hostBlocker != null
+                        && hostBlocker.shouldBlock(request.getUrl().getHost())) {
+                    return new WebResourceResponse("text/plain", "UTF-8", new ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri=request.getUrl(); String scheme=uri.getScheme()==null?"":uri.getScheme().toLowerCase(Locale.ROOT);
                 if("http".equals(scheme)||"https".equals(scheme)) return false;
