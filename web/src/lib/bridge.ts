@@ -5,6 +5,7 @@
  */
 
 type AndroidBridge = {
+  isTvDevice?(): boolean
   play(url: string, referer: string, ua: string, title: string, logo: string): void
   playMulti?(candidates: string, title: string, logo: string): void
   stop(): void
