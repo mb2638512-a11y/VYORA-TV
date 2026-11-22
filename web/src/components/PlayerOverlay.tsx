@@ -90,6 +90,12 @@ export function PlayerOverlay({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
+
+  useEffect(() => {
+    const handleNativePlayerClosed = () => onExit()
+    window.addEventListener('vyora-native-player-closed', handleNativePlayerClosed)
+    return () => window.removeEventListener('vyora-native-player-closed', handleNativePlayerClosed)
+  }, [onExit])
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'error'>('loading')
   const [buffering, setBuffering] = useState(false)
   const [needUnmute, setNeedUnmute] = useState(false)
