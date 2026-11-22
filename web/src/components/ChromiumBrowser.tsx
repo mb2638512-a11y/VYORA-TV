@@ -2658,16 +2658,15 @@ export default function ChromiumBrowser({
                 transformOrigin: 'top left',
               }}
             >
+              {/* Proxied HTML is served from VYORA's own origin. Combining
+                  allow-same-origin with allow-scripts lets hostile page script
+                  escape the sandbox and reach the host app. Proxy documents use
+                  an opaque origin; direct external pages keep normal storage. */}
               <iframe
                 ref={iframeRef}
                 key={`${activeTab.id}-${activeTab.navKey || 0}`}
                 src={getIframeSrc(activeTab)}
                 className="chromium-iframe"
-                // Proxied HTML is served from VYORA's own origin. Giving it
-                // allow-same-origin together with allow-scripts lets hostile page
-                // script escape the sandbox and reach the host app. Keep proxy
-                // documents on an opaque origin; ordinary external pages retain
-                // their real origin and normal storage behaviour.
                 sandbox={activeTab.proxyMode
                   ? (adShield
                     ? "allow-scripts allow-forms allow-modals allow-downloads allow-presentation"
