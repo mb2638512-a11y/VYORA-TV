@@ -114,7 +114,8 @@ The public GitHub repository metadata currently reports `license: null`, and the
 - [x] Add a lightweight, bounded hosts-file blocker for known ad/tracker subresources; list download/parse runs off the UI thread, cache is reused, top-level navigation is never blocked, and failures are fail-open.
 - [ ] Add a full filter-engine implementation (cosmetic filters, exception/important rules, redirects and site-level controls); this is separate from the basic hosts blocker and must use independently licensed code or a verified redistribution grant.
 - [ ] Implement genuinely isolated private browsing and test cookie/storage separation.
-- [ ] Add polished main-frame error/retry UI, site permissions, and per-site popup/adblock controls.
+- [ ] Add polished main-frame error/retry UI and site permissions.
+- [x] Add a 45-second navigation watchdog that stops stalled loads without proxy retries or automatic reload loops; user can tap Reload.
 - [ ] Run real-device low-memory, phone and Android TV tests.
 
 
@@ -134,3 +135,8 @@ The first VYORA-owned protection layer now uses the MIT-licensed StevenBlack hos
 ## Site protection controls (2026-11-23)
 
 The browser toolbar now exposes a Shield control. Tap it to allowlist/unallowlist the active host (including its subdomains); long-press it to toggle the global hosts-based protection layer. This is a basic hosts-rule control, not a full EasyList/uBlock rules engine. Login, payment and video sites can be allowlisted when a filter causes breakage.
+
+
+## Navigation watchdog (2026-11-23)
+
+Main-frame navigation now gets a 45-second watchdog. A navigation that never completes is stopped, its progress indicator is cleared, and the user is told to retry manually. The watchdog is cancelled on page completion, main-frame errors, tab suspension, renderer termination and tab closure. Reload uses WebView's reload path when a live renderer exists; it does not automatically retry or switch proxies.
