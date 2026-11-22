@@ -29,7 +29,10 @@ declare global {
 export const bridge: AndroidBridge | null =
   typeof window !== 'undefined' && window.VyoraBridge ? window.VyoraBridge : null
 
-export const isNative = !!bridge
+// Treat the shell as a native player only when its playback method exists.
+// Lightweight bridge stubs (for browser display-mode integration) must not
+// accidentally disable the in-page player.
+export const isNative = typeof bridge?.play === 'function'
 
 export function nativePlay(url: string, referer = '', ua = '', title = '', logo = '') {
   bridge?.play(url, referer, ua, title, logo)
