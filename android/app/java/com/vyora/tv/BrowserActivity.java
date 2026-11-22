@@ -92,7 +92,7 @@ public class BrowserActivity extends Activity {
     private FrameLayout webFrame;
     private AutoCompleteTextView enginePicker;
     private EditText address;
-    private Button backButton, forwardButton, reloadButton, homeButton, goButton, addButton, closeButton;
+    private Button backButton, forwardButton, reloadButton, homeButton, goButton, addButton, closeButton, privateButton;
     private ProgressBar progress;
     private SharedPreferences prefs;
     private BrowserHostBlocker hostBlocker;
@@ -108,7 +108,7 @@ public class BrowserActivity extends Activity {
         super.onCreate(state);
         tv = getPackageManager().hasSystemFeature("android.software.leanback");
         if (tv) setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        prefs = getSharedPreferences(isPrivateSession() ? PREFS + "_private" : PREFS, MODE_PRIVATE);
         hostBlocker = BrowserHostBlocker.get(this);
         hostBlocker.start();
         initialMode = getIntent().getStringExtra("displayMode");
@@ -178,8 +178,10 @@ public class BrowserActivity extends Activity {
         tabsScroll.addView(tabStrip);
         second.addView(tabsScroll,new LinearLayout.LayoutParams(0,controlHeight(),1f));
         addButton=button("+","New tab"); closeButton=button("×","Close tab");
+        privateButton=button(isPrivateSession()?"Exit private":"Private",isPrivateSession()?"Exit private browsing":"Open isolated private browsing");
         second.addView(addButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
         second.addView(closeButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
+        second.addView(privateButton,new LinearLayout.LayoutParams(dp(tv?116:84),controlHeight()));
         root.addView(second,new LinearLayout.LayoutParams(-1,-2));
 
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
@@ -201,6 +203,18 @@ public class BrowserActivity extends Activity {
         });
         addButton.setOnClickListener(v -> addTab(null,null));
         closeButton.setOnClickListener(v -> closeCurrentTab());
+        privateButton.setOnClickListener(v -> {
+            if (isPrivateSession()) { finish(); return; }
+            if (Build.VERSION.SDK_INT < 28) {
+                Toast.makeText(this,"Private browsing needs Android 9 or newer for isolated storage.",Toast.LENGTH_LONG).show();
+                return;
+            }
+            Intent intent = new Intent(this, PrivateBrowserActivity.class);
+            BrowserTab active = current();
+            if (active != null && active.url != null && !active.url.isEmpty()) intent.putExtra("initialUrl", active.url);
+            if (active != null) intent.putExtra("engineId", active.engineId);
+            startActivity(intent);
+        });
         enginePicker.setOnItemClickListener((parent,view,position,id)-> {
             if(position>=0 && position<engines.size()) selectEngine(engines.get(position).id);
         });
@@ -215,9 +229,11 @@ public class BrowserActivity extends Activity {
         b.setFocusable(true); return b;
     }
 
+    protected boolean isPrivateSession() { return false; }
+
     private void restoreOrCreateSession(String initialUrl,String requestedEngine) {
         boolean restored=false;
-        if(initialUrl==null || initialUrl.trim().isEmpty()) {
+        if(!isPrivateSession() && (initialUrl==null || initialUrl.trim().isEmpty())) {
             try {
                 JSONArray saved=new JSONArray(prefs.getString("tabs","[]"));
                 int wanted=prefs.getInt("active",0);
@@ -511,6 +527,7 @@ public class BrowserActivity extends Activity {
     }
 
     private void saveSession() {
+        if (isPrivateSession()) return; // Private tabs never enter persisted browsing history.
         try {
             JSONArray arr=new JSONArray();
             for(BrowserTab tab:tabs) {
