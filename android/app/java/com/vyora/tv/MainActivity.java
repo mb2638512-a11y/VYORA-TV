@@ -130,7 +130,7 @@ public class MainActivity extends Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         defaultWebUserAgent = WebSettings.getDefaultUserAgent(this);
-        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android)");
+        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android) VyoraDevice/" + BuildConfig.FLAVOR.toUpperCase());
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -191,12 +191,12 @@ public class MainActivity extends Activity {
         if (web == null) return;
         WebSettings settings = web.getSettings();
         if ("desktop".equalsIgnoreCase(mode)) {
-            settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 VyoraTV/1.0");
+            settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 VyoraTV/1.0 VyoraDevice/" + BuildConfig.FLAVOR.toUpperCase());
         } else if ("mobile".equalsIgnoreCase(mode)) {
-            settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 VyoraTV/1.0");
+            settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 VyoraTV/1.0 VyoraDevice/" + BuildConfig.FLAVOR.toUpperCase());
         } else {
             settings.setUserAgentString((defaultWebUserAgent == null ? WebSettings.getDefaultUserAgent(this) : defaultWebUserAgent)
-                    + " VyoraTV/1.0 (Android)");
+                    + " VyoraTV/1.0 (Android) VyoraDevice/" + BuildConfig.FLAVOR.toUpperCase());
         }
     }
 
