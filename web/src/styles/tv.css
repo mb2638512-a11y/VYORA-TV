@@ -161,3 +161,44 @@
 }
 .device-tv .main { height: calc(100vh - 132px); }
 .device-tv .device-shell-tv :focus-visible { outline-offset: 7px; }
+
+
+/* TV playback and settings use a 10-foot, remote-first information hierarchy. */
+.device-tv .player-overlay { width: 100vw; height: 100vh; }
+.device-tv .player-info { padding: 38px var(--tv-safe-x); }
+.device-tv .player-name { font-size: clamp(28px, 2.2vw, 40px); }
+.device-tv .player-sub { font-size: 18px; gap: 14px; }
+.device-tv .player-clock { font-size: 30px; }
+.device-tv .player-hint { font-size: 16px; }
+.device-tv .player-now-title { font-size: 20px; }
+.device-tv .player-close {
+  top: 28px;
+  right: var(--tv-safe-x);
+  width: 58px;
+  height: 58px;
+  opacity: 1;
+  font-size: 26px;
+}
+.device-tv .player-toast { bottom: 64px; font-size: 18px; padding: 14px 24px; }
+.device-tv .player-buffering-badge { top: 30px; right: 170px; font-size: 16px; padding: 12px 18px; }
+.device-tv .unmute-banner { top: 110px; font-size: 18px; padding: 14px 24px; }
+.device-tv .player-drawer {
+  width: min(560px, 38vw);
+  max-width: 38vw;
+}
+.device-tv .drawer-head { padding: 22px; font-size: 21px; }
+.device-tv .drawer-item { min-height: 66px; padding: 12px 14px; gap: 14px; }
+.device-tv .drawer-name { font-size: 18px; }
+.device-tv .drawer-meta { font-size: 14px; }
+.device-tv .drawer-tab-btn { min-height: 42px; font-size: 14px; padding: 8px 12px; }
+.device-tv .cinema-settings-head { padding: 24px var(--tv-safe-x); }
+.device-tv .cinema-settings-title-group h2 { font-size: 30px; }
+.device-tv .cinema-settings-nav { width: 340px; padding: 28px 20px; }
+.device-tv .cinema-settings-nav-item { min-height: 60px; font-size: 17px; padding: 16px 20px; }
+.device-tv .cinema-settings-content { padding: 30px; }
+.device-tv .settings-section { padding: 26px; margin-bottom: 24px; }
+.device-tv .settings-section h3 { font-size: 23px; }
+.device-tv .settings-row { min-height: 62px; font-size: 17px; }
+.device-tv .settings-value { font-size: 16px; }
+.device-tv .allsitehub-section .app-card { min-height: 174px; }
+.device-tv .allsitehub-section .app-card-launch { min-height: 48px; font-size: 16px; }
