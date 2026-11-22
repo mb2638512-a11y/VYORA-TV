@@ -2,6 +2,13 @@ name: AllSiteHub external link audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/browser-search-engines
+    paths:
+      - web/src/components/AllSiteHub.tsx
+      - scripts/audit-allsitehub.mjs
+      - .github/workflows/allsitehub-link-audit.yml
 
 permissions:
   contents: read
