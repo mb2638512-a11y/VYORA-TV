@@ -53,7 +53,7 @@ try {
   const totalSites = await hub.locator('.app-card').count()
   if (totalSites !== 64) throw new Error(`Expected 64 AllSiteHub sites, found ${totalSites}`)
   for (const [name, count] of expectedCategories) {
-    await hub.getByRole('tab', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\  await page.waitForTimeout(1200)
+    await hub.getByRole('tab').filter({ hasText: `${name} (${count})` }).click()
 
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })')} \\\\(${count}\\\\)import { chromium } from '@playwright/test'
 import fs from 'node:fs/promises'
