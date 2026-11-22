@@ -989,7 +989,7 @@ export default function ChromiumBrowser({
         })
         if (!res.ok) throw new Error(`Suggestions failed: ${res.status}`)
         const data = await res.json()
-        if (controller.signal.aborted || data?.engine && data.engine !== engine) return
+        if (controller.signal.aborted || data?.engine && data.engine !== suggestEngine) return
         const list: string[] = Array.isArray(data?.suggestions) ? data.suggestions : []
         setSuggestions(list.slice(0, 8))
         setSuggestIndex(-1)
