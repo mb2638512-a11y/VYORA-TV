@@ -25,6 +25,8 @@ import android.widget.Button;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
+    // Phone player orientation controls are handled natively above the video surface.
+
 
     private static final String TAG = "VyoraTV";
     private static final String INDEX_URL = "file:///android_asset/index.html";
