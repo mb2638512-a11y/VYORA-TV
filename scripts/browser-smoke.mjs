@@ -43,6 +43,24 @@ try {
   const expectedCategories = [['Movies & Shows', 21], ['Anime', 22], ['Manga', 7], ['Live TV & Sports', 10], ['Games', 1], ['Cartoons', 1], ['All in One', 2]]
   const totalSites = await hub.locator('.app-card').count()
   if (totalSites !== 64) throw new Error('Expected 64 AllSiteHub sites, found ' + totalSites)
+  const configuredUrls = await hub.locator('.app-card').evaluateAll((cards) =>
+    cards.map((card) => ({
+      url: card.getAttribute('data-site-url') || '',
+      domain: card.getAttribute('data-site-domain') || '',
+    }))
+  )
+  const uniqueUrls = new Set(configuredUrls.map((site) => site.url))
+  if (uniqueUrls.size !== 64 || configuredUrls.some((site) => {
+    try {
+      const parsed = new URL(site.url)
+      return parsed.protocol !== 'https:' || !site.domain || parsed.hostname !== site.domain &&
+        !parsed.hostname.endsWith('.' + site.domain)
+    } catch {
+      return true
+    }
+  })) {
+    throw new Error('AllSiteHub must contain 64 unique, valid HTTPS site URLs matching their domains')
+  }
   for (const [name, count] of expectedCategories) {
     await hub.getByRole('tab').filter({ hasText: name + ' (' + count + ')' }).click()
     const actual = await hub.locator('.app-card').count()
