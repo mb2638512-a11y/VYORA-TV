@@ -2973,7 +2973,19 @@ export default function App() {
               })
             }}
             onClose={() => setView({ name: 'home' })}
-            onNavigate={(destination) => setView({ name: destination })}
+            onNavigate={(destination) => {
+              switch (destination) {
+                case 'home': setView({ name: 'home' }); break
+                case 'movies': setView({ name: 'movies' }); break
+                case 'series': setView({ name: 'series' }); break
+                case 'songs': setView({ name: 'songs' }); break
+                case 'global': setView({ name: 'global' }); break
+                case 'favorites': setView({ name: 'favorites' }); break
+                case 'apps': setView({ name: 'apps' }); break
+                case 'allsitehub': setView({ name: 'allsitehub' }); break
+                case 'downloads': setView({ name: 'downloads' }); break
+              }
+            }}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
             onNavigateToDownloads={() => setView({ name: 'downloads' })}
