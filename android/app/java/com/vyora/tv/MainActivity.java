@@ -180,6 +180,13 @@ public class MainActivity extends Activity {
             public void onAllSourcesFailed() {
                 runOnUiThread(() -> {
                     hideNativeLoading();
+                    // Reveal the React error/retry panel instead of leaving a
+                    // black native SurfaceView covering the failed player.
+                    if (surface != null) surface.setVisibility(View.GONE);
+                    if (web != null) web.bringToFront();
+                    if (overlay != null) overlay.setVisibility(View.GONE);
+                    if (playerExpandButton != null) playerExpandButton.setVisibility(View.GONE);
+                    if (playerCloseButton != null) playerCloseButton.setVisibility(View.GONE);
                     if (web != null) {
                         web.evaluateJavascript(
                                 "window.dispatchEvent(new Event('vyora-native-sources-failed'));",
