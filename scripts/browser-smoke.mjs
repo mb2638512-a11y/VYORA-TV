@@ -115,8 +115,13 @@ try {
   }
 
   // Verify the Open action routes a selected site into VYORA Browser.
-  // Abort the provider request: this tests app navigation, not external uptime.
-  await page.route('https://gojolive.site/**', (route) => route.abort())
+  // Fulfil a controlled external page: verify the browser iframe really
+  // renders site HTML without making this CI test depend on provider uptime.
+  await page.route('https://gojolive.site/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<!doctype html><html><head><title>GojoLive smoke</title></head><body><main id="vyora-site-smoke">External page rendered</main></body></html>',
+  }))
   await hub.locator('.app-card').filter({ hasText: 'GojoLive' }).getByRole('button', { name: 'Open' }).click()
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })
   await browserRegion.waitFor({ state: 'visible', timeout: 10000 })
@@ -124,6 +129,8 @@ try {
   if (openedUrl !== 'https://gojolive.site/') {
     throw new Error('AllSiteHub Open should load GojoLive in VYORA Browser; got ' + openedUrl)
   }
+  await page.frameLocator('iframe.chromium-iframe').locator('#vyora-site-smoke')
+    .waitFor({ state: 'visible', timeout: 5000 })
 
   // A top-level window must not be able to spoof the iframe's privileged bridge.
   await page.evaluate(() => window.postMessage({
