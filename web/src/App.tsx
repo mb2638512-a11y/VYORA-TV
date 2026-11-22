@@ -17,6 +17,7 @@ import {
   loadGlobalChannels,
   loadMovies,
   loadSeries,
+  loadSongs,
   loadTop,
   loadVodIndex,
   logoUrl,
@@ -228,12 +229,19 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [movies, setMovies] = useState<Movie[]>([])
   const [series, setSeries] = useState<Series[]>([])
+  const [songs, setSongs] = useState<Channel[]>([])
   const [movieGenre, setMovieGenre] = useState('all')
   const [seriesGenre, setSeriesGenre] = useState('all')
+  const [songsGenre, setSongsGenre] = useState('all')
   const [selectedSeries, setSelectedSeries] = useState<Series | null>(null)
   const [vodLoading, setVodLoading] = useState(false)
+  const [songsLoading, setSongsLoading] = useState(false)
   const [movieboxSearch, setMovieboxSearch] = useState('')
   const [movieboxGenre, setMovieboxGenre] = useState('all')
+  const [movieQualityFilter, setMovieQualityFilter] = useState('all')
+  const [movieSort, setMovieSort] = useState<'trending' | 'rating' | 'year' | 'title'>('trending')
+  const [seriesSearch, setSeriesSearch] = useState('')
+  const [songsSearch, setSongsSearch] = useState('')
   const [network, setNetwork] = useState<{
     kbps: number
     quality: string
@@ -289,7 +297,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [spotlightIndex, setSpotlightIndex] = useState(0)
 
-  // Eagerly preload movies so home cinema rail has content immediately
+  // Eagerly preload movies, series, and songs so entertainment rails have content immediately
   useEffect(() => {
     let alive = true
     if (!movies.length) {
@@ -299,10 +307,24 @@ export default function App() {
         })
         .catch(() => {})
     }
+    if (!series.length) {
+      loadSeries()
+        .then((list) => {
+          if (alive && list) setSeries(list)
+        })
+        .catch(() => {})
+    }
+    if (!songs.length) {
+      loadSongs()
+        .then((list) => {
+          if (alive && list) setSongs(list)
+        })
+        .catch(() => {})
+    }
     return () => {
       alive = false
     }
-  }, [movies.length])
+  }, [movies.length, series.length, songs.length])
 
   useEffect(() => {
     fetchDownloads().then((items) => {
@@ -544,7 +566,7 @@ export default function App() {
     setShownCount(240)
   }, [view])
 
-  /* ---------------- load MovieBox movies ---------------- */
+  /* ---------------- load MovieBox movies, series, songs ---------------- */
   useEffect(() => {
     let alive = true
     if ((view.name === 'moviebox' || view.name === 'movies') && !movies.length) {
@@ -557,10 +579,30 @@ export default function App() {
           if (alive) setVodLoading(false)
         })
     }
+    if (view.name === 'series' && !series.length) {
+      setVodLoading(true)
+      loadSeries()
+        .then((list) => {
+          if (alive && list) setSeries(list)
+        })
+        .finally(() => {
+          if (alive) setVodLoading(false)
+        })
+    }
+    if (view.name === 'songs' && !songs.length) {
+      setSongsLoading(true)
+      loadSongs()
+        .then((list) => {
+          if (alive && list) setSongs(list)
+        })
+        .finally(() => {
+          if (alive) setSongsLoading(false)
+        })
+    }
     return () => {
       alive = false
     }
-  }, [view, movies.length])
+  }, [view, movies.length, series.length, songs.length])
 
   /* ---------------- global catalogue (paged) ---------------- */
   const loadGlobal = useCallback(
@@ -1093,6 +1135,10 @@ export default function App() {
       const g = movieboxGenre.toLowerCase()
       list = list.filter((m) => (m.genre || '').toLowerCase().includes(g))
     }
+    if (movieQualityFilter !== 'all') {
+      const q = movieQualityFilter.toLowerCase()
+      list = list.filter((m) => (m.quality || '').toLowerCase().includes(q))
+    }
     if (movieboxSearch.trim()) {
       const q = movieboxSearch.toLowerCase().trim()
       list = list.filter(
@@ -1102,8 +1148,15 @@ export default function App() {
           (m.description || '').toLowerCase().includes(q),
       )
     }
+    if (movieSort === 'rating') {
+      list = [...list].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
+    } else if (movieSort === 'year') {
+      list = [...list].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0))
+    } else if (movieSort === 'title') {
+      list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+    }
     return list
-  }, [movies, movieboxGenre, movieboxSearch])
+  }, [movies, movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
 
   const spotlightMovie = useMemo(() => {
     return movies.find((m) => m.backdrop) || movies[0] || null
@@ -1121,12 +1174,55 @@ export default function App() {
   }, [series])
 
   const visibleSeries = useMemo(() => {
-    if (seriesGenre === 'all') return series
-    const gLower = seriesGenre.toLowerCase()
-    return series.filter((s) => s.genre && s.genre.toLowerCase() === gLower)
-  }, [series, seriesGenre])
+    let list = series
+    if (seriesGenre !== 'all') {
+      const gLower = seriesGenre.toLowerCase()
+      list = list.filter((s) => s.genre && s.genre.toLowerCase() === gLower)
+    }
+    if (seriesSearch.trim()) {
+      const q = seriesSearch.toLowerCase().trim()
+      list = list.filter(
+        (s) =>
+          (s.title || '').toLowerCase().includes(q) ||
+          (s.genre || '').toLowerCase().includes(q) ||
+          (s.description || '').toLowerCase().includes(q),
+      )
+    }
+    return list
+  }, [series, seriesGenre, seriesSearch])
+
+  const songsFiltered = useMemo(() => {
+    let list = songs
+    if (songsGenre !== 'all') {
+      const g = songsGenre.toLowerCase()
+      list = list.filter((s: any) =>
+        (s.musicGenre || '').toLowerCase().includes(g) ||
+        (s.categories || []).some((c: string) => c.toLowerCase().includes(g)),
+      )
+    }
+    if (songsSearch.trim()) {
+      const q = songsSearch.toLowerCase().trim()
+      list = list.filter(
+        (s) =>
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.network || '').toLowerCase().includes(q) ||
+          (s.owner || '').toLowerCase().includes(q),
+      )
+    }
+    return list
+  }, [songs, songsGenre, songsSearch])
 
   const playMovie = useCallback((m: Movie) => {
+    const streamsList: Stream[] = m.streams && m.streams.length > 0
+      ? m.streams
+      : [
+          {
+            id: `stream-m-${m.id}`,
+            url: m.url,
+            quality: m.quality || '4K UHD',
+            label: m.source || 'MovieBox Stream',
+          },
+        ]
     const movieChannel: Channel = {
       id: `movie-${m.id}`,
       name: m.title,
@@ -1141,14 +1237,7 @@ export default function App() {
       launched: typeof m.year === 'number' ? m.year : null,
       closed: null,
       lang: 'en',
-      streams: [
-        {
-          id: `stream-m-${m.id}`,
-          url: m.url,
-          quality: m.quality || '4K UHD',
-          label: 'MovieBox Stream',
-        },
-      ],
+      streams: streamsList,
     }
     setPlaying(movieChannel)
   }, [])
@@ -1310,6 +1399,36 @@ export default function App() {
               }}
             >
               <Icon name="home" size={16} /> {t('home')}
+            </button>
+            <button
+              className={`topnav-btn ${view.name === 'movies' || view.name === 'moviebox' ? 'active' : ''}`}
+              data-focusable
+              onClick={() => {
+                setView({ name: 'movies' })
+                setMobileNavOpen(false)
+              }}
+            >
+              <Icon name="film" size={16} /> {t('movies')}
+            </button>
+            <button
+              className={`topnav-btn ${view.name === 'series' ? 'active' : ''}`}
+              data-focusable
+              onClick={() => {
+                setView({ name: 'series' })
+                setMobileNavOpen(false)
+              }}
+            >
+              <Icon name="grid" size={16} /> {t('series')}
+            </button>
+            <button
+              className={`topnav-btn ${view.name === 'songs' ? 'active' : ''}`}
+              data-focusable
+              onClick={() => {
+                setView({ name: 'songs' })
+                setMobileNavOpen(false)
+              }}
+            >
+              <Icon name="volume" size={16} /> {t('songs')}
             </button>
             <button
               className={`topnav-btn ${view.name === 'global' ? 'active' : ''}`}
@@ -2099,7 +2218,378 @@ export default function App() {
                 </div>
               </section>
             ) : null}
+
+            {movies.length > 0 && homeCategoryFilter === 'all' ? (
+              <section className="row">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <h2 className="row-title" style={{ margin: 0 }}>
+                    <Icon name="film" size={22} /> {t('trendingCinema')}
+                  </h2>
+                  <button
+                    className="chip active"
+                    data-focusable
+                    onClick={() => setView({ name: 'movies' })}
+                    title="View All Movies"
+                  >
+                    View All Movies ({movies.length}) →
+                  </button>
+                </div>
+                <div className="grid grid-movies">
+                  {movies.slice(0, 10).map((m) => (
+                    <MovieCard key={m.id} movie={m} onPlay={playMovie} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {series.length > 0 && homeCategoryFilter === 'all' ? (
+              <section className="row">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <h2 className="row-title" style={{ margin: 0 }}>
+                    <Icon name="grid" size={22} /> {t('popularSeries')}
+                  </h2>
+                  <button
+                    className="chip active"
+                    data-focusable
+                    onClick={() => setView({ name: 'series' })}
+                    title="View All Series"
+                  >
+                    View All Series ({series.length}) →
+                  </button>
+                </div>
+                <div className="grid grid-movies">
+                  {series.slice(0, 8).map((s) => (
+                    <SeriesCard key={s.id} series={s} onOpen={(sel) => setSelectedSeries(sel)} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {songs.length > 0 && homeCategoryFilter === 'all' ? (
+              <section className="row">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <h2 className="row-title" style={{ margin: 0 }}>
+                    <Icon name="volume" size={22} /> {t('liveMusicRadio')}
+                  </h2>
+                  <button
+                    className="chip active"
+                    data-focusable
+                    onClick={() => setView({ name: 'songs' })}
+                    title="View All Songs & Music"
+                  >
+                    View All Songs ({songs.length}) →
+                  </button>
+                </div>
+                <div className="grid grid-channels">
+                  {songs.slice(0, 8).map((ch) => (
+                    <ChannelCard
+                      key={ch.id}
+                      channel={ch}
+                      country={countryByCode.get(ch.country)}
+                      onPlay={play}
+                      onFavourite={toggleFavourite}
+                      onPrefetch={prefetchChannelNow}
+                      status={statusOf(statuses, ch.id)}
+                      favourite={favourites.includes(ch.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </>
+        ) : null}
+
+        {view.name === 'movies' || view.name === 'moviebox' ? (
+          <section className="row" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {spotlightMovie ? (
+              <div
+                className="moviebox-billboard"
+                style={{
+                  backgroundImage: `linear-gradient(to top, rgba(11, 14, 20, 0.95) 0%, rgba(11, 14, 20, 0.7) 40%, rgba(11, 14, 20, 0.3) 100%), url(${spotlightMovie.backdrop || spotlightMovie.logo})`,
+                }}
+              >
+                <div className="billboard-content">
+                  <div className="billboard-badges">
+                    <span className="billboard-badge-featured">CINEMA SPOTLIGHT</span>
+                    {spotlightMovie.rating ? (
+                      <span className="billboard-badge-rating">★ {spotlightMovie.rating}</span>
+                    ) : null}
+                    <span className="billboard-badge-res">{spotlightMovie.quality || '4K ULTRA HD'}</span>
+                    {spotlightMovie.year ? (
+                      <span className="billboard-badge-year">{spotlightMovie.year}</span>
+                    ) : null}
+                    {spotlightMovie.duration ? (
+                      <span className="billboard-badge-year">{typeof spotlightMovie.duration === 'number' ? `${Math.floor(spotlightMovie.duration / 60)}h ${spotlightMovie.duration % 60}m` : spotlightMovie.duration}</span>
+                    ) : null}
+                  </div>
+                  <h1 className="billboard-title">{spotlightMovie.title}</h1>
+                  <div className="billboard-meta">
+                    <span className="billboard-genre">{spotlightMovie.genre}</span>
+                    <span>•</span>
+                    <span>{spotlightMovie.source || 'Vyora Cinema'}</span>
+                  </div>
+                  {spotlightMovie.description ? (
+                    <p className="billboard-desc">{spotlightMovie.description}</p>
+                  ) : null}
+                  <div className="billboard-actions">
+                    <button
+                      className="btn btn-primary billboard-play-btn"
+                      data-focusable
+                      onClick={() => playMovie(spotlightMovie)}
+                      title="Watch Movie Live Now"
+                    >
+                      <Icon name="play" size={20} /> Watch Now in 4K
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="moviebox-filter-bar">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div className="moviebox-search-wrap" style={{ flex: 1, minWidth: 260 }}>
+                  <Icon name="search" size={18} />
+                  <input
+                    type="text"
+                    className="moviebox-search-input"
+                    placeholder="Search 2,900+ movies, actors, genres..."
+                    value={movieboxSearch}
+                    onChange={(e) => setMovieboxSearch(e.target.value)}
+                  />
+                  {movieboxSearch ? (
+                    <button className="moviebox-search-clear" onClick={() => setMovieboxSearch('')}>
+                      ✕
+                    </button>
+                  ) : null}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>Sort:</span>
+                  {(['trending', 'rating', 'year', 'title'] as const).map((s) => (
+                    <button
+                      key={s}
+                      className={`chip ${movieSort === s ? 'active' : ''}`}
+                      data-focusable
+                      onClick={() => setMovieSort(s)}
+                    >
+                      {s === 'trending' ? 'Trending' : s === 'rating' ? 'Top Rated' : s === 'year' ? 'Latest' : 'A-Z'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="moviebox-genre-chips">
+                {['all', 'Action', 'Sci-Fi', 'Comedy', 'Drama', 'Animation', 'Horror', 'Adventure', 'Crime', 'Classic'].map((g) => (
+                  <button
+                    key={g}
+                    className={`chip ${movieboxGenre === g.toLowerCase() ? 'active' : ''}`}
+                    data-focusable
+                    onClick={() => setMovieboxGenre(g.toLowerCase())}
+                  >
+                    {g === 'all' ? `All Movies (${movies.length})` : g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {vodLoading && !movies.length ? (
+              <div className="loading"><div className="spinner" /> Loading Cinema Catalog...</div>
+            ) : movieboxFiltered.length === 0 ? (
+              <div className="empty"><Icon name="film" size={24} /> No movies match your filter</div>
+            ) : (
+              <div className="grid grid-movies">
+                {movieboxFiltered.map((m) => (
+                  <MovieCard key={m.id} movie={m} onPlay={playMovie} />
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {view.name === 'series' ? (
+          <section className="row" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {series[0] ? (
+              <div
+                className="moviebox-billboard"
+                style={{
+                  backgroundImage: `linear-gradient(to top, rgba(11, 14, 20, 0.95) 0%, rgba(11, 14, 20, 0.7) 40%, rgba(11, 14, 20, 0.3) 100%), url(${series[0].backdrop || series[0].logo})`,
+                }}
+              >
+                <div className="billboard-content">
+                  <div className="billboard-badges">
+                    <span className="billboard-badge-featured">TOP TV SERIES</span>
+                    {series[0].rating ? (
+                      <span className="billboard-badge-rating">★ {series[0].rating}</span>
+                    ) : null}
+                    <span className="billboard-badge-res">4K UHD</span>
+                    {series[0].year ? (
+                      <span className="billboard-badge-year">{series[0].year}</span>
+                    ) : null}
+                  </div>
+                  <h1 className="billboard-title">{series[0].title}</h1>
+                  <div className="billboard-meta">
+                    <span className="billboard-genre">{series[0].genre}</span>
+                    <span>•</span>
+                    <span>{series[0].episodes?.length || 0} Episodes</span>
+                    <span>•</span>
+                    <span>{series[0].source || 'Web Series'}</span>
+                  </div>
+                  {series[0].description ? (
+                    <p className="billboard-desc">{series[0].description}</p>
+                  ) : null}
+                  <div className="billboard-actions">
+                    <button
+                      className="btn btn-primary billboard-play-btn"
+                      data-focusable
+                      onClick={() => setSelectedSeries(series[0])}
+                      title="Explore Episodes"
+                    >
+                      <Icon name="grid" size={20} /> View Episodes & Play
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="moviebox-filter-bar">
+              <div className="moviebox-search-wrap">
+                <Icon name="search" size={18} />
+                <input
+                  type="text"
+                  className="moviebox-search-input"
+                  placeholder="Search web series, TV shows, seasons..."
+                  value={seriesSearch}
+                  onChange={(e) => setSeriesSearch(e.target.value)}
+                />
+                {seriesSearch ? (
+                  <button className="moviebox-search-clear" onClick={() => setSeriesSearch('')}>
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="moviebox-genre-chips">
+                {['all', 'Fantasy', 'Sci-Fi', 'Action', 'Drama', 'Comedy', 'Crime', 'Adventure'].map((g) => (
+                  <button
+                    key={g}
+                    className={`chip ${seriesGenre === g.toLowerCase() ? 'active' : ''}`}
+                    data-focusable
+                    onClick={() => setSeriesGenre(g.toLowerCase())}
+                  >
+                    {g === 'all' ? `All Series (${series.length})` : g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {seriesFiltered.length === 0 ? (
+              <div className="empty"><Icon name="grid" size={24} /> No series match your filter</div>
+            ) : (
+              <div className="grid grid-movies">
+                {seriesFiltered.map((s) => (
+                  <SeriesCard key={s.id} series={s} onOpen={(sel) => setSelectedSeries(sel)} />
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {view.name === 'songs' ? (
+          <section className="row" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {songs[0] ? (
+              <div
+                className="moviebox-billboard"
+                style={{
+                  minHeight: 340,
+                  backgroundImage: `linear-gradient(to top, rgba(11, 14, 20, 0.95) 0%, rgba(11, 14, 20, 0.7) 40%, rgba(11, 14, 20, 0.3) 100%), url(${songs[0].logo})`,
+                }}
+              >
+                <div className="billboard-content">
+                  <div className="billboard-badges">
+                    <span className="hero-live-pill"><span className="pulse-dot" /> 24/7 LIVE MUSIC</span>
+                    <span className="billboard-badge-res">1080p HD AUDIO</span>
+                    <span className="billboard-badge-year">{(songs[0] as any).musicGenre || 'Music'}</span>
+                  </div>
+                  <h1 className="billboard-title">{songs[0].name}</h1>
+                  <p className="billboard-desc">
+                    Non-stop 24/7 high-fidelity music television, chartbusters, and live radio broadcasting.
+                  </p>
+                  <div className="billboard-actions">
+                    <button
+                      className="btn btn-primary billboard-play-btn"
+                      data-focusable
+                      onClick={() => play(songs[0])}
+                      title="Tune In Live Now"
+                    >
+                      <Icon name="play" size={20} /> Listen Live Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="moviebox-filter-bar">
+              <div className="moviebox-search-wrap">
+                <Icon name="search" size={18} />
+                <input
+                  type="text"
+                  className="moviebox-search-input"
+                  placeholder="Search 800+ music channels, artists, songs..."
+                  value={songsSearch}
+                  onChange={(e) => setSongsSearch(e.target.value)}
+                />
+                {songsSearch ? (
+                  <button className="moviebox-search-clear" onClick={() => setSongsSearch('')}>
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="moviebox-genre-chips">
+                {[
+                  'all',
+                  'Bollywood & Desi',
+                  'Pop Hits',
+                  'Rock & Metal',
+                  'EDM & Electronic',
+                  'Hip-Hop & R&B',
+                  'Lo-Fi & Ambient',
+                  '80s & 90s Classics',
+                  'Jazz & Classical',
+                ].map((g) => (
+                  <button
+                    key={g}
+                    className={`chip ${songsGenre === g.toLowerCase() ? 'active' : ''}`}
+                    data-focusable
+                    onClick={() => setSongsGenre(g.toLowerCase())}
+                  >
+                    {g === 'all' ? `All Songs & Music (${songs.length})` : g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {songsLoading && !songs.length ? (
+              <div className="loading"><div className="spinner" /> Loading Music Channels...</div>
+            ) : songsFiltered.length === 0 ? (
+              <div className="empty"><Icon name="volume" size={24} /> No music channels match your filter</div>
+            ) : (
+              <div className="grid grid-channels">
+                {songsFiltered.map((ch) => (
+                  <ChannelCard
+                    key={ch.id}
+                    channel={ch}
+                    country={countryByCode.get(ch.country)}
+                    onPlay={play}
+                    onFavourite={toggleFavourite}
+                    onPrefetch={prefetchChannelNow}
+                    status={statusOf(statuses, ch.id)}
+                    favourite={favourites.includes(ch.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         ) : null}
 
         {view.name === 'favorites' ? (

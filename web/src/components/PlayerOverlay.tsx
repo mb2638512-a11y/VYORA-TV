@@ -446,6 +446,18 @@ export function PlayerOverlay({
     }
 
     const video = videoRef.current
+    const isEmbed = Boolean(
+      (stream as any).embed ||
+      /(\/embed\/|autoembed|vidsrc|vidlink|multiembed|player\.php)/i.test(stream.url)
+    )
+
+    if (isEmbed) {
+      setStatus('playing')
+      setBuffering(false)
+      setIsMuted(false)
+      return () => {}
+    }
+
     if (!video) return
 
     const useProxy = currentMode() === 'server'
@@ -1043,29 +1055,48 @@ export function PlayerOverlay({
     return current || epg[0]
   }, [channel.id, channel.epg])
 
+  const isEmbedStream = useMemo(() => {
+    if (!stream?.url) return false
+    return Boolean(
+      (stream as any).embed ||
+      /(\/embed\/|autoembed|vidsrc|vidlink|multiembed|player\.php)/i.test(stream.url)
+    )
+  }, [stream])
+
   return (
     <div className="player-overlay">
       <div className="player-stage">
         {!isNative ? (
-          <video
-            ref={videoRef}
-            className="player-video"
-            autoPlay
-            playsInline
-            onClick={() => setShowInfo((s) => !s)}
-            onDoubleClick={() => {
-              if (videoRef.current) {
-                if (videoRef.current.paused) {
-                  videoRef.current.play()
-                  setToast('▶ Playing')
-                } else {
-                  videoRef.current.pause()
-                  setToast('⏸ Paused')
+          isEmbedStream ? (
+            <iframe
+              src={stream.url}
+              className="player-video player-embed-frame"
+              title={channel.name}
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              className="player-video"
+              autoPlay
+              playsInline
+              onClick={() => setShowInfo((s) => !s)}
+              onDoubleClick={() => {
+                if (videoRef.current) {
+                  if (videoRef.current.paused) {
+                    videoRef.current.play()
+                    setToast('▶ Playing')
+                  } else {
+                    videoRef.current.pause()
+                    setToast('⏸ Paused')
+                  }
+                  setTimeout(() => setToast(''), 1500)
                 }
-                setTimeout(() => setToast(''), 1500)
-              }
-            }}
-          />
+              }}
+            />
+          )
         ) : (
           <div className="player-native-hint" aria-hidden="true" />
         )}

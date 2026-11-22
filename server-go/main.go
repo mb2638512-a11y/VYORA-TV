@@ -502,17 +502,18 @@ func main() {
 					return
 				}
 
-				var filtered []map[string]interface{}
+				filtered := make([]map[string]interface{}, 0)
 				for _, m := range allMovies {
 					if genre != "" && genre != "all" {
 						mg, _ := m["genre"].(string)
-						if strings.ToLower(mg) != genre {
+						if !strings.Contains(strings.ToLower(mg), genre) {
 							continue
 						}
 					}
 					if search != "" {
 						title, _ := m["title"].(string)
-						if !strings.Contains(strings.ToLower(title), search) {
+						desc, _ := m["description"].(string)
+						if !strings.Contains(strings.ToLower(title), search) && !strings.Contains(strings.ToLower(desc), search) {
 							continue
 						}
 					}
@@ -550,17 +551,18 @@ func main() {
 					return
 				}
 
-				var filtered []map[string]interface{}
+				filtered := make([]map[string]interface{}, 0)
 				for _, s := range allSeries {
 					if genre != "" && genre != "all" {
 						sg, _ := s["genre"].(string)
-						if strings.ToLower(sg) != genre {
+						if !strings.Contains(strings.ToLower(sg), genre) {
 							continue
 						}
 					}
 					if search != "" {
 						title, _ := s["title"].(string)
-						if !strings.Contains(strings.ToLower(title), search) {
+						desc, _ := s["description"].(string)
+						if !strings.Contains(strings.ToLower(title), search) && !strings.Contains(strings.ToLower(desc), search) {
 							continue
 						}
 					}
@@ -572,6 +574,67 @@ func main() {
 				writeJSON(w, http.StatusOK, filtered)
 			} else {
 				writeJSON(w, http.StatusNotFound, map[string]string{"error": "vod-series-not-found"})
+			}
+
+		case path == "/vod/songs":
+			songsPath := filepath.Join(dataDir, "vod", "songs.json")
+			if data, err := os.ReadFile(songsPath); err == nil {
+				genre := strings.ToLower(r.URL.Query().Get("genre"))
+				search := strings.ToLower(r.URL.Query().Get("q"))
+				limit := 0
+				if lStr := r.URL.Query().Get("limit"); lStr != "" {
+					limit, _ = strconv.Atoi(lStr)
+				}
+
+				if genre == "" && search == "" && limit == 0 {
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write(data)
+					return
+				}
+
+				var allSongs []map[string]interface{}
+				if err := json.Unmarshal(data, &allSongs); err != nil {
+					writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+					return
+				}
+
+				filtered := make([]map[string]interface{}, 0)
+				for _, s := range allSongs {
+					if genre != "" && genre != "all" {
+						sg, _ := s["musicGenre"].(string)
+						matchGenre := strings.Contains(strings.ToLower(sg), genre)
+						if !matchGenre {
+							if cats, ok := s["categories"].([]interface{}); ok {
+								for _, c := range cats {
+									if cs, ok := c.(string); ok && strings.Contains(strings.ToLower(cs), genre) {
+										matchGenre = true
+										break
+									}
+								}
+							}
+						}
+						if !matchGenre {
+							continue
+						}
+					}
+					if search != "" {
+						title, _ := s["name"].(string)
+						network, _ := s["network"].(string)
+						owner, _ := s["owner"].(string)
+						if !strings.Contains(strings.ToLower(title), search) && !strings.Contains(strings.ToLower(network), search) && !strings.Contains(strings.ToLower(owner), search) {
+							continue
+						}
+					}
+					filtered = append(filtered, s)
+					if limit > 0 && len(filtered) >= limit {
+						break
+					}
+				}
+				writeJSON(w, http.StatusOK, filtered)
+			} else {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "vod-songs-not-found"})
 			}
 
 		case path == "/logo":
