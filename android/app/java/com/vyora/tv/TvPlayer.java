@@ -44,8 +44,8 @@ public class TvPlayer {
     }
 
     private static final String TAG = "VyoraPlayer";
-    private static final long READY_TIMEOUT_MS = 15000;
-    private static final long FIRST_FRAME_TIMEOUT_MS = 20000;
+    private static final long READY_TIMEOUT_MS = 9000;
+    private static final long FIRST_FRAME_TIMEOUT_MS = 12000;
     private static final int MAX_PARALLEL_CANDIDATES = 2;
 
     private final Context ctx;
@@ -260,8 +260,8 @@ public class TvPlayer {
             DefaultHttpDataSource.Factory httpFactory =
                     new DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
-                            .setConnectTimeoutMs(8000)
-                            .setReadTimeoutMs(20000)
+                            .setConnectTimeoutMs(5000)
+                            .setReadTimeoutMs(12000)
                             .setTransferListener(bandwidthMeter);
 
             if (ua != null && !ua.isEmpty()) {
