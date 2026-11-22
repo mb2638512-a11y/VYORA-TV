@@ -63,5 +63,6 @@ export function TopBar({
         ) : null}
       </div>
     </header>
+    <div className="mobile-bottom-nav">{left}</div>
   )
 }
