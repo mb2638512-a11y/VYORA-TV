@@ -1625,6 +1625,44 @@ export default function ChromiumBrowser({
     }
   }, [activeTab, isAddBookmarkOpen, isAddAppOpen, isSettingsOpen, isHistoryOpen, isDownloadsOpen, engineMenuOpen, isFindOpen, onClose])
 
+  // Android TV remotes dispatch keys at the outer WebView. When the browser
+  // iframe owns focus, forward those keys into its document so TV websites,
+  // video players and web-app controls can respond instead of swallowing D-pad.
+  useEffect(() => {
+    const forwardFrameRemoteKey = (event: KeyboardEvent) => {
+      const frame = iframeRef.current
+      if (!frame || document.activeElement !== frame) return
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) return
+      try {
+        const frameWindow = frame.contentWindow
+        const frameDocument = frame.contentDocument
+        if (!frameWindow || !frameDocument) return
+        const target = frameDocument.activeElement as HTMLElement | null
+        if (event.key === 'Enter' && target?.matches('button:not([disabled]),a[href],[role="button"],[role="tab"]')) {
+          target.click()
+        } else {
+          const forwarded = new KeyboardEvent('keydown', {
+            key: event.key,
+            bubbles: true,
+            cancelable: true,
+          })
+          ;(target || frameDocument.body).dispatchEvent(forwarded)
+          if (!forwarded.defaultPrevented && event.key === 'ArrowUp') {
+            frameWindow.scrollBy({ top: -300, behavior: 'smooth' })
+          } else if (!forwarded.defaultPrevented && event.key === 'ArrowDown') {
+            frameWindow.scrollBy({ top: 300, behavior: 'smooth' })
+          }
+        }
+        event.preventDefault()
+        event.stopPropagation()
+      } catch {
+        // Cross-origin frames cannot be inspected; leave their own key handling intact.
+      }
+    }
+    window.addEventListener('keydown', forwardFrameRemoteKey, true)
+    return () => window.removeEventListener('keydown', forwardFrameRemoteKey, true)
+  }, [])
+
   return (
     <div
       ref={containerRef}
