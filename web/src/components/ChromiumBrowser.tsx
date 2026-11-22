@@ -1603,6 +1603,28 @@ export default function ChromiumBrowser({
     ? activeTab.historyIndex < activeTab.history.length - 1
     : false
 
+  // Native Android BACK and TV remote BACK must respect browser navigation
+  // before leaving the browser surface or returning to the platform home.
+  useEffect(() => {
+    const w = window as Window & { __vyoraBack?: () => string }
+    const previousBack = w.__vyoraBack
+    w.__vyoraBack = () => {
+      if (isAddBookmarkOpen) { setIsAddBookmarkOpen(false); return 'true' }
+      if (isAddAppOpen) { setIsAddAppOpen(false); return 'true' }
+      if (isSettingsOpen) { setIsSettingsOpen(false); return 'true' }
+      if (isHistoryOpen) { setIsHistoryOpen(false); return 'true' }
+      if (isDownloadsOpen) { setIsDownloadsOpen(false); return 'true' }
+      if (engineMenuOpen) { setEngineMenuOpen(false); return 'true' }
+      if (isFindOpen) { setIsFindOpen(false); setFindQuery(''); setFindMatches(0); return 'true' }
+      if (activeTab && activeTab.historyIndex > 0) { goBack(); return 'true' }
+      onClose()
+      return 'true'
+    }
+    return () => {
+      if (w.__vyoraBack) w.__vyoraBack = previousBack
+    }
+  }, [activeTab, isAddBookmarkOpen, isAddAppOpen, isSettingsOpen, isHistoryOpen, isDownloadsOpen, engineMenuOpen, isFindOpen, onClose])
+
   return (
     <div
       ref={containerRef}
