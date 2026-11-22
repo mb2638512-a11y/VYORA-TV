@@ -52,7 +52,7 @@ try {
   const hubSearch = hub.getByRole('textbox', { name: 'Search AllSiteHub sites' })
   await hubSearch.fill('gojolive')
   const searchMatches = await hub.locator('.app-card').count()
-  const gojoCard = hub.getByRole('button', { name: /GojoLive gojolive\.site/i })
+  const gojoCard = hub.getByRole('group', { name: 'GojoLive website card' })
   if (searchMatches !== 1 || !(await gojoCard.isVisible())) {
     throw new Error('AllSiteHub search should return only GojoLive; found ' + searchMatches)
   }
