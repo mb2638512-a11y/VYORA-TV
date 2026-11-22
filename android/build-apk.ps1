@@ -10,8 +10,8 @@ param(
   [string]$Platform = "android-36",
   [string]$MinSdk = "21",
   [string]$TargetSdk = "34",
-  [string]$VersionName = "1.0.0",
-  [int]$VersionCode = 1,
+  [string]$VersionName = "1.0.1",
+  [int]$VersionCode = 2,
   [ValidateSet("tv", "phone")][string]$Variant = "tv"
 )
 
