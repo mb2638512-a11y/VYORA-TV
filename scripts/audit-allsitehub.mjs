@@ -18,8 +18,7 @@ function extractSites(source) {
       sites.push({ id: match[1], title: match[2], url: match[3] })
     }
   }
-  const unique = new Map(sites.map((site) => [site.id, site]))
-  return [...unique.values()]
+  return sites
 }
 
 function csvCell(value) {
@@ -99,7 +98,8 @@ for (const site of sites) {
     parsed.hostname === 'localhost' ||
     parsed.hostname.endsWith('.localhost') ||
     parsed.hostname.endsWith('.local') ||
-    parsed.hostname.endsWith('.internal')
+    parsed.hostname.endsWith('.internal') ||
+    (parsed.hostname !== site.id && !parsed.hostname.endsWith('.' + site.id))
   ) {
     throw new Error(`Unsafe or non-HTTPS site is not allowed: ${site.url}`)
   }
