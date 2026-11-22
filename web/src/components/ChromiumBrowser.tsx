@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from './Icon'
-import { nativeInstallApk, setBrowserDisplayMode } from '../lib/bridge'
+import { nativeInstallApk, setBrowserDisplayMode, nativeOpenBrowser } from '../lib/bridge'
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
-import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId, type EngineConfig } from '../lib/browserEngines'
+import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId } from '../lib/browserEngines'
 
 export type ChromiumBrowserProps = {
   initialUrl?: string
@@ -451,6 +451,16 @@ export default function ChromiumBrowser({
   onNavigateToDownloads,
 }: ChromiumBrowserProps) {
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
+  useEffect(() => {
+    if (nativeBrowserLaunched.current) return
+    const opened = nativeOpenBrowser(initialUrl?.trim() || '', normalizeBrowserEngineId(initialEngine), initialDisplayMode)
+    if (opened) {
+      nativeBrowserLaunched.current = true
+      onClose()
+    }
+  }, [initialUrl, initialEngine, initialDisplayMode, onClose])
+
+
   const [tabs, setTabs] = useState<Tab[]>(() => initialSession.tabs)
   const [activeTabId, setActiveTabId] = useState<string>(() => initialSession.activeTabId)
   const [closedTabs, setClosedTabs] = useState<Tab[]>([])
@@ -462,6 +472,7 @@ export default function ChromiumBrowser({
   const [engineMenuOpen, setEngineMenuOpen] = useState(false)
   const [engineSearch, setEngineSearch] = useState('')
   const [engineCategory, setEngineCategory] = useState('all')
+  const nativeBrowserLaunched = useRef(false)
   const [showBookmarks, setShowBookmarks] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(getInitialBookmarks)
   const bookmarkImportRef = useRef<HTMLInputElement | null>(null)
