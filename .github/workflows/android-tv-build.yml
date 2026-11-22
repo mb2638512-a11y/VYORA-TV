@@ -1,0 +1,52 @@
+name: Build VYORA Android TV APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/android-tv-app]
+    paths:
+      - "android/**"
+      - "web/**"
+      - "server/**"
+      - "server-go/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-tv-build.yml"
+permissions:
+  contents: read
+jobs:
+  tv-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - run: npm ci
+      - run: npm run data
+      - run: npm run build:vod
+      - run: npm --workspace web run build
+      - name: Bundle latest web platform into Android TV app
+        run: |
+          rm -rf android/app/assets
+          mkdir -p android/app/assets
+          cp -a web/dist/. android/app/assets/
+      - name: Build TV APK
+        run: |
+          cd android
+          gradle --no-daemon --stacktrace :app:assembleTvDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vyora-android-tv-debug
+          path: android/app/build/outputs/apk/tv/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
