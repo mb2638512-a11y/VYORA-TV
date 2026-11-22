@@ -3,6 +3,7 @@ import { Icon } from './Icon'
 import { nativeInstallApk, setBrowserDisplayMode } from '../lib/bridge'
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
+import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId, type EngineConfig } from '../lib/browserEngines'
 
 export type ChromiumBrowserProps = {
   initialUrl?: string
@@ -15,77 +16,6 @@ export type ChromiumBrowserProps = {
   onPlayMovie?: (url: string, title: string) => void
   onNavigateToDownloads?: () => void
 }
-
-export type EngineConfig = {
-  id: BrowserEngineId
-  name: string
-  short: string
-  tagline: string
-  searchUrl: (q: string) => string
-  homeUrl: string
-  color: string
-  /** Real brand icon, served through the cached /logo proxy. */
-  favicon: string
-}
-
-// Search results are never scraped or silently substituted. Google is
-// rendered directly with its official iframe flag; other providers use the
-// Go web proxy for result documents so frame-busting headers can be removed
-// and result clicks can be routed back through the browser.
-export const BROWSER_ENGINES: Record<BrowserEngineId, EngineConfig> = {
-  google: {
-    id: 'google',
-    name: 'Google',
-    short: 'Google',
-    tagline: 'Google Search',
-    searchUrl: (q) => `https://www.google.com/search?igu=1&q=${encodeURIComponent(q)}`,
-    homeUrl: 'https://www.google.com/webhp?igu=1',
-    color: '#4285F4',
-    favicon: 'https://www.google.com/favicon.ico',
-  },
-  bing: {
-    id: 'bing',
-    name: 'Microsoft Bing',
-    short: 'Bing',
-    tagline: 'Microsoft Search',
-    searchUrl: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
-    homeUrl: 'https://www.bing.com/',
-    color: '#008373',
-    favicon: 'https://www.bing.com/sa/simg/favicon-2x.ico',
-  },
-  duckduckgo: {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    short: 'DuckDuckGo',
-    tagline: 'Private Search',
-    searchUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`,
-    homeUrl: 'https://duckduckgo.com/',
-    color: '#DE5833',
-    favicon: 'https://duckduckgo.com/favicon.ico',
-  },
-  yahoo: {
-    id: 'yahoo',
-    name: 'Yahoo Search',
-    short: 'Yahoo',
-    tagline: 'Search the Web',
-    searchUrl: (q) => `https://search.yahoo.com/search?p=${encodeURIComponent(q)}`,
-    homeUrl: 'https://search.yahoo.com/',
-    color: '#6001D2',
-    favicon: 'https://s.yimg.com/rz/l/favicon.ico',
-  },
-  brave: {
-    id: 'brave',
-    name: 'Brave Search',
-    short: 'Brave',
-    tagline: 'Independent Search',
-    searchUrl: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`,
-    homeUrl: 'https://search.brave.com/',
-    color: '#FB542B',
-    favicon: 'https://search.brave.com/favicon.ico',
-  },
-}
-
-export const BROWSER_ENGINES_LIST: EngineConfig[] = Object.values(BROWSER_ENGINES)
 
 export type HistoryItem = {
   id: string
@@ -203,7 +133,7 @@ export type BrowserSettings = {
 }
 
 export const DEFAULT_BROWSER_SETTINGS: BrowserSettings = {
-  defaultEngine: 'google',
+  defaultEngine: 'google0',
   homepage: '',
   blockImages: false,
   privateMode: false,
@@ -223,7 +153,8 @@ function getInitialBookmarks(): Bookmark[] {
 function getInitialSettings(): BrowserSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
-    if (raw) return { ...DEFAULT_BROWSER_SETTINGS, ...JSON.parse(raw) }
+    if (raw) const parsed = JSON.parse(raw)
+      return { ...DEFAULT_BROWSER_SETTINGS, ...parsed, defaultEngine: normalizeBrowserEngineId(parsed?.defaultEngine) }
   } catch (e) {
     // ignore
   }
@@ -234,7 +165,7 @@ type InitialBrowserSession = { tabs: Tab[]; activeTabId: string }
 
 function getInitialBrowserSession(
   initialUrl?: string,
-  initialEngine: BrowserEngineId = 'google',
+  initialEngine: BrowserEngineId = 'google0',
   standalone = false,
 ): InitialBrowserSession {
   const startUrl = initialUrl?.trim() || ''
@@ -244,7 +175,7 @@ function getInitialBrowserSession(
     url: startUrl,
     displayUrl: startUrl,
     frameUrl: startUrl,
-    engine: initialEngine,
+    engine: normalizeBrowserEngineId(initialEngine),
     proxyMode: false,
     zoom: 1,
     history: startUrl ? [startUrl] : [],
@@ -290,7 +221,7 @@ function getInitialBrowserSession(
         url,
         displayUrl: url,
         frameUrl: url,
-        engine: saved?.engine && BROWSER_ENGINES[saved.engine as BrowserEngineId] ? saved.engine : initialEngine,
+        engine: normalizeBrowserEngineId(saved?.engine, normalizeBrowserEngineId(initialEngine)),
         proxyMode: false,
         zoom: 1,
         history,
@@ -508,7 +439,7 @@ export function BrandLogo({
 
 export default function ChromiumBrowser({
   initialUrl,
-  initialEngine = 'google',
+  initialEngine = 'google0',
   onClose,
   standalone = false,
   initialDisplayMode = 'auto',
@@ -527,6 +458,8 @@ export default function ChromiumBrowser({
   })
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [engineMenuOpen, setEngineMenuOpen] = useState(false)
+  const [engineSearch, setEngineSearch] = useState('')
+  const [engineCategory, setEngineCategory] = useState('all')
   const [showBookmarks, setShowBookmarks] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(getInitialBookmarks)
   const bookmarkImportRef = useRef<HTMLInputElement | null>(null)
@@ -637,7 +570,11 @@ export default function ChromiumBrowser({
   const suggestTimer = useRef<number | null>(null)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0]
-  const currentEngine = BROWSER_ENGINES[activeTab?.engine || 'google'] || BROWSER_ENGINES.google
+  const currentEngine = BROWSER_ENGINES[activeTab?.engine || 'google0'] || BROWSER_ENGINES.google
+  const visibleEngineOptions = BROWSER_ENGINES_LIST.filter((engine) =>
+    (engineCategory === 'all' || engine.category === engineCategory) &&
+    (engine.name.toLowerCase().includes(engineSearch.trim().toLowerCase()) || engine.category.toLowerCase().includes(engineSearch.trim().toLowerCase())),
+  )
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -862,7 +799,7 @@ export default function ChromiumBrowser({
       // still load directly, so normal browsing is not needlessly proxied.
       const engine = BROWSER_ENGINES[activeTab.engine]
       let proxySearch = false
-      if (engine && activeTab.engine !== 'google') {
+      if (engine && engine.id !== 'google0') {
         try {
           const targetHost = new URL(normalized).hostname
           const searchHost = new URL(engine.searchUrl('vyora-smoke-test')).hostname
@@ -1016,8 +953,9 @@ export default function ChromiumBrowser({
   // rather than showing results from a different search company.
   useEffect(() => {
     const q = inputUrl.trim()
-    const engine = activeTab?.engine || 'google'
-    const supportsSuggestions = engine === 'google' || engine === 'bing' || engine === 'duckduckgo'
+    const engine = activeTab?.engine || 'google0'
+    const suggestEngine = BROWSER_ENGINES[engine]?.suggestEngine
+    const supportsSuggestions = Boolean(suggestEngine)
     if (suggestTimer.current) window.clearTimeout(suggestTimer.current)
     if (!supportsSuggestions || q.length < 2 || /^https?:\/\//i.test(q)) {
       setSuggestions([])
@@ -1031,7 +969,7 @@ export default function ChromiumBrowser({
     const controller = new AbortController()
     suggestTimer.current = window.setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ engine, q })
+        const params = new URLSearchParams({ engine: suggestEngine || 'google', q })
         const res = await fetch(`${API}/suggest?${params.toString()}`, {
           signal: controller.signal,
         })
@@ -1060,7 +998,7 @@ export default function ChromiumBrowser({
 
   const addTab = (customEngine?: BrowserEngineId) => {
     const newId = `tab-${Date.now()}`
-    const engine = customEngine || settings.defaultEngine || activeTab?.engine || 'google'
+    const engine = normalizeBrowserEngineId(customEngine || settings.defaultEngine || activeTab?.engine || 'google0')
     const homeUrl = BROWSER_ENGINES[engine]?.homeUrl || ''
     const newTab: Tab = {
       id: newId,
@@ -1118,7 +1056,7 @@ export default function ChromiumBrowser({
           url: '',
           displayUrl: '',
           frameUrl: '',
-          engine: settings.defaultEngine || 'google',
+          engine: normalizeBrowserEngineId(settings.defaultEngine),
           proxyMode: false,
           zoom: 1.0,
           history: [],
@@ -1862,7 +1800,7 @@ export default function ChromiumBrowser({
           <button
             type="button"
             className={`chromium-engine-trigger ${engineMenuOpen ? 'open' : ''}`}
-            onClick={() => setEngineMenuOpen((v) => !v)}
+            onClick={() => { setEngineMenuOpen((v) => !v); setEngineSearch(''); setEngineCategory('all') }}
             title={`Search engine: ${currentEngine.name} — click to switch`}
             aria-haspopup="listbox"
             aria-expanded={engineMenuOpen}
@@ -1881,40 +1819,66 @@ export default function ChromiumBrowser({
 
           {engineMenuOpen ? (
             <>
-              <div className="chromium-engine-backdrop" onClick={() => setEngineMenuOpen(false)} />
+              <div className="chromium-engine-backdrop" onClick={() => { setEngineMenuOpen(false); setEngineSearch(''); setEngineCategory('all') }} />
               <div className="chromium-engine-menu" role="listbox" aria-label="Choose search engine">
                 <div className="chromium-engine-menu-head">Choose search engine</div>
-                {BROWSER_ENGINES_LIST.map((conf) => {
-                  const isSelected = activeTab?.engine === conf.id
-                  return (
-                    <button
-                      key={conf.id}
-                      type="button"
-                      className={`chromium-engine-option ${isSelected ? 'active' : ''}`}
-                      onClick={() => {
-                        setTabEngine(conf.id)
-                        setEngineMenuOpen(false)
-                      }}
-                      role="option"
-                      aria-selected={isSelected}
-                      data-focusable
-                    >
-                      <BrandLogo
-                        iconUrl={logoUrl(conf.favicon)}
-                        color={conf.color}
-                        label={conf.short}
-                        size={22}
-                        rounded={6}
-                      />
-                      <span className="chromium-engine-option-text">
-                        <strong style={{ color: isSelected ? conf.color : undefined }}>{conf.short}</strong>
-                        <small>{conf.tagline}</small>
-                      </span>
-                      {isSelected ? <Icon name="check" size={15} /> : null}
-                    </button>
-                  )
-                })}
-              </div>
+                <div className="chromium-engine-menu-count">{visibleEngineOptions.length} of {BROWSER_ENGINES_LIST.length} search destinations</div>
+                <div className="chromium-engine-filters">
+                  <input
+                    type="search"
+                    value={engineSearch}
+                    onChange={(e) => setEngineSearch(e.target.value)}
+                    placeholder="Search engines and sites…"
+                    aria-label="Search engine catalog"
+                    autoComplete="off"
+                  />
+                  <select
+                    value={engineCategory}
+                    onChange={(e) => setEngineCategory(e.target.value)}
+                    aria-label="Filter search engines by category"
+                  >
+                    <option value="all">All categories</option>
+                    {BROWSER_ENGINE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="chromium-engine-options">
+                  {visibleEngineOptions.map((conf) => {
+                    const isSelected = activeTab?.engine === conf.id
+                    return (
+                      <button
+                        key={conf.id}
+                        type="button"
+                        className={`chromium-engine-option ${isSelected ? 'active' : ''}`}
+                        onClick={() => {
+                          setTabEngine(conf.id)
+                          setEngineMenuOpen(false)
+                          setEngineSearch('')
+                          setEngineCategory('all')
+                        }}
+                        role="option"
+                        aria-selected={isSelected}
+                        data-focusable
+                      >
+                        <BrandLogo
+                          iconUrl={logoUrl(conf.favicon)}
+                          color={conf.color}
+                          label={conf.short}
+                          size={22}
+                          rounded={6}
+                        />
+                        <span className="chromium-engine-option-text">
+                          <strong style={{ color: isSelected ? conf.color : undefined }}>{conf.short}</strong>
+                          <small>{conf.tagline}</small>
+                        </span>
+                        {conf.requiresAuth ? <span className="chromium-engine-option-via">Account</span> : null}
+                        {isSelected ? <Icon name="check" size={15} /> : null}
+                      </button>
+                    )
+                  })}
+                  {visibleEngineOptions.length === 0 ? <div className="chromium-engine-empty">No matching search destinations.</div> : null}
+                </div></div>
             </>
           ) : null}
         </div>
@@ -2697,7 +2661,7 @@ export default function ChromiumBrowser({
             </div>
 
             <div className="speeddial-engines-bar" role="radiogroup" aria-label="Choose search engine">
-              {BROWSER_ENGINES_LIST.map((conf) => {
+              {BROWSER_ENGINES_LIST.slice(0, 5).map((conf) => {
                 const eId = conf.id
                 const isSelected = activeTab?.engine === eId
                 return (
