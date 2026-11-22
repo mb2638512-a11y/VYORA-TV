@@ -177,7 +177,8 @@ export function MovieCard({
   const durationText = useMemo(() => {
     if (!movie.duration) return null
     if (typeof movie.duration === 'string') return movie.duration
-    const durationMin = Math.round(movie.duration / 60)
+    // VOD catalogue durations are stored in minutes (not seconds).
+    const durationMin = Math.round(movie.duration)
     return durationMin > 0 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m` : null
   }, [movie.duration])
 
