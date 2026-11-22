@@ -7483,3 +7483,14 @@ button {
   font-weight: 700;
 }
 .player-auto-recover .btn { flex: 0 0 auto; }
+
+
+/* Phone player: keep the video clean, without the channel-name/transport HUD at the top. */
+@media (max-width: 700px) {
+  .device-phone .player-info {
+    display: none !important;
+  }
+  .device-phone .player-hud-actions {
+    display: none !important;
+  }
+}
