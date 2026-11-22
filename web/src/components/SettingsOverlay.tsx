@@ -13,7 +13,7 @@ import type {
 } from '../types'
 import { TOP_STREAMING_PLAYERS } from '../types'
 import { categoryName } from '../lib/i18n'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 import { isNative, downloadStreamM3u, launchExternalStream } from '../lib/bridge'
 
 export type Settings = {
@@ -224,7 +224,7 @@ export function SettingsOverlay({
     }
   }
 
-  const tabs: Array<{ id: TabId; label: string; icon: string; badge?: string }> = [
+  const tabs: Array<{ id: TabId; label: string; icon: IconName; badge?: string }> = [
     { id: 'players', label: 'Player Engines', icon: 'play', badge: '10' },
     { id: 'display', label: 'Panels & Layout', icon: 'tv' },
     { id: 'turbo', label: 'Turbo & Buffers', icon: 'bolt' },
@@ -292,7 +292,7 @@ export function SettingsOverlay({
               <div className="active-player-banner">
                 <div className="active-player-left">
                   <div className="active-player-icon-box">
-                    <Icon name={activePlayer.icon} size={28} />
+                    <Icon name={activePlayer.icon as IconName} size={28} />
                   </div>
                   <div>
                     <div className="active-player-subtitle">CURRENT ACTIVE STREAMING ENGINE</div>
@@ -364,7 +364,7 @@ export function SettingsOverlay({
                       >
                         <div className="player-card-head">
                           <div className="player-icon-box">
-                            <Icon name={player.icon} size={22} />
+                            <Icon name={player.icon as IconName} size={22} />
                           </div>
                           <div className="player-title-box">
                             <h4 className="player-name">{player.name}</h4>
