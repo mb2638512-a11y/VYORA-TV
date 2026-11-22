@@ -114,7 +114,7 @@ const DEFAULT_SETTINGS: Settings = {
     announceFocus: true,
   },
   autoPlayBest: true,
-  autoSkipOffline: false,
+  autoSkipOffline: true,
   verifiedOnly: false,
   defaultPlayer: 'internal',
   channelsPlayer: 'internal',
@@ -1868,7 +1868,7 @@ export default function App() {
                 <button className="btn btn-primary" data-focusable onClick={() => setView({ name: 'allsitehub' })}>See All <Icon name="arrow-right" size={15}/></button>
               </div>
               <div className="apps-grid">
-                <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
+                <div className="app-card featured-app-card allsitehub-featured-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
                   <div className="app-card-badge"><Icon name="grid" size={34}/></div>
                   <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} categories</span></div></div>
                   <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
@@ -3428,7 +3428,7 @@ export default function App() {
           onSwitch={(ch) => play(ch)}
           onCycleStream={() => undefined}
           onQueue={addToQueue}
-          autoSkipOffline={settings.autoSkipOffline ?? false}
+          autoSkipOffline={true}
           assignedPlayerId={
             playing.id.startsWith('download-')
               ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
