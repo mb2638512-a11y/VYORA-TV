@@ -2973,6 +2973,7 @@ export default function App() {
               })
             }}
             onClose={() => setView({ name: 'home' })}
+            onNavigate={(destination) => setView({ name: destination })}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
             onNavigateToDownloads={() => setView({ name: 'downloads' })}
