@@ -2,7 +2,7 @@
 @media (max-width: 768px) {
   html, body, #root { width: 100%; min-width: 0; height: 100%; }
   body { overscroll-behavior-y: contain; }
-  .app { height: 100dvh; min-height: 0; }
+  .app { height: 100dvh; min-height: 0; overflow: visible; }
   .topbar {
     position: static;
     z-index: auto;
@@ -32,7 +32,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    display: flex;
+    display: flex !important;
+    height: auto;
+    min-height: 60px;
     flex-wrap: nowrap;
     align-items: stretch;
     justify-content: flex-start;
