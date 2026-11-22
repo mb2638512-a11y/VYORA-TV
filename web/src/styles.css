@@ -4219,6 +4219,22 @@ button {
   text-overflow: ellipsis;
 }
 
+/* Keep browser controls above the embedded page: iframe hit-testing can
+   otherwise swallow clicks on the engine picker while a site is loaded. */
+.chromium-toolbar {
+  position: relative;
+  z-index: 120;
+}
+.chromium-engine-select {
+  position: relative;
+  z-index: 122;
+}
+.chromium-engine-backdrop {
+  z-index: 121;
+}
+.chromium-engine-menu {
+  z-index: 123;
+}
 .chromium-engine-backdrop {
   position: fixed;
   inset: 0;
