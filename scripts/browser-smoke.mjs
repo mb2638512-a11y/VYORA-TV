@@ -283,6 +283,47 @@ try {
   }
 
   await page.screenshot({ path: 'artifacts/browser-smoke/browser-desktop-mode.png', fullPage: true })
+
+  // Phone-first navigation: portrait viewport, persistent bottom navigation,
+  // touch-sized controls, and a working Movies route without horizontal page overflow.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Home', exact: true }).click()
+  const phoneNav = page.locator('.topnav')
+  const phoneNavStyle = await phoneNav.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    return {
+      position: style.position,
+      bottomGap: Math.abs(window.innerHeight - rect.bottom),
+      width: rect.width,
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+    }
+  })
+  if (phoneNavStyle.position !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
+      phoneNavStyle.width < 380 || phoneNavStyle.scrollWidth <= phoneNavStyle.clientWidth) {
+    throw new Error('Portrait phone bottom navigation is not fixed/scrollable: ' + JSON.stringify(phoneNavStyle))
+  }
+  const phoneOverflow = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth,
+  }))
+  if (phoneOverflow.content > phoneOverflow.viewport + 2) {
+    throw new Error('Phone home screen overflows horizontally: ' + JSON.stringify(phoneOverflow))
+  }
+  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  await page.locator('.movie-card').first().waitFor({ state: 'visible', timeout: 10000 })
+  const phoneMovieLayout = await page.locator('.movie-card').first().evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return { left: rect.left, right: rect.right, width: rect.width, viewport: window.innerWidth }
+  })
+  if (phoneMovieLayout.width <= 0 || phoneMovieLayout.left < -2 ||
+      phoneMovieLayout.right > phoneMovieLayout.viewport + 2) {
+    throw new Error('Movie card does not fit portrait phone viewport: ' + JSON.stringify(phoneMovieLayout))
+  }
+  await fs.mkdir('artifacts/browser-smoke', { recursive: true })
+  await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
+
   if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join(' | '))
   console.log('VYORA browser smoke test passed; native mode calls:', nativeModes.join(', '))
 } catch (error) {
