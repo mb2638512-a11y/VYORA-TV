@@ -49,6 +49,7 @@
     right: auto;
     bottom: auto;
     display: flex !important;
+    flex-direction: row !important;
     height: auto;
     min-height: 60px;
     flex-wrap: nowrap;
