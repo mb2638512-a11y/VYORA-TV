@@ -213,7 +213,12 @@ public class TvBridge {
 
     /** Open the full native Android WebView browser, outside the app's iframe shell. */
     @JavascriptInterface
-    public void openBrowser(final String initialUrl, final String engineId, final String displayMode) {
+    public boolean openBrowser(final String initialUrl, final String engineId, final String displayMode) {
+        // Return the real launch result to JavaScript. Previously this method
+        // returned void, so the UI assumed the browser had opened even when
+        // Android rejected the Activity launch and had no way to fall back.
+        final CountDownLatch done = new CountDownLatch(1);
+        final AtomicBoolean started = new AtomicBoolean(false);
         act.runOnUiThread(() -> {
             try {
                 Intent intent = new Intent(act, BrowserActivity.class);
@@ -221,11 +226,24 @@ public class TvBridge {
                 intent.putExtra("engineId", engineId == null ? "google0" : engineId);
                 intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
                 act.startActivity(intent);
+                started.set(true);
             } catch (Throwable error) {
                 Log.e(TAG, "Could not open native browser", error);
                 Toast.makeText(act, "VYORA Browser could not be opened", Toast.LENGTH_LONG).show();
+            } finally {
+                done.countDown();
             }
         });
+        try {
+            if (!done.await(4, TimeUnit.SECONDS)) {
+                Log.e(TAG, "Timed out waiting for native browser launch");
+                return false;
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        return started.get();
     }
 
     @JavascriptInterface
