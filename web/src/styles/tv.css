@@ -113,3 +113,20 @@
     animation-duration: .01ms !important;
   }
 }
+
+
+/* The TV shell is structurally distinct from the touch-first phone shell. */
+.device-tv .device-shell-tv { flex: 0 0 auto; width: 100%; min-width: 0; }
+.device-tv .topbar-tv { min-width: 0; }
+.device-tv .topbar-tv .topbar-left { min-width: 0; flex: 1 1 auto; }
+.device-tv .topbar-tv .topbar-nav-wrapper { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.device-tv .topbar-tv .topnav {
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.device-tv .topbar-tv .topnav::-webkit-scrollbar { display: none; }
+.device-tv .topbar-tv .topnav-btn { min-height: 56px; padding: 14px clamp(10px, 1vw, 20px); font-size: clamp(15px, 1.1vw, 19px); }
+.device-tv .device-shell-tv :focus-visible { outline-offset: 7px; }
