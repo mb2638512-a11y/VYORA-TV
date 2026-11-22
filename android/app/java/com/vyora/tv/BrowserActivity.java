@@ -27,6 +27,7 @@ import android.webkit.WebResourceError;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebStorage;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceResponse;
 import java.io.ByteArrayInputStream;
@@ -549,6 +550,16 @@ public class BrowserActivity extends Activity {
         if(tabs.size()>1) { closeCurrentTab(); return; }
         super.onBackPressed();
     }
+    protected void clearPrivateBrowsingData() {
+        for (BrowserTab tab : tabs) {
+            if (tab.web != null) {
+                try { tab.web.stopLoading(); tab.web.clearCache(true); tab.web.clearHistory(); tab.web.clearFormData(); } catch (Throwable ignored) { }
+            }
+        }
+        try { CookieManager.getInstance().removeAllCookies(null); CookieManager.getInstance().flush(); } catch (Throwable ignored) { }
+        try { WebStorage.getInstance().deleteAllData(); } catch (Throwable ignored) { }
+    }
+
     @Override protected void onDestroy() {
         saveSession();
         for(BrowserTab t:tabs) if(t.web!=null) { t.web.stopLoading(); t.web.destroy(); t.web=null; }
