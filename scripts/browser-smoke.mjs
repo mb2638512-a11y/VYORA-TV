@@ -34,6 +34,75 @@ try {
   await page.goto(baseURL, { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForTimeout(1200)
 
+  // AllSiteHub is a built-in platform directory, not an installed-app tile.
+  // Verify every supplied category and the complete 64-site catalogue.
+  const hubNav = page.getByRole('button', { name: 'AllSiteHub', exact: true })
+  await hubNav.waitFor({ state: 'visible', timeout: 10000 })
+  await hubNav.click()
+  const hub = page.locator('.allsitehub-section')
+  await hub.waitFor({ state: 'visible', timeout: 10000 })
+  const expectedCategories = [
+    ['Movies & Shows', 21],
+    ['Anime', 22],
+    ['Manga', 7],
+    ['Live TV & Sports', 10],
+    ['Games', 1],
+    ['Cartoons', 1],
+    ['All in One', 2],
+  ]
+  const totalSites = await hub.locator('.app-card').count()
+  if (totalSites !== 64) throw new Error(`Expected 64 AllSiteHub sites, found ${totalSites}`)
+  for (const [name, count] of expectedCategories) {
+    await hub.getByRole('tab', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\  await page.waitForTimeout(1200)
+
+  const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })')} \\\\(${count}\\\\)import { chromium } from '@playwright/test'
+import fs from 'node:fs/promises'
+
+const baseURL = process.env.VYORA_BASE_URL || 'http://127.0.0.1:5173'
+const browser = await chromium.launch({ headless: true })
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+const pageErrors = []
+await page.addInitScript(() => {
+  window.__vyoraModes = []
+  window.__vyoraSuggestionEngines = []
+  const originalFetch = window.fetch.bind(window)
+  window.fetch = (input, init) => {
+    const raw = typeof input === 'string' ? input : input?.url || ''
+    if (raw.includes('/api/suggest')) {
+      const requestUrl = new URL(raw, window.location.href)
+      const engine = requestUrl.searchParams.get('engine') || ''
+      window.__vyoraSuggestionEngines.push(engine)
+      return Promise.resolve(new Response(JSON.stringify({
+        engine,
+        suggestions: [`${engine} suggestion result`],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    }
+    return originalFetch(input, init)
+  }
+  window.VyoraBridge = {
+    setBrowserDisplayMode(mode) {
+      window.__vyoraModes.push(mode)
+    },
+  }
+})
+page.on('pageerror', (error) => pageErrors.push(error.message))
+
+try {
+  await page.goto(baseURL, { waitUntil: 'domcontentloaded', timeout: 30000 })
+) }).click()
+    const actual = await hub.locator('.app-card').count()
+    if (actual !== count) throw new Error(`AllSiteHub category ${name}: expected ${count}, found ${actual}`)
+  }
+  await hub.getByRole('tab', { name: 'All (64)' }).click()
+  const hubSearch = hub.getByRole('textbox', { name: 'Search AllSiteHub sites' })
+  await hubSearch.fill('gojolive')
+  const searchMatches = await hub.locator('.app-card').count()
+  if (searchMatches !== 1 || !(await hub.getByText('GojoLive').isVisible())) {
+    throw new Error(`AllSiteHub search expected one GojoLive match, found ${searchMatches}`)
+  }
+  await hubSearch.fill('')
+  await page.screenshot({ path: 'artifacts/browser-smoke/allsitehub.png', fullPage: true })
+
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })
   if (!(await browserRegion.isVisible().catch(() => false))) {
     const openBrowser = page.getByRole('button', { name: /open browser|browser/i }).first()
