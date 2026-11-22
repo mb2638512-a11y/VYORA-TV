@@ -3428,7 +3428,7 @@ export default function App() {
           onSwitch={(ch) => play(ch)}
           onCycleStream={() => undefined}
           onQueue={addToQueue}
-          autoSkipOffline={true}
+          autoSkipOffline={false}
           assignedPlayerId={
             playing.id.startsWith('download-')
               ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'
