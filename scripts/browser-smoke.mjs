@@ -50,6 +50,19 @@ try {
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).first()
     .waitFor({ state: 'visible', timeout: 5000 })
   if (await movieCards.count() !== 1) throw new Error('Movie search should return one Dune: Part Two result')
+  await page.route('https://vidlink.pro/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<!doctype html><html><body><main id="vyora-embed-smoke">Embedded player loaded</main></body></html>',
+  }))
+  await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
+  const embedFrame = page.locator('iframe.player-embed-frame')
+  await embedFrame.waitFor({ state: 'visible', timeout: 10000 })
+  await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
+    .waitFor({ state: 'visible', timeout: 5000 })
+  await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
+  await page.locator('.hud-btn-back').click()
+  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
   await page.getByRole('button', { name: 'Series', exact: true }).click()
