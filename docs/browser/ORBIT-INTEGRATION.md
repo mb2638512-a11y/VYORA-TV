@@ -6,7 +6,7 @@ Integration is planned and pinned to the reviewed upstream snapshot below. This 
 
 - Upstream: https://github.com/egeeuzun/orbit
 - Reviewed upstream commit: `c2b6077f0c309b2a8fa830a7a8c8e19e4cf4259a`
-- Upstream license: Mozilla Public License 2.0 (MPL-2.0)
+- Upstream license: **not declared by the GitHub repository** (API reports `license: null`; no root `LICENSE` file was present in the inspected tree). Do not copy upstream source or redistribute its native binaries unless the author supplies a license or written permission. Third-party dependency licenses do not grant rights to the Orbit application code.
 - Upstream runtime: Android System WebView
 - Upstream native component: Brave adblock-rust JNI
 - VYORA integration branch: `feature/orbit-browser-core-port`
@@ -34,9 +34,9 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 
 - Port into VYORA's existing Android packaging only after verifying all required Gradle/Kotlin/AndroidX and native NDK/Rust build inputs.
 - Prefer consuming a reproducible upstream release/artifact only if its provenance, ABI coverage, version and license are verifiable; otherwise build the JNI library from source in CI.
-- Keep upstream MPL-2.0 notices and source changes available as required by MPL-2.0.
-- Preserve third-party notices for Brave adblock-rust and filter lists; filter-list licensing/attribution must be retained separately.
-- Do not copy upstream release APKs into VYORA or ship unverified binaries.
+- Treat Orbit application code and its checked-in native binaries as all-rights-reserved until an explicit license or written permission is obtained; do not vendor/copy them meanwhile.
+- If permission is granted, retain the exact upstream notices and identify every modified file. Preserve third-party notices for Brave adblock-rust and filter lists; their licenses are separate from Orbit's application-code rights.
+- Do not copy upstream release APKs or native binaries into VYORA without a verified redistribution grant and ABI/provenance checks.
 - Pin upstream source to the commit above initially; upgrades must be deliberate PRs.
 
 ## Acceptance checklist
@@ -94,3 +94,8 @@ The current VYORA branch has no Orbit JNI libraries or Rust engine sources in it
 - Do not eagerly restore every tab's WebView on app startup.
 - Preserve opener relationships while an OAuth popup is active so `window.opener.postMessage` flows continue to work.
 - Measure cold start, first-page render, tab switch, peak memory and renderer recovery on a low-RAM phone before claiming Orbit-level performance.
+
+
+## Upstream licensing gate (verified 2026-11-23)
+
+The public GitHub repository metadata currently reports `license: null`, and the inspected root tree has no `LICENSE` file. An earlier assumption that Orbit was MPL-2.0 was incorrect and is superseded by this gate. Before copying Orbit Kotlin/Java code or its prebuilt JNI `.so` files, obtain a clear license from the author or written permission covering modification and redistribution. Until then, VYORA may implement compatible behavior independently and use public technical documentation, but must not vendor the upstream application source or binaries. The Rust crate's dependency licenses do not automatically license Orbit's wrapper code or checked-in binaries.
