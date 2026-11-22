@@ -33,6 +33,8 @@ jobs:
         run: |
           node --check scripts/validate-vod-catalog.mjs
           node scripts/validate-vod-catalog.mjs
+      - name: Type-check the web application
+        run: npx tsc --noEmit -p web/tsconfig.json
       - run: npm --workspace web run build
 
   go-tests:
