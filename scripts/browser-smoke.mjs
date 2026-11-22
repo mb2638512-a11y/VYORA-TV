@@ -162,6 +162,26 @@ try {
       await page.locator('.mobile-bottom-nav').count()) {
     throw new Error('Native Leanback detection did not select the separate TV navigation shell')
   }
+
+  // Verify D-pad right moves through the primary TV tabs and scrolls the
+  // navigation rail to reveal tabs that do not fit on the first screen.
+  const tvNav = page.locator('.topbar-tv .topnav')
+  const tvNavButtons = tvNav.locator('.topnav-btn')
+  const tvNavCount = await tvNavButtons.count()
+  await tvNavButtons.first().focus()
+  for (let index = 1; index < tvNavCount; index += 1) {
+    await page.keyboard.press('ArrowRight')
+    const focusedText = await page.evaluate(() => document.activeElement?.textContent?.trim() || '')
+    const expectedText = (await tvNavButtons.nth(index).textContent())?.trim() || ''
+    if (!focusedText.includes(expectedText)) {
+      throw new Error('TV D-pad navigation skipped a primary tab: expected ' + expectedText + ', got ' + focusedText)
+    }
+  }
+  const tvNavScroll = await tvNav.evaluate((element) => element.scrollLeft)
+  if (tvNavScroll <= 0) {
+    throw new Error('TV D-pad navigation did not scroll the primary navigation rail to reveal later tabs')
+  }
+
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/android-tv-shell.png', fullPage: true })
   await page.evaluate(() => sessionStorage.removeItem('vyora-test-tv'))
