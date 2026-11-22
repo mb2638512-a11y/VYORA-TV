@@ -1,0 +1,26 @@
+name: AllSiteHub external link audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit the 64 configured HTTPS homepages
+        run: node scripts/audit-allsitehub.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allsitehub-link-audit
+          path: artifacts/allsitehub-audit/
+          if-no-files-found: error
+          retention-days: 14
