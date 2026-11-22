@@ -53,6 +53,15 @@ export type IconName =
   | 'sun'
   | 'link'
   | 'filter'
+  | 'arrow-down-a-z'
+  | 'upload'
+  | 'play-circle'
+  | 'monitor'
+  | 'monitor-play'
+  | 'clapperboard'
+  | 'play-square'
+  | 'bolt'
+  | 'sparkles'
 
 const PATHS: Record<IconName, string> = {
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm9 16-4.35-4.35',
@@ -108,6 +117,15 @@ const PATHS: Record<IconName, string> = {
   sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2m0 18v2M4.2 4.2l1.4 1.4m12.8 12.8 1.4 1.4M1 12h2m18 0h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
   link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
   filter: 'M3 5h18l-7 8v6l-4 2v-8z',
+  'arrow-down-a-z': 'M5 4v16m0 0-3-3m3 3 3-3M12 6h9M12 10h7M12 14h5M12 18h3',
+  upload: 'M12 16V4m0 0-4 4m4-4 4 4M4 20h16',
+  'play-circle': 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 6v8l7-4z',
+  monitor: 'M3 4h18v13H3zM8 21h8m-4-4v4',
+  'monitor-play': 'M3 4h18v13H3zM10 8v5l4-2.5zM8 21h8m-4-4v4',
+  clapperboard: 'M3 5h18v15H3zM3 9h18M7 5l4 4m2-4 4 4m2-4 2 2',
+  'play-square': 'M4 3h16v18H4zM10 8v8l6-4z',
+  bolt: 'M13 2 4 14h7l-1 8 10-13h-7z',
+  sparkles: 'M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5zM19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z',
 }
 
 export function Icon({
