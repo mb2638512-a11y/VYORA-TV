@@ -1,0 +1,112 @@
+/* Dedicated 10-foot Android TV presentation.
+   Applied only when the native Android Leanback feature identifies a TV. */
+:root[data-device='tv'] {
+  color-scheme: dark;
+  --tv-safe-x: clamp(36px, 4vw, 88px);
+  --tv-focus: #67d8ff;
+}
+.device-tv,
+.device-tv body,
+.device-tv #root {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+.device-tv body { font-size: 18px; }
+.device-tv .app {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+.device-tv .topbar {
+  min-height: 82px;
+  padding: 14px var(--tv-safe-x);
+  gap: 22px;
+}
+.device-tv .brand-mark { width: 54px; height: 54px; }
+.device-tv .brand-name { font-size: 25px; }
+.device-tv .brand-edition,
+.device-tv .clock-pill { font-size: 15px; }
+.device-tv .topnav { gap: 10px; }
+.device-tv .topnav-btn {
+  min-height: 54px;
+  padding: 12px 18px;
+  font-size: 17px;
+  border-radius: 14px;
+}
+.device-tv .main {
+  width: 100%;
+  height: calc(100vh - 82px);
+  overflow-y: auto;
+  padding: 24px var(--tv-safe-x) 64px;
+  scroll-behavior: smooth;
+}
+.device-tv .row { margin: 30px 0 38px; }
+.device-tv .row-title { font-size: clamp(24px, 2vw, 34px); margin-bottom: 18px; }
+.device-tv .grid-channels,
+.device-tv .grid-movies,
+.device-tv .grid-countries,
+.device-tv .grid-themes {
+  gap: 20px;
+}
+.device-tv .channel-card,
+.device-tv .movie-card,
+.device-tv .country-card,
+.device-tv .theme-card,
+.device-tv .site-card,
+.device-tv .installed-app-card {
+  border-radius: 16px;
+}
+.device-tv button,
+.device-tv a,
+.device-tv [role='button'],
+.device-tv [data-focusable] {
+  scroll-margin: 120px;
+}
+.device-tv :focus,
+.device-tv :focus-visible,
+.device-tv [data-focusable]:focus {
+  outline: 4px solid var(--tv-focus) !important;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 8px rgba(103,216,255,.18), 0 12px 32px rgba(0,0,0,.35);
+  transform: scale(1.035);
+  z-index: 5;
+}
+.device-tv .btn,
+.device-tv .chip,
+.device-tv input,
+.device-tv select {
+  min-height: 54px;
+  font-size: 17px;
+}
+.device-tv .overlay {
+  padding: 42px;
+}
+.device-tv .overlay-head h2 { font-size: 30px; }
+.device-tv .mobile-bottom-nav { display: none !important; }
+.device-tv .cinema-hero {
+  min-height: 390px;
+  padding: 44px 52px;
+  border-radius: 24px;
+}
+.device-tv .cinema-hero-title { font-size: clamp(42px, 4vw, 64px); }
+.device-tv .cinema-hero-desc { font-size: 19px; max-width: 850px; }
+.device-tv .billboard-title { font-size: clamp(42px, 4vw, 64px); }
+.device-tv .allsitehub-section { max-width: 100%; }
+.device-tv .allsitehub-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.device-tv .allsitehub-card { min-height: 150px; padding: 22px; }
+.device-tv ::-webkit-scrollbar { width: 10px; height: 10px; }
+.device-tv ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.45); border-radius: 99px; }
+@media (max-width: 1100px) {
+  .device-tv .allsitehub-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .device-tv *, .device-tv *::before, .device-tv *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
