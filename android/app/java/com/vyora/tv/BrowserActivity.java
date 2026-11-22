@@ -121,8 +121,8 @@ public class BrowserActivity extends Activity {
         if (initialMode == null) initialMode = "auto";
         loadEngines();
         buildLayout();
-        restoreOrCreateSession(getIntent().getStringExtra("initialUrl"),
-                getIntent().getStringExtra("engineId"));
+        prepareBrowserSession(() -> restoreOrCreateSession(getIntent().getStringExtra("initialUrl"),
+                getIntent().getStringExtra("engineId")));
     }
 
     private void loadEngines() {
@@ -252,6 +252,8 @@ public class BrowserActivity extends Activity {
     }
 
     protected boolean isPrivateSession() { return false; }
+
+    protected void prepareBrowserSession(Runnable continuation) { continuation.run(); }
 
     private void restoreOrCreateSession(String initialUrl,String requestedEngine) {
         boolean restored=false;
