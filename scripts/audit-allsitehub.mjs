@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { isIP } from 'node:net'
 
 const sourcePath = 'web/src/components/AllSiteHub.tsx'
 const outputDir = 'artifacts/allsitehub-audit'
@@ -90,6 +91,11 @@ for (const site of sites) {
   ids.add(site.id)
   const parsed = new URL(site.url)
   if (parsed.protocol !== 'https:') throw new Error(`Non-HTTPS site is not allowed: ${site.url}`)
+}
+
+if (process.argv.includes('--validate-only')) {
+  console.log(`AllSiteHub catalogue validation passed: ${sites.length} unique credential-free HTTPS sites.`)
+  process.exit(0)
 }
 
 const results = new Array(sites.length)
