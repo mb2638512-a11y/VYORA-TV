@@ -72,8 +72,33 @@ final class BrowserHostBlocker {
         });
     }
 
+    boolean isEnabled() { return prefs.getBoolean("enabled", true); }
+
+    void setEnabled(boolean enabled) { prefs.edit().putBoolean("enabled", enabled).apply(); }
+
+    boolean isAllowed(String rawHost) {
+        if (rawHost == null) return false;
+        String host = rawHost.toLowerCase(Locale.ROOT);
+        Set<String> allowed = prefs.getStringSet("allowed_hosts", Collections.emptySet());
+        String candidate = host;
+        while (true) {
+            if (allowed.contains(candidate)) return true;
+            int dot = candidate.indexOf('.');
+            if (dot < 0) return false;
+            candidate = candidate.substring(dot + 1);
+        }
+    }
+
+    void setAllowed(String rawHost, boolean allowed) {
+        if (rawHost == null || rawHost.trim().isEmpty()) return;
+        String host = rawHost.toLowerCase(Locale.ROOT);
+        HashSet<String> hosts = new HashSet<>(prefs.getStringSet("allowed_hosts", Collections.emptySet()));
+        if (allowed) hosts.add(host); else hosts.remove(host);
+        prefs.edit().putStringSet("allowed_hosts", hosts).apply();
+    }
+
     boolean shouldBlock(String rawHost) {
-        if (!ready || rawHost == null) return false;
+        if (!ready || !isEnabled() || rawHost == null || isAllowed(rawHost)) return false;
         String host = rawHost.toLowerCase(Locale.ROOT);
         while (host.endsWith(".")) host = host.substring(0, host.length() - 1);
         if (host.isEmpty() || isEssentialAuthHost(host)) return false;
