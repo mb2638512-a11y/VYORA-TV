@@ -55,6 +55,8 @@ import java.util.Locale;
 public class BrowserActivity extends Activity {
     private static final String PREFS = "vyora_native_browser_v1";
     private static final int MAX_TABS = 20;
+    // Orbit-style memory policy: keep only the selected tab and its OAuth opener live.
+    private static final int MAX_LIVE_WEBVIEWS = 2;
     private static final int BG = Color.rgb(10, 14, 26);
     private static final int BAR = Color.rgb(18, 25, 43);
     private static final int FG = Color.rgb(238, 242, 255);
@@ -73,6 +75,8 @@ public class BrowserActivity extends Activity {
     private static class BrowserTab {
         String id, title, url, engineId;
         WebView web;
+        Bundle savedState;
+        BrowserTab opener;
         BrowserTab(String id, String engineId) {
             this.id=id; this.engineId=engineId; this.title="New tab"; this.url="";
         }
@@ -217,7 +221,6 @@ public class BrowserActivity extends Activity {
                     tab.title=item.optString("title","New tab");
                     tab.url=item.optString("url","");
                     tabs.add(tab);
-                    if(!tab.url.isEmpty()) tab.web.loadUrl(tab.url);
                 }
                 if(!tabs.isEmpty()) { activeIndex=Math.max(0,Math.min(wanted,tabs.size()-1)); restored=true; }
             } catch(Throwable ignored) { }
@@ -227,9 +230,49 @@ public class BrowserActivity extends Activity {
     }
 
     private BrowserTab createTab(String engineId) {
-        BrowserTab tab=new BrowserTab("tab-"+System.nanoTime(),engine(engineId).id);
-        WebView web=new WebView(this); tab.web=web; configureWebView(tab);
-        return tab;
+        // Background tabs are metadata until selected; do not allocate a renderer for each.
+        return new BrowserTab("tab-"+System.nanoTime(),engine(engineId).id);
+    }
+
+    private WebView ensureWebView(BrowserTab tab) {
+        if(tab.web!=null) return tab.web;
+        WebView web=new WebView(this);
+        tab.web=web;
+        configureWebView(tab);
+        boolean restored=false;
+        if(tab.savedState!=null) {
+            try { restored=web.restoreState(tab.savedState)!=null; } catch(Throwable ignored) { }
+            tab.savedState=null;
+        }
+        if(!restored && tab.url!=null && !tab.url.isEmpty()) web.loadUrl(tab.url);
+        return web;
+    }
+
+    private void suspendTab(BrowserTab tab) {
+        if(tab==null || tab.web==null) return;
+        WebView web=tab.web;
+        try {
+            Bundle state=new Bundle();
+            web.saveState(state);
+            tab.savedState=state;
+            String currentUrl=web.getUrl(); if(currentUrl!=null) tab.url=currentUrl;
+            String title=web.getTitle(); if(title!=null && !title.trim().isEmpty()) tab.title=title.trim();
+        } catch(Throwable ignored) { }
+        try {
+            if(web.getParent() instanceof ViewGroup) ((ViewGroup)web.getParent()).removeView(web);
+            web.stopLoading();
+            web.onPause();
+            web.destroy();
+        } catch(Throwable ignored) { }
+        tab.web=null;
+    }
+
+    private void enforceLiveWebViewBudget() {
+        BrowserTab active=current();
+        BrowserTab opener=active==null?null:active.opener;
+        for(BrowserTab tab:tabs) {
+            if(tab!=active && tab!=opener && tab.web!=null) suspendTab(tab);
+        }
     }
 
     private void configureWebView(BrowserTab tab) {
@@ -286,9 +329,11 @@ public class BrowserActivity extends Activity {
                 BrowserTab popup = null;
                 try {
                     popup = createTab(tab.engineId);
+                    popup.opener = tab; // Keep OAuth window.opener alive while the child is active.
+                    WebView popupWeb = ensureWebView(popup);
                     WebView.WebViewTransport transport =
                             (WebView.WebViewTransport) resultMsg.obj;
-                    transport.setWebView(popup.web);
+                    transport.setWebView(popupWeb);
                     // Complete the hand-off before switching the visible tab.
                     resultMsg.sendToTarget();
                     tabs.add(popup);
@@ -299,10 +344,8 @@ public class BrowserActivity extends Activity {
                     return true;
                 } catch (Throwable error) {
                     if (popup != null && popup.web != null) {
-                        try {
-                            popup.web.stopLoading();
-                            popup.web.destroy();
-                        } catch (Throwable ignored) { }
+                        try { popup.web.stopLoading(); popup.web.destroy(); } catch (Throwable ignored) { }
+                        popup.web = null;
                     }
                     return false;
                 }
@@ -335,8 +378,9 @@ public class BrowserActivity extends Activity {
         String selected=engine(engineId==null?prefs.getString("defaultEngine","google0"):engineId).id;
         BrowserTab tab=createTab(selected); tabs.add(tab); activeIndex=tabs.size()-1;
         showActiveTab(); updateTabs();
-        if(url!=null && !url.trim().isEmpty()) tab.web.loadUrl(normalizeAddress(url,selected));
-        else tab.web.loadUrl(engine(selected).home);
+        WebView web=ensureWebView(tab);
+        if(url!=null && !url.trim().isEmpty()) web.loadUrl(normalizeAddress(url,selected));
+        else web.loadUrl(engine(selected).home);
         saveSession();
     }
 
@@ -364,7 +408,7 @@ public class BrowserActivity extends Activity {
         BrowserTab tab=current(); if(tab==null) return;
         String target=normalizeAddress(address.getText().toString(),tab.engineId);
         if(target.isEmpty()) return;
-        tab.web.loadUrl(target);
+        ensureWebView(tab).loadUrl(target);
         address.clearFocus();
         android.view.inputmethod.InputMethodManager imm=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
         if(imm!=null) imm.hideSoftInputFromWindow(address.getWindowToken(),0);
@@ -374,8 +418,10 @@ public class BrowserActivity extends Activity {
 
     private void showActiveTab() {
         BrowserTab tab=current(); if(tab==null) return;
-        if(tab.web.getParent()!=null) ((ViewGroup)tab.web.getParent()).removeView(tab.web);
-        webFrame.removeAllViews(); webFrame.addView(tab.web,new FrameLayout.LayoutParams(-1,-1));
+        WebView activeWeb=ensureWebView(tab);
+        if(activeWeb.getParent()!=null) ((ViewGroup)activeWeb.getParent()).removeView(activeWeb);
+        webFrame.removeAllViews(); webFrame.addView(activeWeb,new FrameLayout.LayoutParams(-1,-1));
+        enforceLiveWebViewBudget();
         address.setText(tab.url==null?"":tab.url);
         enginePicker.setText(engine(tab.engineId).name,false);
         updateControls();
@@ -383,8 +429,9 @@ public class BrowserActivity extends Activity {
 
     private void updateControls() {
         BrowserTab tab=current(); if(tab==null) return;
-        backButton.setEnabled(tab.web.canGoBack()); forwardButton.setEnabled(tab.web.canGoForward());
-        backButton.setAlpha(tab.web.canGoBack()?1f:0.45f); forwardButton.setAlpha(tab.web.canGoForward()?1f:0.45f);
+        WebView web=tab.web;
+        backButton.setEnabled(web!=null && web.canGoBack()); forwardButton.setEnabled(web!=null && web.canGoForward());
+        backButton.setAlpha(web!=null && web.canGoBack()?1f:0.45f); forwardButton.setAlpha(web!=null && web.canGoForward()?1f:0.45f);
     }
 
     private void updateTabs() {
@@ -409,7 +456,7 @@ public class BrowserActivity extends Activity {
     private void closeTabAt(int index) {
         if(index<0||index>=tabs.size()) return;
         BrowserTab removed=tabs.remove(index);
-        if(removed.web!=null) { webFrame.removeView(removed.web); removed.web.stopLoading(); removed.web.loadUrl("about:blank"); removed.web.destroy(); }
+        if(removed.web!=null) { webFrame.removeView(removed.web); removed.web.stopLoading(); removed.web.destroy(); removed.web=null; }
         if(tabs.isEmpty()) { activeIndex=0; addTab(null,null); return; }
         activeIndex=Math.min(activeIndex,tabs.size()-1);
         showActiveTab(); updateTabs(); saveSession();
@@ -429,13 +476,13 @@ public class BrowserActivity extends Activity {
     @Override protected void onResume() { super.onResume(); for(BrowserTab t:tabs) if(t.web!=null) t.web.onResume(); }
     @Override public void onBackPressed() {
         BrowserTab tab=current();
-        if(tab!=null && tab.web.canGoBack()) { tab.web.goBack(); return; }
+        if(tab!=null && tab.web!=null && tab.web.canGoBack()) { tab.web.goBack(); return; }
         if(tabs.size()>1) { closeCurrentTab(); return; }
         super.onBackPressed();
     }
     @Override protected void onDestroy() {
         saveSession();
-        for(BrowserTab t:tabs) if(t.web!=null) { t.web.stopLoading(); t.web.destroy(); }
+        for(BrowserTab t:tabs) if(t.web!=null) { t.web.stopLoading(); t.web.destroy(); t.web=null; }
         tabs.clear(); super.onDestroy();
     }
 }
