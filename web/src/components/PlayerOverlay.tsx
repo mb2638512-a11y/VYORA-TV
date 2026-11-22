@@ -339,11 +339,22 @@ export function PlayerOverlay({
 
     const onAllSourcesFailed = () => {
       setBuffering(false)
+      // Native Media3 has already tried the channel's candidate list. Retry the
+      // SAME channel twice with a cool-down before declaring it offline. Never
+      // auto-hop to another channel from this event.
+      if (cycleCountRef.current < 2) {
+        cycleCountRef.current += 1
+        setStatus('loading')
+        setOffline(false)
+        setToast('Reconnecting to this channel…')
+        window.setTimeout(() => {
+          setRetryNonce((n) => n + 1)
+        }, 3500)
+        return
+      }
       setStatus('error')
       setOffline(true)
       setMessage(t('offlineHint'))
-      // Each native candidate already emitted its own source-failed event.
-      // This final event changes only the channel-level status.
       void reportStreamPlayback(channel.id, false, 0, -1, true, false)
     }
 
@@ -1198,8 +1209,13 @@ export function PlayerOverlay({
                 data-focusable
                 onClick={() => {
                   triedRef.current.clear()
-                  setStatus('loading')
+                  cycleCountRef.current = 0
+                  networkFailsRef.current = 0
                   setOffline(false)
+                  setBuffering(true)
+                  setStatus('loading')
+                  setToast('Retrying this channel…')
+                  setRetryNonce((n) => n + 1)
                 }}
               >
                 <Icon name="refresh" size={18} /> {t('retry')}
