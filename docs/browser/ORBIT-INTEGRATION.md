@@ -25,7 +25,7 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 
 1. **No browser-wide proxy by default.** Normal browsing should use Android WebView's normal network path. Do not add a proxy/VPN workaround as a default dependency.
 2. **No silent endless retry.** A navigation that fails or stalls must expose a recoverable error/retry state. Do not automatically loop between proxy and direct routes.
-3. **Private tabs must be genuinely isolated.** Use supported WebView profile isolation where available; otherwise use a clearly documented fallback that clears cookies, cache, DOM storage and history on private-session exit. Never imply profile isolation if the platform does not provide it.
+3. **Private tabs must be genuinely isolated.** Android 9+ launches a dedicated private-browser process and calls `WebView.setDataDirectorySuffix("vyora_private")` before the first WebView is created. Private tabs use a separate preference namespace, are not restored or persisted, and clear cookies, cache, DOM storage, form data and history when the private window closes. On Android 8.1 and older, private mode is disabled rather than pretending shared WebView storage is isolated.
 4. **Popups must be context-aware.** Support legitimate `window.open`, OAuth/sign-in windows and target=_blank flows. Block only requests identified as advertising/unwanted by the protection layer, and allow per-site exceptions. Never disable all multiple-window support globally.
 5. **Site protection is configurable.** Ad blocking defaults to a balanced list; provide per-site disable/allowlist. Do not let filter rules block first-party login, payment, video playback or essential page scripts without a user-visible way to disable protection for that site.
 6. **HTTPS errors remain secure.** Never bypass certificate errors or proceed through invalid TLS certificates.
@@ -44,7 +44,9 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 ### Browser behavior
 - [ ] Google, Bing, DuckDuckGo, Brave and VYORA custom search destinations work from the address bar.
 - [ ] A tab remembers its own search provider; newly created tabs use the configured default.
-- [ ] Normal tabs retain login/session state; private tabs do not leak cookies/history/storage into normal tabs.
+- [ ] Verify on Android 9+ that normal and private cookies/DOM storage are isolated in both directions; verify private data is cleared after close and after process restart.
+- [x] Add a dedicated private-browser process with WebView data-directory suffix on Android 9+; private tabs are not persisted and cleanup runs on close.
+- [x] Disable private browsing on Android 8.1 and older rather than expose a non-isolated mode.
 - [ ] OAuth, sign-in popups, target=_blank, downloads and file chooser flows work.
 - [ ] Ad/pop-up protection can be disabled for one site without disabling it globally.
 - [ ] No browser proxy is enabled by default; no navigation can remain in an infinite loading/retry loop.
@@ -59,7 +61,7 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 
 ## Current known VYORA browser defects to eliminate
 
-The current `BrowserActivity` now creates tab metadata lazily, suspends background WebViews with saved state, and keeps the active tab plus its OAuth opener live. It also handles renderer-process termination by detaching the failed renderer and allowing the user to reload the last URL. Navigation controls are guarded when a tab has no live renderer. This is a first VYORA-owned approximation of Orbit's bounded-renderer lifecycle, not a full Orbit port. User-gesture popups are supported with transport validation, but the full site-aware popup/adblock policy is still missing. Private browsing still does not have a genuinely isolated WebView profile.
+The current `BrowserActivity` now creates tab metadata lazily, suspends background WebViews with saved state, and keeps the active tab plus its OAuth opener live. It also handles renderer-process termination by detaching the failed renderer and allowing the user to reload the last URL. Navigation controls are guarded when a tab has no live renderer. This is a first VYORA-owned approximation of Orbit's bounded-renderer lifecycle, not a full Orbit port. User-gesture popups are supported with transport validation, but the full site-aware popup/adblock policy is still missing. Private browsing now launches a separate process/profile on Android 9+; it remains unverified on physical devices. Android 8.1 and older are deliberately blocked from private mode because this implementation cannot safely isolate their WebView storage.
 
 ## CI strategy
 
@@ -116,3 +118,13 @@ The public GitHub repository metadata currently reports `license: null`, and the
 
 
 The first VYORA-owned protection layer now uses the MIT-licensed StevenBlack hosts data (attribution in `THIRD_PARTY_NOTICES.md`). It blocks only subresource requests matching the bounded host set and explicitly fails open. This is not equivalent to Orbit's Brave/uBlock-compatible native engine and does not provide cosmetic filtering or per-site exceptions yet.
+
+
+## Private browsing implementation (2026-11-23)
+
+- `PrivateBrowserActivity` runs under the manifest process `:private_browser` and sets the WebView data-directory suffix before `BrowserActivity` creates a renderer.
+- The private process uses a separate preference namespace; `saveSession()` is a no-op and private startup does not restore saved tabs.
+- The toolbar opens a private window with the current URL/search provider and exposes an explicit Exit private control.
+- Closing the private Activity clears WebView cache/history/form data, cookies and DOM storage before its renderer is destroyed.
+- Android API 27 and below are intentionally unsupported for private mode; the UI explains why rather than sharing the normal profile.
+- This is implemented in source but still needs physical-device verification, including abrupt process termination and cookie/storage separation tests.
