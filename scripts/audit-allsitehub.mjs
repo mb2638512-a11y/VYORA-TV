@@ -90,7 +90,19 @@ for (const site of sites) {
   if (ids.has(site.id)) throw new Error(`Duplicate AllSiteHub site id: ${site.id}`)
   ids.add(site.id)
   const parsed = new URL(site.url)
-  if (parsed.protocol !== 'https:') throw new Error(`Non-HTTPS site is not allowed: ${site.url}`)
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    (parsed.port && parsed.port !== '443') ||
+    isIP(parsed.hostname) ||
+    parsed.hostname === 'localhost' ||
+    parsed.hostname.endsWith('.localhost') ||
+    parsed.hostname.endsWith('.local') ||
+    parsed.hostname.endsWith('.internal')
+  ) {
+    throw new Error(`Unsafe or non-HTTPS site is not allowed: ${site.url}`)
+  }
 }
 
 if (process.argv.includes('--validate-only')) {
