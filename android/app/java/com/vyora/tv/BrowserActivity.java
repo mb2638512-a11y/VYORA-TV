@@ -93,7 +93,7 @@ public class BrowserActivity extends Activity {
     private FrameLayout webFrame;
     private AutoCompleteTextView enginePicker;
     private EditText address;
-    private Button backButton, forwardButton, reloadButton, homeButton, goButton, addButton, closeButton, privateButton;
+    private Button backButton, forwardButton, reloadButton, homeButton, goButton, addButton, closeButton, privateButton, protectionButton;
     private ProgressBar progress;
     private SharedPreferences prefs;
     private BrowserHostBlocker hostBlocker;
@@ -185,8 +185,10 @@ public class BrowserActivity extends Activity {
         second.addView(tabsScroll,new LinearLayout.LayoutParams(0,controlHeight(),1f));
         addButton=button("+","New tab"); closeButton=button("×","Close tab");
         privateButton=button(isPrivateSession()?"Exit private":"Private",isPrivateSession()?"Exit private browsing":"Open isolated private browsing");
+        protectionButton=button("Shield on","Allow or protect this site; long press for global protection");
         second.addView(addButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
         second.addView(closeButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
+        second.addView(protectionButton,new LinearLayout.LayoutParams(dp(tv?120:88),controlHeight()));
         second.addView(privateButton,new LinearLayout.LayoutParams(dp(tv?116:84),controlHeight()));
         root.addView(second,new LinearLayout.LayoutParams(-1,-2));
 
@@ -209,6 +211,20 @@ public class BrowserActivity extends Activity {
         });
         addButton.setOnClickListener(v -> addTab(null,null));
         closeButton.setOnClickListener(v -> closeCurrentTab());
+        protectionButton.setOnClickListener(v -> {
+            String host = activeHost();
+            if (host == null) { Toast.makeText(this,"Open a website first to change its protection.",Toast.LENGTH_SHORT).show(); return; }
+            boolean allow = !hostBlocker.isAllowed(host);
+            hostBlocker.setAllowed(host, allow);
+            updateProtectionButton();
+            Toast.makeText(this,allow?"Protection paused for "+host:"Protection restored for "+host,Toast.LENGTH_SHORT).show();
+        });
+        protectionButton.setOnLongClickListener(v -> {
+            hostBlocker.setEnabled(!hostBlocker.isEnabled());
+            updateProtectionButton();
+            Toast.makeText(this,hostBlocker.isEnabled()?"Ad and tracker protection enabled":"Ad and tracker protection disabled",Toast.LENGTH_SHORT).show();
+            return true;
+        });
         privateButton.setOnClickListener(v -> {
             if (isPrivateSession()) { finish(); return; }
             if (Build.VERSION.SDK_INT < 28) {
@@ -339,7 +355,7 @@ public class BrowserActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view,String url) {
                 tab.url=url; String title=view.getTitle(); if(title!=null && !title.trim().isEmpty()) tab.title=title.trim();
-                if(current()==tab) { address.setText(url); progress.setVisibility(View.GONE); updateControls(); }
+                if(current()==tab) { address.setText(url); progress.setVisibility(View.GONE); updateControls(); updateProtectionButton(); }
                 updateTabs(); saveSession();
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -491,8 +507,25 @@ public class BrowserActivity extends Activity {
         address.setText(tab.url==null?"":tab.url);
         enginePicker.setText(engine(tab.engineId).name,false);
         updateControls();
+        updateProtectionButton();
         // Persist the suspended tab URLs/history metadata after every tab switch.
         saveSession();
+    }
+
+    private String activeHost() {
+        BrowserTab tab=current();
+        if(tab==null || tab.url==null || tab.url.isEmpty()) return null;
+        try { return Uri.parse(tab.url).getHost(); } catch(Throwable ignored) { return null; }
+    }
+
+    private void updateProtectionButton() {
+        if(protectionButton==null || hostBlocker==null) return;
+        String host=activeHost();
+        boolean enabled=hostBlocker.isEnabled();
+        boolean allowed=host!=null && hostBlocker.isAllowed(host);
+        String label=!enabled?"Shield off":(allowed?"Site allowed":"Shield on");
+        protectionButton.setText(label);
+        protectionButton.setContentDescription(label+". Tap to toggle this site's allowlist; long press to toggle global protection.");
     }
 
     private void updateControls() {
