@@ -103,7 +103,7 @@ try {
   // Phone-first navigation: portrait viewport, persistent bottom navigation,
   // touch-sized controls, and a working Movies route without horizontal page overflow.
   await page.setViewportSize({ width: 390, height: 844 })
-  const phoneNav = page.locator('.topnav')
+  const phoneNav = page.locator('.mobile-bottom-nav .topnav')
   await phoneNav.getByRole('button', { name: 'Home', exact: true }).click()
   const phoneNavStyle = await phoneNav.evaluate((element) => {
     const rect = element.getBoundingClientRect()
