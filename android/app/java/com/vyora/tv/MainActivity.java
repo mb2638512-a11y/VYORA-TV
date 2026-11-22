@@ -37,12 +37,16 @@ public class MainActivity extends Activity {
     private String defaultWebUserAgent;
     private boolean ttsReady = false;
     private final Handler ui = new Handler(Looper.getMainLooper());
+    private String startupStage = "activity creation";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+        startupStage = "window configuration";
         configureWindowForDevice();
 
+        startupStage = "native view creation";
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         root.setLayoutParams(new ViewGroup.LayoutParams(
@@ -74,6 +78,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
 
+        startupStage = "media engine initialization";
         player = new TvPlayer(this, surface);
         player.setPlaybackListener(new TvPlayer.PlaybackListener() {
             @Override
@@ -112,6 +117,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        startupStage = "Android WebView initialization";
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -148,6 +154,7 @@ public class MainActivity extends Activity {
         });
         web.addJavascriptInterface(new TvBridge(this), "VyoraBridge");
 
+        startupStage = "text-to-speech initialization";
         initTts();
 
         /*
@@ -160,6 +167,7 @@ public class MainActivity extends Activity {
          * bundle over http://127.0.0.1:<port> and implements the API, so the UI
          * is same-origin with the engine and everything works.
          */
+        startupStage = "embedded platform server initialization";
         localServer = new LocalServer(this, player);
         int port = localServer.start();
         if (port > 0) {
@@ -167,6 +175,25 @@ public class MainActivity extends Activity {
         } else {
             Log.w(TAG, "local server unavailable, falling back to bundled file");
             web.loadUrl(INDEX_URL);
+        }
+        startupStage = "platform loading";
+        } catch (Throwable startupError) {
+            Log.e(TAG, "FATAL STARTUP FAILURE at " + startupStage, startupError);
+            try {
+                if (localServer != null) localServer.stop();
+                if (player != null) player.stop();
+                if (web != null) { web.destroy(); web = null; }
+            } catch (Throwable cleanupError) {
+                Log.e(TAG, "startup cleanup failed", cleanupError);
+            }
+            TextView diagnostic = new TextView(this);
+            diagnostic.setTextColor(Color.WHITE);
+            diagnostic.setTextSize(15);
+            diagnostic.setPadding(32, 40, 32, 40);
+            diagnostic.setBackgroundColor(Color.rgb(12, 14, 22));
+            String detail = startupError.getClass().getName() + ": " + String.valueOf(startupError.getMessage());
+            diagnostic.setText("VYORA could not finish starting.\\n\\nStage: " + startupStage + "\\n\\n" + detail + "\\n\\nPlease send this screen to VYORA support.");
+            setContentView(diagnostic);
         }
     }
 
