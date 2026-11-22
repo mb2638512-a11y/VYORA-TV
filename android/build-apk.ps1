@@ -127,7 +127,7 @@ $aligned = Join-Path $build 'app-aligned.apk'
 if ($LASTEXITCODE -ne 0) { throw 'zipalign failed' }
 
 # ---------------------------------------------------------------- sign
-$ks = if ($env:GITHUB_ACTIONS -eq 'true') { Join-Path $build 'ci-vyora-test.jks' } else { Join-Path $root 'android\vyora-release.jks' }
+$ks = if ($env:GITHUB_ACTIONS -eq 'true') { Join-Path $outDir 'ci-vyora-test.jks' } else { Join-Path $root 'android\vyora-release.jks' }
 $storePass = 'vyora-ci-test-only'
 if (-not (Test-Path $ks)) {
   Write-Host '[sign] generating release keystore...'
