@@ -313,10 +313,47 @@ try {
   await browserRegion.waitFor({ state: 'visible', timeout: 15000 })
   await page.locator('button[title*="Responsive View"], button[title*="Desktop 1080p View"]').first().waitFor({ state: 'visible', timeout: 10000 })
 
-  // Verify autocomplete uses the active search provider, not Google's list
-  // under every engine. The API is stubbed so CI never depends on third parties.
+  // Every browser tab must expose the complete Orbit search catalog. The
+  // picker is searchable and each tab retains its own selected provider.
   const engineTrigger = page.locator('.chromium-engine-trigger')
   const omnibox = page.locator('.chromium-omnibox-input')
+  await engineTrigger.click()
+  const engineOptions = page.locator('.chromium-engine-menu button.chromium-engine-option')
+  if (await engineOptions.count() !== 131) {
+    throw new Error('Expected 130 Orbit destinations plus Brave Search, found ' + await engineOptions.count())
+  }
+  const engineCatalogSearch = page.getByRole('searchbox', { name: 'Search engine catalog' })
+  await engineCatalogSearch.fill('Wikipedia')
+  const wikipediaOption = engineOptions.filter({ hasText: 'Wikipedia' }).first()
+  await wikipediaOption.waitFor({ state: 'visible', timeout: 5000 })
+  await wikipediaOption.click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Wikipedia was not selected from the searchable engine catalog')
+  }
+  await omnibox.fill('Albert Einstein')
+  await omnibox.press('Enter')
+  await page.waitForFunction(() => {
+    const frame = document.querySelector('.chromium-iframe')
+    if (!frame) return false
+    try {
+      const src = new URL(frame.src)
+      const target = src.searchParams.get('u') || frame.src
+      return target.includes('en.wikipedia.org/wiki/Special:Search') && target.includes('Albert')
+    } catch { return frame.src.includes('en.wikipedia.org/wiki/Special:Search') }
+  }, null, { timeout: 5000 })
+  await page.getByRole('button', { name: 'New Tab' }).click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Google')) {
+    throw new Error('New tab did not use the configured default search provider')
+  }
+  await engineTrigger.click()
+  if (await engineOptions.count() !== 131) {
+    throw new Error('The new tab does not expose the full search engine catalog')
+  }
+  await page.locator('.chromium-engine-backdrop').click()
+  await page.locator('.chromium-tab').first().click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Switching tabs did not preserve the first tab search provider')
+  }
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
     await page.locator('.chromium-engine-menu button.chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).first().evaluate((element) => element.click())
