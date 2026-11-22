@@ -34,6 +34,46 @@ try {
   await page.goto(baseURL, { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForTimeout(1200)
 
+  // Exercise the newly integrated entertainment hubs against the local catalogue.
+  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  const movieCards = page.locator('.movie-card')
+  await movieCards.first().waitFor({ state: 'visible', timeout: 15000 })
+  if (await movieCards.count() < 1000) {
+    throw new Error('Movies hub did not load the expected large catalogue')
+  }
+  const movieSearch = page.locator('.moviebox-search-input').first()
+  await movieSearch.fill('Dune: Part Two')
+  await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).first()
+    .waitFor({ state: 'visible', timeout: 5000 })
+  await movieSearch.fill('')
+
+  await page.getByRole('button', { name: 'Series', exact: true }).click()
+  const seriesCards = page.locator('.series-card')
+  await seriesCards.first().waitFor({ state: 'visible', timeout: 10000 })
+  if (await seriesCards.count() !== 23) {
+    throw new Error('Series hub expected 23 catalogue entries, found ' + await seriesCards.count())
+  }
+  const seriesSearch = page.locator('.moviebox-search-input').first()
+  await seriesSearch.fill('House of the Dragon')
+  if (await seriesCards.count() !== 1) {
+    throw new Error('Series search should return exactly House of the Dragon')
+  }
+  await seriesSearch.fill('')
+
+  await page.getByRole('button', { name: 'Songs', exact: true }).click()
+  const songCards = page.locator('.channel-card')
+  await songCards.first().waitFor({ state: 'visible', timeout: 10000 })
+  if (await songCards.count() !== 803) {
+    throw new Error('Songs hub expected 803 music channels, found ' + await songCards.count())
+  }
+  const songsSearch = page.locator('.moviebox-search-input').first()
+  await songsSearch.fill('24/7 Lo-Fi Chill Beats Radio')
+  if (await songCards.count() !== 1) {
+    throw new Error('Songs search should return exactly the Lo-Fi Chill Beats channel')
+  }
+  await songsSearch.fill('')
+  await page.getByRole('button', { name: 'Home', exact: true }).click()
+
   // Verify the built-in AllSiteHub catalogue, category filters, and search.
   const hubNav = page.getByRole('button', { name: 'AllSiteHub', exact: true })
   await hubNav.waitFor({ state: 'visible', timeout: 10000 })
