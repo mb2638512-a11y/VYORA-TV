@@ -279,17 +279,33 @@ public class BrowserActivity extends Activity {
                 // Allow user-initiated OAuth/sign-in and target=_blank windows.
                 // Scripted background popups stay blocked to avoid ad spam.
                 if (!isUserGesture || resultMsg == null || tabs.size() >= MAX_TABS) return false;
-                BrowserTab popup = createTab(tab.engineId);
-                tabs.add(popup);
-                WebView.WebViewTransport transport =
-                        (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(popup.web);
-                resultMsg.sendToTarget();
-                activeIndex = tabs.size() - 1;
-                showActiveTab();
-                updateTabs();
-                saveSession();
-                return true;
+                // WebView supplies a WebViewTransport in Message.obj. Validate it
+                // before creating a tab so malformed/unsupported popup requests
+                // cannot crash the whole browser activity.
+                if (!(resultMsg.obj instanceof WebView.WebViewTransport)) return false;
+                BrowserTab popup = null;
+                try {
+                    popup = createTab(tab.engineId);
+                    WebView.WebViewTransport transport =
+                            (WebView.WebViewTransport) resultMsg.obj;
+                    transport.setWebView(popup.web);
+                    // Complete the hand-off before switching the visible tab.
+                    resultMsg.sendToTarget();
+                    tabs.add(popup);
+                    activeIndex = tabs.size() - 1;
+                    showActiveTab();
+                    updateTabs();
+                    saveSession();
+                    return true;
+                } catch (Throwable error) {
+                    if (popup != null && popup.web != null) {
+                        try {
+                            popup.web.stopLoading();
+                            popup.web.destroy();
+                        } catch (Throwable ignored) { }
+                    }
+                    return false;
+                }
             }
         });
         tab.web.setDownloadListener((url,userAgent,contentDisposition,mimeType,contentLength)->download(url,userAgent,contentDisposition,mimeType));
