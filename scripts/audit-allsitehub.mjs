@@ -74,7 +74,8 @@ async function checkSite(site) {
       result: error?.name === 'AbortError' ? 'timeout' : 'network_error',
       redirectHost: '',
       durationMs: Date.now() - started,
-      error: String(error?.message || error).slice(0, 240),
+      error: [error?.message, error?.cause?.code, error?.cause?.message]
+        .filter(Boolean).join(' | ').slice(0, 240),
     }
   }
 }
