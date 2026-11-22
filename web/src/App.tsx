@@ -1111,7 +1111,7 @@ export default function App() {
     return { counts, list: ['all', ...sorted] }
   }, [series])
 
-  const visibleSeries = useMemo(() => {
+  const seriesFiltered = useMemo(() => {
     let list = series
     if (seriesGenre !== 'all') {
       const gLower = seriesGenre.toLowerCase()
@@ -1128,6 +1128,7 @@ export default function App() {
     }
     return list
   }, [series, seriesGenre, seriesSearch])
+  const visibleSeries = seriesFiltered
 
   const songsFiltered = useMemo(() => {
     let list = songs
