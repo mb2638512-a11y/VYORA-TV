@@ -913,6 +913,10 @@ export default function ChromiumBrowser({
       // events and make the TV app fetch arbitrary URLs.
       const frameWindow = iframeRef.current?.contentWindow
       if (!frameWindow || e.source !== frameWindow) return
+      // Only the isolated proxy document may talk to the host bridge. Its
+      // sandboxed origin is deliberately opaque ("null"); direct third-party
+      // pages are never trusted to request downloads or rewrite browser state.
+      if (!activeTab?.proxyMode || e.origin !== 'null') return
 
       if (e.data?.type === 'VYORA_DOWNLOAD' && e.data?.url) {
         startDownload(e.data.url, e.data.name).then((res) => {
@@ -966,7 +970,7 @@ export default function ChromiumBrowser({
     }
     window.addEventListener('message', handleMsg)
     return () => window.removeEventListener('message', handleMsg)
-  }, [activeTabId, recordHistory, activeTab?.engine])
+  }, [activeTabId, recordHistory, activeTab?.engine, activeTab?.proxyMode])
 
   // Bookmarking helper for Omnibox star button
   const isCurrentBookmarked = bookmarks.some(
@@ -2659,9 +2663,18 @@ export default function ChromiumBrowser({
                 key={`${activeTab.id}-${activeTab.navKey || 0}`}
                 src={getIframeSrc(activeTab)}
                 className="chromium-iframe"
-                sandbox={adShield
-                  ? "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation"
-                  : "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox"}
+                // Proxied HTML is served from VYORA's own origin. Giving it
+                // allow-same-origin together with allow-scripts lets hostile page
+                // script escape the sandbox and reach the host app. Keep proxy
+                // documents on an opaque origin; ordinary external pages retain
+                // their real origin and normal storage behaviour.
+                sandbox={activeTab.proxyMode
+                  ? (adShield
+                    ? "allow-scripts allow-forms allow-modals allow-downloads allow-presentation"
+                    : "allow-scripts allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox")
+                  : (adShield
+                    ? "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation"
+                    : "allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-presentation allow-popups allow-popups-to-escape-sandbox")}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 referrerPolicy="origin"
                 onLoad={handleIframeLoad}
