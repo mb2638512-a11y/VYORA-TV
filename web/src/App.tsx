@@ -2499,7 +2499,7 @@ export default function App() {
         ) : null}
 
         {view.name === 'allsitehub' ? (
-          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url, standalone: true })} />
+          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url })} />
         ) : null}
 
         {view.name === 'downloads' ? (
