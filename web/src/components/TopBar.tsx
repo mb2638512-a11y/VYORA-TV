@@ -50,7 +50,7 @@ function PhoneNavigationShell({ left, right, clock, onBrandClick }: ShellProps) 
         </div>
         <div className="topbar-right">{right}<Clock value={clock} /></div>
       </header>
-      <nav className="phone-tab-shell" aria-label="Primary phone navigation">
+      <nav className="mobile-bottom-nav phone-tab-shell" aria-label="Primary phone navigation">
         {left}
       </nav>
     </div>
