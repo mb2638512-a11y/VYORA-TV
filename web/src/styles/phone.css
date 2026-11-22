@@ -29,3 +29,72 @@
     min-width: 60px !important;
   }
 }
+
+
+/* Device-selected phone shell also works on wide phones and landscape mode. */
+.device-phone .device-shell-phone { flex: 0 0 auto; width: 100%; min-width: 0; }
+.device-phone .topbar-phone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: max(7px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 7px max(12px, env(safe-area-inset-left));
+  gap: 8px;
+}
+.device-phone .topbar-phone .brand-mark { width: 36px; height: 36px; }
+.device-phone .topbar-phone .brand-name { font-size: 17px; }
+.device-phone .topbar-phone .brand-edition,
+.device-phone .topbar-phone .clock-pill { display: none; }
+.device-phone .phone-tab-shell {
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  padding: 6px max(7px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  border-top: 1px solid var(--line-bright);
+  background: rgba(8, 11, 20, .96);
+  box-shadow: 0 -10px 32px rgba(0,0,0,.28);
+}
+.device-phone .phone-tab-shell .topnav {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-height: 60px;
+  gap: 2px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  scrollbar-width: none;
+}
+.device-phone .phone-tab-shell .topnav::-webkit-scrollbar { display: none; }
+.device-phone .phone-tab-shell .topnav-btn {
+  flex: 0 0 64px;
+  width: 64px;
+  min-width: 64px;
+  min-height: 52px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 3px;
+  border-radius: 12px;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.device-phone .main {
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+}
