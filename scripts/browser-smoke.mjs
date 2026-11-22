@@ -50,6 +50,10 @@ try {
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).first()
     .waitFor({ state: 'visible', timeout: 5000 })
   if (await movieCards.count() !== 1) throw new Error('Movie search should return one Dune: Part Two result')
+  const duneMeta = await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).locator('.movie-card-sub').textContent()
+  if (!duneMeta?.includes('2h 46m')) {
+    throw new Error('Dune: Part Two duration should render as 2h 46m; got: ' + duneMeta)
+  }
   await page.route('https://vidlink.pro/**', (route) => route.fulfill({
     status: 200,
     contentType: 'text/html',
