@@ -7365,3 +7365,30 @@ button {
 .device-tv .vyora-browser-sidebar { width: 82px; padding: 16px 8px; gap: 8px; }
 .device-tv .vyora-browser-sidebar-brand { width: 50px; height: 50px; flex-basis: 50px; font-size: 28px; }
 .device-tv .vyora-browser-sidebar-item { width: 66px; min-height: 62px; font-size: 12px; gap: 6px; }
+
+
+/* Android TV / Google TV: landscape grid sized for couch-distance viewing. */
+.device-tv .grid { gap: clamp(14px, 1.4vw, 24px); }
+.device-tv .grid-channels {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(210px, 17vw, 300px), 1fr));
+  gap: clamp(14px, 1.4vw, 24px);
+}
+.device-tv .channel-card {
+  min-width: 0;
+  width: 100%;
+  padding: clamp(12px, 1.1vw, 18px);
+  gap: 12px;
+}
+.device-tv .channel-card-logo { height: clamp(138px, 13vw, 220px); }
+.device-tv .channel-card-name { font-size: clamp(16px, 1.25vw, 22px); }
+.device-tv .channel-card-sub { font-size: clamp(12px, .9vw, 15px); }
+.device-tv .card:focus-visible,
+.device-tv button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+  transform: scale(1.025);
+  box-shadow: 0 0 0 5px rgba(56,189,248,.16), var(--shadow-card-hover);
+}
+@media (max-width: 900px) and (orientation: landscape) {
+  .device-tv .grid-channels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
