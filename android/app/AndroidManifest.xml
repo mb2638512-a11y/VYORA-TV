@@ -43,7 +43,7 @@
             android:exported="true"
             android:icon="@drawable/ic_launcher"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
+            android:screenOrientation="unspecified"
             android:theme="@style/VyoraTheme">
 
             <intent-filter>
