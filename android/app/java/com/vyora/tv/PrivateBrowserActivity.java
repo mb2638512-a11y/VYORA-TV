@@ -11,9 +11,15 @@ import android.webkit.WebStorage;
  * Chromium/WebView data directory before the first WebView is created.
  */
 public final class PrivateBrowserActivity extends BrowserActivity {
+    private static boolean profileSuffixConfigured;
+
     @Override public void onCreate(Bundle state) {
-        // Must be called before BrowserActivity creates the first WebView.
-        if (Build.VERSION.SDK_INT >= 28) WebView.setDataDirectorySuffix("vyora_private");
+        // Configure once per private process, before its first WebView. The
+        // process may be reused after a private window is closed.
+        if (Build.VERSION.SDK_INT >= 28 && !profileSuffixConfigured) {
+            WebView.setDataDirectorySuffix("vyora_private");
+            profileSuffixConfigured = true;
+        }
         super.onCreate(state);
     }
 
