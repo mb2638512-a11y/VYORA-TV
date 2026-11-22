@@ -107,7 +107,7 @@ export type Series = {
 
 // Each provider has its own real search URL. Results are never silently
 // replaced by another provider.
-export type BrowserEngineId = 'google' | 'bing' | 'duckduckgo' | 'yahoo' | 'brave'
+export type BrowserEngineId = string
 
 
 export type Lang = 'en' | 'ur'

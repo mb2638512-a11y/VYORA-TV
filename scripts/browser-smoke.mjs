@@ -23,6 +23,9 @@ await page.addInitScript(() => {
     return originalFetch(input, init)
   }
   window.VyoraBridge = {
+    isTvDevice() {
+      return sessionStorage.getItem('vyora-test-tv') === 'true'
+    },
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
     },
@@ -149,6 +152,42 @@ try {
   await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
   await page.setViewportSize({ width: 1440, height: 900 })
 
+  // A native Leanback signal selects a separate 10-foot TV shell even at a
+  // wide viewport; the phone bottom tab bar must not be mounted in TV mode.
+  await page.evaluate(() => sessionStorage.setItem('vyora-test-tv', 'true'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+  if (await page.locator('html').getAttribute('data-device') !== 'tv' ||
+      !(await page.locator('.device-shell-tv').count()) ||
+      await page.locator('.mobile-bottom-nav').count()) {
+    throw new Error('Native Leanback detection did not select the separate TV navigation shell')
+  }
+
+  // Verify D-pad right moves through the primary TV tabs and scrolls the
+  // navigation rail to reveal tabs that do not fit on the first screen.
+  const tvNav = page.locator('.topbar-tv .topnav')
+  const tvNavButtons = tvNav.locator('.topnav-btn')
+  const tvNavCount = await tvNavButtons.count()
+  await tvNavButtons.first().focus()
+  for (let index = 1; index < tvNavCount; index += 1) {
+    await page.keyboard.press('ArrowRight')
+    const focusedText = await page.evaluate(() => document.activeElement?.textContent?.trim() || '')
+    const expectedText = (await tvNavButtons.nth(index).textContent())?.trim() || ''
+    if (!focusedText.includes(expectedText)) {
+      throw new Error('TV D-pad navigation skipped a primary tab: expected ' + expectedText + ', got ' + focusedText)
+    }
+  }
+  const tvNavScroll = await tvNav.evaluate((element) => element.scrollLeft)
+  if (tvNavScroll <= 0) {
+    throw new Error('TV D-pad navigation did not scroll the primary navigation rail to reveal later tabs')
+  }
+
+  await fs.mkdir('artifacts/browser-smoke', { recursive: true })
+  await page.screenshot({ path: 'artifacts/browser-smoke/android-tv-shell.png', fullPage: true })
+  await page.evaluate(() => sessionStorage.removeItem('vyora-test-tv'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+
   // Verify the built-in AllSiteHub catalogue, category filters, and search.
   const hubNav = page.getByRole('button', { name: 'AllSiteHub', exact: true })
   await hubNav.waitFor({ state: 'visible', timeout: 10000 })
@@ -274,10 +313,47 @@ try {
   await browserRegion.waitFor({ state: 'visible', timeout: 15000 })
   await page.locator('button[title*="Responsive View"], button[title*="Desktop 1080p View"]').first().waitFor({ state: 'visible', timeout: 10000 })
 
-  // Verify autocomplete uses the active search provider, not Google's list
-  // under every engine. The API is stubbed so CI never depends on third parties.
+  // Every browser tab must expose the complete Orbit search catalog. The
+  // picker is searchable and each tab retains its own selected provider.
   const engineTrigger = page.locator('.chromium-engine-trigger')
   const omnibox = page.locator('.chromium-omnibox-input')
+  await engineTrigger.click()
+  const engineOptions = page.locator('.chromium-engine-menu button.chromium-engine-option')
+  if (await engineOptions.count() !== 131) {
+    throw new Error('Expected 130 Orbit destinations plus Brave Search, found ' + await engineOptions.count())
+  }
+  const engineCatalogSearch = page.getByRole('searchbox', { name: 'Search engine catalog' })
+  await engineCatalogSearch.fill('Wikipedia')
+  const wikipediaOption = engineOptions.filter({ hasText: 'Wikipedia' }).first()
+  await wikipediaOption.waitFor({ state: 'visible', timeout: 5000 })
+  await wikipediaOption.click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Wikipedia was not selected from the searchable engine catalog')
+  }
+  await omnibox.fill('Albert Einstein')
+  await omnibox.press('Enter')
+  await page.waitForFunction(() => {
+    const frame = document.querySelector('.chromium-iframe')
+    if (!frame) return false
+    try {
+      const src = new URL(frame.src)
+      const target = src.searchParams.get('u') || frame.src
+      return target.includes('en.wikipedia.org/wiki/Special:Search') && target.includes('Albert')
+    } catch { return frame.src.includes('en.wikipedia.org/wiki/Special:Search') }
+  }, null, { timeout: 5000 })
+  await page.getByRole('button', { name: 'New Tab' }).click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Google')) {
+    throw new Error('New tab did not use the configured default search provider')
+  }
+  await engineTrigger.click()
+  if (await engineOptions.count() !== 131) {
+    throw new Error('The new tab does not expose the full search engine catalog')
+  }
+  await page.locator('.chromium-engine-backdrop').click()
+  await page.locator('.chromium-tab').first().click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Switching tabs did not preserve the first tab search provider')
+  }
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
     await page.locator('.chromium-engine-menu button.chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).first().evaluate((element) => element.click())
@@ -314,7 +390,7 @@ try {
 
   // Closing the only tab must create and activate a fresh New Tab instead
   // of leaving the browser with an activeTabId that no longer exists.
-  await page.getByRole('button', { name: 'Close Tab' }).click()
+  await page.locator('.chromium-tab.active .chromium-tab-close').click()
   await page.locator('.chromium-tab-title').getByText('New Tab').waitFor({ state: 'visible', timeout: 5000 })
   await page.keyboard.press('Control+Shift+T')
   await page.waitForFunction(() => document.querySelectorAll('.chromium-tab').length === 2, null, { timeout: 5000 })

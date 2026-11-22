@@ -29,6 +29,12 @@ public class TvBridge {
         this.act = act;
     }
 
+    /** True only on Android TV / Leanback hardware; used to select the TV UI. */
+    @JavascriptInterface
+    public boolean isTvDevice() {
+        return act.getPackageManager().hasSystemFeature("android.software.leanback");
+    }
+
     @JavascriptInterface
     public void play(final String url, final String referer, final String ua, final String title, final String logo) {
         act.runOnUiThread(new Runnable() {
@@ -203,6 +209,23 @@ public class TvBridge {
             return false;
         }
         return started.get();
+    }
+
+    /** Open the full native Android WebView browser, outside the app's iframe shell. */
+    @JavascriptInterface
+    public void openBrowser(final String initialUrl, final String engineId, final String displayMode) {
+        act.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(act, BrowserActivity.class);
+                intent.putExtra("initialUrl", initialUrl == null ? "" : initialUrl);
+                intent.putExtra("engineId", engineId == null ? "google0" : engineId);
+                intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
+                act.startActivity(intent);
+            } catch (Throwable error) {
+                Log.e(TAG, "Could not open native browser", error);
+                Toast.makeText(act, "VYORA Browser could not be opened", Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @JavascriptInterface
