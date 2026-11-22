@@ -278,6 +278,15 @@ export function PlayerOverlay({
     return false
   }, [channels, channel.id, statuses, t, onSwitch])
 
+  // Automatically move past a dead channel after every source and retry pass fails.
+  useEffect(() => {
+    if (status !== 'error' || !autoSkipOffline) return
+    const timer = window.setTimeout(() => {
+      if (!nextOnlineChannel()) setToast('No working channel found nearby')
+    }, 650)
+    return () => window.clearTimeout(timer)
+  }, [status, autoSkipOffline, nextOnlineChannel])
+
   const tryNextStream = useCallback(() => {
     const list = channel.streams || []
     if (list.length < 2) return false
@@ -1182,7 +1191,15 @@ export function PlayerOverlay({
           </button>
         ) : null}
 
-        {/* Error State with Smart Actions & Channel-Specific Stream Picker */}
+        {/* Compact recovery while VYORA finds another working channel automatically. */}
+        {status === 'error' && autoSkipOffline ? (
+          <div className="player-auto-recover" role="status" aria-live="polite">
+            <div className="spinner-sm" aria-hidden="true" />
+            <span>Finding the next working channel…</span>
+            <button className="btn btn-ghost" data-focusable onClick={onExit}><Icon name="close" size={16} /> Back</button>
+          </div>
+        ) : null}
+        {status === 'error' && !autoSkipOffline ? (
         {status === 'error' ? (
           <div className="player-status player-error" role="alert">
             <ChannelLogo channel={channel} size="lg" />
@@ -1253,6 +1270,9 @@ export function PlayerOverlay({
               Channel locked: Vyora TV stays on your selected channel with zero auto-hopping.
             </div>
           </div>
+        ) : null}
+
+
         ) : null}
 
         {/* Overlay Info Bar */}
