@@ -29,6 +29,12 @@ public class TvBridge {
         this.act = act;
     }
 
+    /** True only on Android TV / Leanback hardware; used to select the TV UI. */
+    @JavascriptInterface
+    public boolean isTvDevice() {
+        return act.getPackageManager().hasSystemFeature("android.software.leanback");
+    }
+
     @JavascriptInterface
     public void play(final String url, final String referer, final String ua, final String title, final String logo) {
         act.runOnUiThread(new Runnable() {
