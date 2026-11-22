@@ -5,6 +5,7 @@
   .app { height: 100dvh; min-height: 0; }
   .topbar {
     position: relative;
+    z-index: 150;
     flex: 0 0 auto;
     min-height: 58px;
     padding: 8px 12px;
@@ -118,7 +119,7 @@
   .active-player-left { gap: 10px; }
   .active-player-icon-box { width: 44px; height: 44px; }
   .active-player-title { font-size: 17px; flex-wrap: wrap; }
-  .player-overlay { height: 100dvh; }
+  .player-overlay { height: 100dvh; z-index: 200; }
   .player-info { padding: 16px 14px 24px; }
   .player-info-left { gap: 10px; }
   .player-name { font-size: 20px; }
