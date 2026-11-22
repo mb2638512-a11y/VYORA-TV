@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 
@@ -87,8 +88,38 @@ function DesktopNavigationShell({ left, right, clock, onBrandClick }: ShellProps
   )
 }
 
+function detectShellDevice(): 'phone' | 'tv' | 'desktop' {
+  const bridge = window.VyoraBridge
+  if (bridge?.isTvDevice?.() === true) return 'tv'
+  if (window.matchMedia('(max-width: 768px)').matches || /Android/i.test(navigator.userAgent)) return 'phone'
+  return 'desktop'
+}
+
 export function TopBar(props: ShellProps) {
-  const device = document.documentElement.dataset.device || 'desktop'
+  const [device, setDevice] = useState<'phone' | 'tv' | 'desktop'>(() =>
+    document.documentElement.dataset.device === 'tv' ? 'tv' :
+      document.documentElement.dataset.device === 'phone' ? 'phone' : 'desktop',
+  )
+
+  // Browser previews and rotated phones can change layout after first paint.
+  // Native TV detection always takes precedence over viewport size.
+  useEffect(() => {
+    const updateDevice = () => {
+      const next = detectShellDevice()
+      document.documentElement.dataset.device = next
+      document.body.classList.remove('device-phone', 'device-tv', 'device-desktop')
+      document.body.classList.add('device-' + next)
+      setDevice(next)
+    }
+    window.addEventListener('resize', updateDevice)
+    window.addEventListener('orientationchange', updateDevice)
+    updateDevice()
+    return () => {
+      window.removeEventListener('resize', updateDevice)
+      window.removeEventListener('orientationchange', updateDevice)
+    }
+  }, [])
+
   if (device === 'phone') return <PhoneNavigationShell {...props} />
   if (device === 'tv') return <TvNavigationShell {...props} />
   return <DesktopNavigationShell {...props} />
