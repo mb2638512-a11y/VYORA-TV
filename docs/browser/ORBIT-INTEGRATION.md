@@ -59,7 +59,7 @@ Use Orbit's browser implementation as the Android browser foundation while retai
 
 ## Current known VYORA browser defects to eliminate
 
-The existing `BrowserActivity` still creates a live WebView for every tab and has no isolated private-profile implementation. Popup support is now enabled for user-initiated windows, with scripted background popups rejected and transport validation added; this is an interim compatibility fix, not the full Orbit popup/adblock policy. The per-tab WebView allocation is a key memory/performance gap versus Orbit's single-live-WebView + saved-state tab lifecycle. Replace this implementation as the Orbit port lands; do not treat a settings-only cosmetic change as a fix.
+The current `BrowserActivity` now creates tab metadata lazily, suspends background WebViews with saved state, and keeps the active tab plus its OAuth opener live. It also handles renderer-process termination by detaching the failed renderer and allowing the user to reload the last URL. Navigation controls are guarded when a tab has no live renderer. This is a first VYORA-owned approximation of Orbit's bounded-renderer lifecycle, not a full Orbit port. User-gesture popups are supported with transport validation, but the full site-aware popup/adblock policy is still missing. Private browsing still does not have a genuinely isolated WebView profile.
 
 ## CI strategy
 
@@ -99,3 +99,16 @@ The current VYORA branch has no Orbit JNI libraries or Rust engine sources in it
 ## Upstream licensing gate (verified 2026-11-23)
 
 The public GitHub repository metadata currently reports `license: null`, and the inspected root tree has no `LICENSE` file. An earlier assumption that Orbit was MPL-2.0 was incorrect and is superseded by this gate. Before copying Orbit Kotlin/Java code or its prebuilt JNI `.so` files, obtain a clear license from the author or written permission covering modification and redistribution. Until then, VYORA may implement compatible behavior independently and use public technical documentation, but must not vendor the upstream application source or binaries. The Rust crate's dependency licenses do not automatically license Orbit's wrapper code or checked-in binaries.
+
+
+## VYORA implementation progress (2026-11-23)
+
+- [x] Lazy tab metadata and on-demand WebView allocation.
+- [x] Suspend background renderers and save WebView state; restore on tab selection.
+- [x] Preserve the OAuth opener renderer while its popup tab is active.
+- [x] Recover from a WebView renderer-process crash without crashing the whole Activity; reload is user-triggered to avoid retry loops.
+- [x] Guard toolbar navigation actions when a renderer is absent.
+- [ ] Add a verified, redistributable native adblock engine (blocked on upstream Orbit licensing/permission or an independently licensed implementation).
+- [ ] Implement genuinely isolated private browsing and test cookie/storage separation.
+- [ ] Add main-frame error/retry UI, site permissions, and site-level popup/adblock controls.
+- [ ] Run real-device low-memory, phone and Android TV tests.
