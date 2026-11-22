@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Bootstrap, BrowserEngineId, Channel, Country, CustomPlaylist, DownloadItem, InstalledApp, Movie, PlayerEngineId, Series, View } from './types'
+import type { Bootstrap, BrowserEngineId, Channel, Country, CustomPlaylist, DownloadItem, InstalledApp, Movie, PlayerEngineId, Series, Stream, View } from './types'
 import { TOP_STREAMING_PLAYERS } from './types'
 import {
   currentMode,
