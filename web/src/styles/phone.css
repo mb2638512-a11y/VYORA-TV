@@ -1,0 +1,31 @@
+/* Dedicated phone presentation entry point.
+   The legacy responsive rules are retained as the phone design foundation. */
+@import './mobile.css';
+
+:root[data-device='phone'] {
+  color-scheme: dark;
+}
+.device-phone #root,
+.device-phone .app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100vw;
+}
+.device-phone button,
+.device-phone a,
+.device-phone [role='button'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.device-phone :focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 2px;
+}
+@media (max-width: 390px) {
+  .device-phone .main { padding-left: 10px; padding-right: 10px; }
+  .device-phone .mobile-bottom-nav .topnav-btn {
+    flex-basis: 60px !important;
+    width: 60px;
+    min-width: 60px !important;
+  }
+}
