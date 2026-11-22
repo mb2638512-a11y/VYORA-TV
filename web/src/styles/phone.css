@@ -1013,3 +1013,14 @@
 .device-phone .allsitehub-section .allsitehub-card .app-card-title{overflow-wrap:anywhere}
 .device-phone .allsitehub-section .allsitehub-card .app-card-launch{display:inline-flex;width:100%;min-height:42px;justify-content:center;align-items:center;gap:8px;white-space:nowrap;font-size:12px}
 .device-phone .player-expand-toggle{display:none!important}
+
+
+/* Keep Home, Movies, Live TV and Apps in the dock; secondary pages stay in Menu. */
+.device-phone .phone-tab-shell .topnav-btn:nth-child(3),
+.device-phone .phone-tab-shell .topnav-btn:nth-child(4) { display: none !important; }
+.device-phone .phone-tab-shell .topnav-btn:nth-child(5),
+.device-phone .phone-tab-shell .topnav-btn:nth-child(8) { display: flex !important; }
+.device-phone .phone-tab-shell .topnav-btn:nth-child(1) { order: 1; }
+.device-phone .phone-tab-shell .topnav-btn:nth-child(2) { order: 3; }
+.device-phone .phone-tab-shell .topnav-btn:nth-child(5) { order: 2; }
+.device-phone .phone-tab-shell .topnav-btn:nth-child(8) { order: 4; }
