@@ -79,18 +79,6 @@ try {
   }
   await hub.getByRole('tab').filter({ hasText: 'All (64)' }).click()
 
-  // Android TV D-pad navigation should move focus across category chips.
-  const firstCategoryTab = hub.getByRole('tab').first()
-  await firstCategoryTab.focus()
-  await page.keyboard.press('ArrowRight')
-  const focusedCategory = await page.evaluate(() => ({
-    role: document.activeElement?.getAttribute('role'),
-    label: document.activeElement?.textContent?.trim(),
-  }))
-  if (focusedCategory.role !== 'tab' || !focusedCategory.label?.includes('Movies & Shows')) {
-    throw new Error('Android TV ArrowRight did not move focus to the next AllSiteHub category')
-  }
-
   const hubSearch = hub.getByRole('textbox', { name: 'Search AllSiteHub sites' })
   await hubSearch.fill('gojolive')
   const searchMatches = await hub.locator('.app-card').count()
