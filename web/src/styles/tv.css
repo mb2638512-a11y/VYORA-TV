@@ -117,16 +117,47 @@
 
 /* The TV shell is structurally distinct from the touch-first phone shell. */
 .device-tv .device-shell-tv { flex: 0 0 auto; width: 100%; min-width: 0; }
-.device-tv .topbar-tv { min-width: 0; }
-.device-tv .topbar-tv .topbar-left { min-width: 0; flex: 1 1 auto; }
-.device-tv .topbar-tv .topbar-nav-wrapper { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+/* TV header uses two clear rows so primary navigation never competes
+   with player/settings controls for the same horizontal space. */
+.device-tv .topbar-tv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas: "brand actions" "navigation navigation";
+  align-items: center;
+  min-height: 132px;
+  padding: 12px var(--tv-safe-x);
+  gap: 10px 22px;
+}
+.device-tv .topbar-tv .topbar-left { display: contents; }
+.device-tv .topbar-tv .brand { grid-area: brand; min-width: max-content; }
+.device-tv .topbar-tv .topbar-right {
+  grid-area: actions;
+  justify-self: end;
+  min-width: 0;
+  gap: 10px;
+}
+.device-tv .topbar-tv .topbar-nav-wrapper {
+  grid-area: navigation;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
 .device-tv .topbar-tv .topnav {
+  display: flex;
   width: 100%;
   max-width: 100%;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .device-tv .topbar-tv .topnav::-webkit-scrollbar { display: none; }
-.device-tv .topbar-tv .topnav-btn { min-height: 56px; padding: 14px clamp(10px, 1vw, 20px); font-size: clamp(15px, 1.1vw, 19px); }
+.device-tv .topbar-tv .topnav-btn {
+  flex: 0 0 auto;
+  min-height: 54px;
+  padding: 12px clamp(12px, 1.1vw, 22px);
+  font-size: clamp(15px, 1.1vw, 19px);
+}
+.device-tv .main { height: calc(100vh - 132px); }
 .device-tv .device-shell-tv :focus-visible { outline-offset: 7px; }
