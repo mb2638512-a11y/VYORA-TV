@@ -425,6 +425,8 @@ public class BrowserActivity extends Activity {
         address.setText(tab.url==null?"":tab.url);
         enginePicker.setText(engine(tab.engineId).name,false);
         updateControls();
+        // Persist the suspended tab URLs/history metadata after every tab switch.
+        saveSession();
     }
 
     private void updateControls() {
@@ -466,6 +468,10 @@ public class BrowserActivity extends Activity {
         try {
             JSONArray arr=new JSONArray();
             for(BrowserTab tab:tabs) {
+                if(tab.web!=null) {
+                    String liveUrl=tab.web.getUrl(); if(liveUrl!=null) tab.url=liveUrl;
+                    String liveTitle=tab.web.getTitle(); if(liveTitle!=null && !liveTitle.trim().isEmpty()) tab.title=liveTitle.trim();
+                }
                 JSONObject item=new JSONObject(); item.put("title",tab.title); item.put("url",tab.url); item.put("engine",tab.engineId); arr.put(item);
             }
             prefs.edit().putString("tabs",arr.toString()).putInt("active",activeIndex).apply();
