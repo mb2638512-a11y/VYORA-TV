@@ -11,7 +11,8 @@ param(
   [string]$MinSdk = "21",
   [string]$TargetSdk = "34",
   [string]$VersionName = "1.0.0",
-  [int]$VersionCode = 1
+  [int]$VersionCode = 1,
+  [ValidateSet("tv", "phone")][string]$Variant = "tv"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,7 +84,7 @@ $linkArgs = @(
   'link',
   '-o', $baseApk,
   '-I', $androidJar,
-  '--manifest', (Join-Path $app 'AndroidManifest.xml'),
+  '--manifest', (Join-Path $app $(if ($Variant -eq 'phone') { 'AndroidManifest.phone.xml' } else { 'AndroidManifest.xml' })),
   '-R', $appResZip,
   '--java', $genDir,
   '-A', $assets,
@@ -136,7 +137,7 @@ if (-not (Test-Path $ks)) {
   if ($LASTEXITCODE -ne 0) { throw 'keytool failed' }
 }
 
-$finalApk = Join-Path $outDir "VyoraTV-$VersionName.apk"
+$finalApk = Join-Path $outDir "Vyora-$Variant-$VersionName.apk"
 & "$bt\apksigner.bat" sign --ks $ks --ks-pass "pass:$storePass" --key-pass "pass:$storePass" `
   --ks-key-alias vyora --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true `
   --out $finalApk $aligned
