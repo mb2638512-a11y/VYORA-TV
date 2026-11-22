@@ -108,7 +108,11 @@ The public GitHub repository metadata currently reports `license: null`, and the
 - [x] Preserve the OAuth opener renderer while its popup tab is active.
 - [x] Recover from a WebView renderer-process crash without crashing the whole Activity; reload is user-triggered to avoid retry loops.
 - [x] Guard toolbar navigation actions when a renderer is absent.
-- [ ] Add a verified, redistributable native adblock engine (blocked on upstream Orbit licensing/permission or an independently licensed implementation).
+- [x] Add a lightweight, bounded hosts-file blocker for known ad/tracker subresources; list download/parse runs off the UI thread, cache is reused, top-level navigation is never blocked, and failures are fail-open.
+- [ ] Add a full filter-engine implementation (cosmetic filters, exception/important rules, redirects and site-level controls); this is separate from the basic hosts blocker and must use independently licensed code or a verified redistribution grant.
 - [ ] Implement genuinely isolated private browsing and test cookie/storage separation.
-- [ ] Add main-frame error/retry UI, site permissions, and site-level popup/adblock controls.
+- [ ] Add polished main-frame error/retry UI, site permissions, and per-site popup/adblock controls.
 - [ ] Run real-device low-memory, phone and Android TV tests.
+
+
+The first VYORA-owned protection layer now uses the MIT-licensed StevenBlack hosts data (attribution in `THIRD_PARTY_NOTICES.md`). It blocks only subresource requests matching the bounded host set and explicitly fails open. This is not equivalent to Orbit's Brave/uBlock-compatible native engine and does not provide cosmetic filtering or per-site exceptions yet.
