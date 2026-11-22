@@ -107,6 +107,11 @@ public class BrowserActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (isPrivateSession() && Build.VERSION.SDK_INT < 28) {
+            Toast.makeText(this,"Private browsing requires Android 9 or newer for isolated storage.",Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
         tv = getPackageManager().hasSystemFeature("android.software.leanback");
         if (tv) setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         prefs = getSharedPreferences(isPrivateSession() ? PREFS + "_private" : PREFS, MODE_PRIVATE);
