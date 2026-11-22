@@ -60,7 +60,28 @@ try {
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/allsitehub.png', fullPage: true })
 
+  // Sorting should reorder the catalogue without changing its size.
+  const sortButton = hub.getByRole('button', { name: /A–Z/ })
+  const firstAZ = await hub.locator('.app-card-title').first().textContent()
+  await sortButton.click()
+  await hub.getByRole('button', { name: /Z–A/ }).waitFor({ state: 'visible', timeout: 3000 })
+  const firstZA = await hub.locator('.app-card-title').first().textContent()
+  if (!firstAZ || !firstZA || firstAZ === firstZA) {
+    throw new Error('AllSiteHub A–Z / Z–A sort did not reorder the catalogue')
+  }
+
+  // Verify the Open action routes a selected site into VYORA Browser.
+  // Abort the provider request: this tests app navigation, not external uptime.
+  await page.route('https://gojolive.site/**', (route) => route.abort())
+  await hub.locator('.app-card').filter({ hasText: 'GojoLive' }).getByRole('button', { name: 'Open' }).click()
   const browserRegion = page.getByRole('region', { name: 'Chromium Web Browser' })
+  await browserRegion.waitFor({ state: 'visible', timeout: 10000 })
+  await page.locator('.chromium-omnibox-input').waitFor({ state: 'visible', timeout: 5000 })
+  const openedUrl = await page.locator('.chromium-omnibox-input').inputValue()
+  if (openedUrl !== 'https://gojolive.site/') {
+    throw new Error('AllSiteHub Open should load GojoLive in VYORA Browser; got ' + openedUrl)
+  }
+
   if (!(await browserRegion.isVisible().catch(() => false))) {
     const openBrowser = page.getByRole('button', { name: /open browser|browser/i }).first()
     if (!(await openBrowser.count())) {
