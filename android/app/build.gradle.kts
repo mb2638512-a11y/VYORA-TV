@@ -64,6 +64,9 @@ android {
 dependencies {
     implementation(fileTree(rootProject.file("libs")) {
         include("*.jar", "*.aar")
+        // AndroidX annotation is supplied transitively by the modern
+        // AndroidX dependencies below; exclude the stale bundled copy.
+        exclude("annotation-1.3.0.jar")
     })
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
