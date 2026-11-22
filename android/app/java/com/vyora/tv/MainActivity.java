@@ -303,9 +303,17 @@ public class MainActivity extends Activity {
     /* ---------------- remote keys ---------------- */
 
     private void dispatchKey(String key) {
-        web.evaluateJavascript(
-                "window.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true}));",
-                null);
+        // Deliver remote input to the focused DOM control so React handlers,
+        // text fields, and TV spatial-navigation logic see the same target.
+        // Enter activates focused controls explicitly because synthetic DOM
+        // KeyboardEvents do not trigger the browser's native default click.
+        String script = "(function(){"
+                + "var key='" + key + "';"
+                + "var target=document.activeElement||document.body;"
+                + "if(key==='Enter'&&target&&target.matches('button:not([disabled]),a[href],[role=button],[role=tab]')){target.click();return;}"
+                + "target.dispatchEvent(new KeyboardEvent('keydown',{key:key,bubbles:true,cancelable:true}));"
+                + "})()";
+        web.evaluateJavascript(script, null);
     }
 
     @Override
