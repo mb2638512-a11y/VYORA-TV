@@ -23,6 +23,9 @@ await page.addInitScript(() => {
     return originalFetch(input, init)
   }
   window.VyoraBridge = {
+    isTvDevice() {
+      return sessionStorage.getItem('vyora-test-tv') === 'true'
+    },
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
     },
@@ -148,6 +151,22 @@ try {
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
   await page.setViewportSize({ width: 1440, height: 900 })
+
+  // A native Leanback signal selects a separate 10-foot TV shell even at a
+  // wide viewport; the phone bottom tab bar must not be mounted in TV mode.
+  await page.evaluate(() => sessionStorage.setItem('vyora-test-tv', 'true'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+  if (await page.locator('html').getAttribute('data-device') !== 'tv' ||
+      !(await page.locator('.device-shell-tv').count()) ||
+      await page.locator('.mobile-bottom-nav').count()) {
+    throw new Error('Native Leanback detection did not select the separate TV navigation shell')
+  }
+  await fs.mkdir('artifacts/browser-smoke', { recursive: true })
+  await page.screenshot({ path: 'artifacts/browser-smoke/android-tv-shell.png', fullPage: true })
+  await page.evaluate(() => sessionStorage.removeItem('vyora-test-tv'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
 
   // Verify the built-in AllSiteHub catalogue, category filters, and search.
   const hubNav = page.getByRole('button', { name: 'AllSiteHub', exact: true })
