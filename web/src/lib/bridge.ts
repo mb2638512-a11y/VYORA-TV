@@ -17,7 +17,7 @@ type AndroidBridge = {
   openExternal(url: string): void
   launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
   setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
-  openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop'): void
+  openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop'): boolean
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -62,8 +62,7 @@ export function nativePlayMulti(
 
 export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto'): boolean {
   if (typeof bridge?.openBrowser !== 'function') return false
-  bridge.openBrowser(initialUrl, engineId, displayMode)
-  return true
+  return bridge.openBrowser(initialUrl, engineId, displayMode) === true
 }
 
 export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
