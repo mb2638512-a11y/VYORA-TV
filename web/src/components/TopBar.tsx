@@ -42,17 +42,29 @@ function Clock({ value }: { value?: string }) {
 }
 
 /** Touch-first phone shell: compact app bar + persistent bottom navigation. */
-function PhoneNavigationShell({ left, right, clock, onBrandClick }: ShellProps) {
+function PhoneNavigationShell({ left, right, clock, onBrandClick, onMenuToggle, menuOpen }: ShellProps) {
   return (
     <div className="device-shell device-shell-phone" data-shell="phone">
       <header className="topbar topbar-phone">
         <div className="topbar-left">
           <Brand onClick={onBrandClick} compact />
         </div>
-        <div className="topbar-right">{right}<Clock value={clock} /></div>
+        <div className="topbar-right">
+          {right}
+          <button type="button" className="phone-menu-toggle" onClick={onMenuToggle}
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={Boolean(menuOpen)} title={menuOpen ? 'Close menu' : 'All sections'}>
+            <Icon name={menuOpen ? 'x' : 'menu'} size={19} />
+          </button>
+          <Clock value={clock} />
+        </div>
       </header>
-      <nav className="mobile-bottom-nav phone-tab-shell" aria-label="Primary phone navigation">
-        {left}
+      <nav className={`mobile-bottom-nav phone-tab-shell${menuOpen ? ' menu-open' : ''}`}
+        aria-label="Primary phone navigation"
+        onClick={() => { if (menuOpen) onMenuToggle?.() }}>
+        <div className="phone-menu-panel" onClick={(event) => event.stopPropagation()}>
+          {left}
+        </div>
       </nav>
     </div>
   )
