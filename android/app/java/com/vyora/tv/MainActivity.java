@@ -355,20 +355,7 @@ public class MainActivity extends Activity {
                 dispatchKey("Enter");
                 return true;
             case KeyEvent.KEYCODE_BACK:
-                if (player != null && player.isActive()) {
-                    stopPlayback();
-                    // let the web UI close its player overlay too
-                    dispatchKey("Escape");
-                    return true;
-                }
-                // let the web layer decide; exit only if it does not handle it
-                web.evaluateJavascript(
-                        "(function(){try{return window.__vyoraBack ? window.__vyoraBack() : 'exit';}catch(e){return 'exit';}})()",
-                        value -> {
-                            if (value == null || !"true".equals(value.replace("\"", ""))) {
-                                finish();
-                            }
-                        });
+                handleBackNavigation();
                 return true;
             case KeyEvent.KEYCODE_VOLUME_UP:
                 setPlayerVolume(getPlayerVolume() + 0.1f);
@@ -382,6 +369,36 @@ public class MainActivity extends Activity {
             default:
                 return super.onKeyDown(keyCode, event);
         }
+    }
+
+    /**
+     * Route Android phone gesture/back-button and TV remote BACK through the
+     * web app first. Only finish the Activity when the web UI has no prior
+     * screen to return to.
+     */
+    private void handleBackNavigation() {
+        if (player != null && player.isActive()) {
+            stopPlayback();
+            dispatchKey("Escape");
+            return;
+        }
+        if (web == null) {
+            finish();
+            return;
+        }
+        web.evaluateJavascript(
+                "(function(){try{return window.__vyoraBack ? window.__vyoraBack() : 'exit';}catch(e){return 'exit';}})()",
+                value -> {
+                    if (value == null || !"true".equals(value.replace("\"", ""))) {
+                        finish();
+                    }
+                });
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        handleBackNavigation();
     }
 
     @Override
