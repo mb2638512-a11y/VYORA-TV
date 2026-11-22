@@ -681,6 +681,19 @@ export default function App() {
     root.lang = settings.lang
   }, [settings])
 
+  // The native app marks its product flavor in the WebView user agent so the
+  // same web bundle can select a phone-touch or TV-remote layout reliably.
+  useEffect(() => {
+    const root = document.documentElement
+    const ua = navigator.userAgent.toLowerCase()
+    const isTv = ua.includes('vyoradevice/tv') || ua.includes('leanback')
+    root.classList.toggle('device-tv', isTv)
+    root.classList.toggle('device-phone', !isTv)
+    return () => {
+      root.classList.remove('device-tv', 'device-phone')
+    }
+  }, [])
+
   /* ---------------- country lookup ---------------- */
   const countryByCode = useMemo(() => {
     const m = new Map<string, Country>()
