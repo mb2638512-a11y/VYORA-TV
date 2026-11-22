@@ -1,4 +1,5 @@
 /* VYORA phone-first responsive layer. TV/desktop layouts remain unchanged. */
+.mobile-bottom-nav { display: none; }
 @media (max-width: 768px) {
   html, body, #root { width: 100%; min-width: 0; height: 100%; }
   body { overscroll-behavior-y: contain; }
@@ -24,14 +25,29 @@
   .brand-name { font-size: 17px; }
   .brand-edition, .clock-pill, .queue-badge { display: none !important; }
   .mobile-menu-btn { display: none !important; }
-  .topbar-nav-wrapper { display: contents; }
-  .topnav,
-  .topnav.mobile-nav-open {
+  .topbar-nav-wrapper { display: none !important; }
+  .mobile-bottom-nav {
     position: fixed;
     z-index: 9999;
     left: 0;
     right: 0;
     bottom: 0;
+    display: block;
+    width: 100%;
+    padding: 6px 7px calc(7px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line-bright);
+    background: rgba(8, 11, 20, .96);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 -10px 32px rgba(0,0,0,.28);
+  }
+  .mobile-bottom-nav .topnav,
+  .mobile-bottom-nav .topnav.mobile-nav-open {
+    position: static !important;
+    z-index: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
     display: flex !important;
     height: auto;
     min-height: 60px;
@@ -41,20 +57,19 @@
     gap: 2px;
     width: 100%;
     max-width: 100%;
-    padding: 6px 7px calc(7px + env(safe-area-inset-bottom));
+    padding: 0;
     overflow-x: auto;
     overflow-y: hidden;
     border: 0;
-    border-top: 1px solid var(--line-bright);
     border-radius: 0;
-    background: rgba(8, 11, 20, .96);
+    background: transparent;
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
     scrollbar-width: none;
     box-shadow: 0 -10px 32px rgba(0,0,0,.28);
   }
-  .topnav::-webkit-scrollbar { display: none; }
-  .topnav-btn {
+  .mobile-bottom-nav .topnav::-webkit-scrollbar { display: none; }
+  .mobile-bottom-nav .topnav-btn {
     flex: 0 0 66px;
     min-width: 62px;
     min-height: 52px;
@@ -69,8 +84,8 @@
     line-height: 1.1;
     white-space: nowrap;
   }
-  .topnav-btn svg { width: 19px; height: 19px; }
-  .topnav-btn.active { box-shadow: none; background: rgba(56,189,248,.16); color: var(--accent); }
+  .mobile-bottom-nav .topnav-btn svg { width: 19px; height: 19px; }
+  .mobile-bottom-nav .topnav-btn.active { box-shadow: none; background: rgba(56,189,248,.16); color: var(--accent); }
   .topbar-right .btn[title="Dial Channel Number"],
   .topbar-right .btn[title^="Active:"] { display: none !important; }
   .topbar-right .btn,
@@ -135,7 +150,7 @@
 @media (max-width: 420px) {
   .main { padding-left: 11px; padding-right: 11px; }
   .grid-movies-banners { gap: 8px; }
-  .topnav-btn { flex-basis: 61px; min-width: 58px; font-size: 9px; }
+  .mobile-bottom-nav .topnav-btn { flex-basis: 61px; min-width: 58px; font-size: 9px; }
   .cinema-hero-actions .btn { flex: 1 1 auto; }
 }
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
