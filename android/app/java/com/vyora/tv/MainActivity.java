@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureWindowForDevice();
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -129,7 +130,7 @@ public class MainActivity extends Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         defaultWebUserAgent = WebSettings.getDefaultUserAgent(this);
-        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android TV)");
+        s.setUserAgentString(defaultWebUserAgent + " VyoraTV/1.0 (Android)");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -169,6 +170,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Keep TV immersive while allowing phone status/navigation bars and portrait layout. */
+    private void configureWindowForDevice() {
+        boolean tv = getPackageManager().hasSystemFeature("android.software.leanback");
+        getWindow().setStatusBarColor(Color.rgb(6, 7, 13));
+        getWindow().setNavigationBarColor(Color.rgb(6, 7, 13));
+        View decor = getWindow().getDecorView();
+        if (tv) {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        } else {
+            decor.setSystemUiVisibility(0);
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+    }
+
     /** Apply a real WebView User-Agent, not only a CSS viewport width. */
     public void setBrowserDisplayMode(String mode) {
         if (web == null) return;
@@ -179,7 +196,7 @@ public class MainActivity extends Activity {
             settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 VyoraTV/1.0");
         } else {
             settings.setUserAgentString((defaultWebUserAgent == null ? WebSettings.getDefaultUserAgent(this) : defaultWebUserAgent)
-                    + " VyoraTV/1.0 (Android TV)");
+                    + " VyoraTV/1.0 (Android)");
         }
     }
 
