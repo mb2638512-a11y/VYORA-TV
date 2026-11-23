@@ -409,7 +409,7 @@ export function PlayerOverlay({
       if (activeEngineId === 'exoplayer') {
         // Direct ExoPlayer mode: play only the selected source and let Media3
         // report/fail this source; VYORA Player retains multi-source racing.
-        nativePlay(stream.url, stream.referer || '', stream.ua || '', channel.name, channel.logo)
+        nativePlay(stream.url, stream.referer || channel.website || '', stream.ua || '', channel.name, channel.logo)
       } else {
         // VYORA-managed mode starts with the health-preferred source, then
         // keeps every distinct channel source available for automatic recovery.
@@ -423,7 +423,7 @@ export function PlayerOverlay({
         const candidates = orderedSources
           .filter((s) => typeof s?.url === 'string' && s.url.trim().length > 0)
           .filter((s, i, all) => all.findIndex((item) => item.url === s.url) === i)
-          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '', hls: Boolean(s.hls), dash: Boolean(s.dash) }))
+          .map((s) => ({ url: s.url, referer: s.referer || channel.website || '', ua: s.ua || '', hls: Boolean(s.hls), dash: Boolean(s.dash) }))
         nativePlayMulti(candidates, channel.name, channel.logo)
       }
       setStatus('loading')
@@ -453,7 +453,7 @@ export function PlayerOverlay({
     // WebView HLS/HTML5 engines as well as the native Media3 player.
     const useProxy = currentMode() === 'server' || isNative
     const src = useProxy
-      ? buildProxyUrl(stream.url, stream.referer, stream.ua, channel.id)
+      ? buildProxyUrl(stream.url, stream.referer || channel.website, stream.ua, channel.id)
       : stream.url
 
     const isHls = Boolean(
