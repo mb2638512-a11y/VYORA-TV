@@ -184,6 +184,8 @@ export type CustomPlaylist = {
   account?: XtreamAccount
   channelsCount?: number
   addedAt: number
+  /** User-controlled availability; false keeps the playlist saved but inactive. */
+  enabled?: boolean
 }
 
 export type PlayerEngineId =
