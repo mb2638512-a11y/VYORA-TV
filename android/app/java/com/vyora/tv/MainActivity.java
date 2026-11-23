@@ -347,7 +347,10 @@ public class MainActivity extends Activity {
         surface.setVisibility(View.VISIBLE);
         surface.bringToFront();
         showNativeLoading(title);
-        player.play(url, referer, ua);
+        String playbackUrl = localServer != null
+                ? localServer.proxyUrl(url, referer, ua, "")
+                : url;
+        player.play(new String[]{playbackUrl}, new String[]{referer}, new String[]{ua}, new String[]{url});
         showOverlay(title, referer);
         showPhonePlayerControls();
     }
@@ -361,18 +364,22 @@ public class MainActivity extends Activity {
             org.json.JSONArray arr = new org.json.JSONArray(candidatesJson);
             int n = arr.length();
             String[] urls = new String[n];
+            String[] originalUrls = new String[n];
             String[] referers = new String[n];
             String[] uas = new String[n];
             for (int i = 0; i < n; i++) {
                 org.json.JSONObject o = arr.getJSONObject(i);
-                urls[i] = o.optString("url", "");
+                originalUrls[i] = o.optString("url", "");
                 referers[i] = o.optString("referer", "");
                 uas[i] = o.optString("ua", "");
+                urls[i] = localServer != null
+                        ? localServer.proxyUrl(originalUrls[i], referers[i], uas[i], "")
+                        : originalUrls[i];
             }
             surface.setVisibility(View.VISIBLE);
             surface.bringToFront();
             showNativeLoading(title);
-            player.play(urls, referers, uas);
+            player.play(urls, referers, uas, originalUrls);
             showOverlay(title, "");
             showPhonePlayerControls();
         } catch (Throwable t) {
