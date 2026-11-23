@@ -443,8 +443,8 @@ public class LocalServer {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(target).openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(25000);
+            conn.setConnectTimeout(7000);
+            conn.setReadTimeout(16000);
             conn.setInstanceFollowRedirects(true);
             conn.setRequestMethod("HEAD".equalsIgnoreCase(method) ? "HEAD" : "GET");
             conn.setRequestProperty("User-Agent",
