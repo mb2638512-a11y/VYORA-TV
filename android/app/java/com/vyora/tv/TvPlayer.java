@@ -62,6 +62,7 @@ public class TvPlayer {
     private String[] uas = new String[0];
     // Original catalogue URLs are retained for accurate UI/health callbacks when playback uses the local proxy.
     private String[] reportedUrls = new String[0];
+    private String[] mimeTypes = new String[0];
     private int nextCandidateIndex = 0;
     private int activeAttempts = 0;
     private long playbackStartedAt;
@@ -137,12 +138,19 @@ public class TvPlayer {
     /** Play proxied URLs while reporting the original catalogue URLs to the web UI. */
     public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas,
                      String[] originalUrls) {
+        play(candidateUrls, candidateReferers, candidateUas, originalUrls, null);
+    }
+
+    /** Explicit manifest type avoids relying on URL suffixes for HLS/DASH feeds. */
+    public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas,
+                     String[] originalUrls, String[] candidateMimeTypes) {
         if (candidateUrls == null || candidateUrls.length == 0) return;
         release();
         urls = candidateUrls.clone();
         referers = candidateReferers != null ? candidateReferers.clone() : new String[0];
         uas = candidateUas != null ? candidateUas.clone() : new String[0];
         reportedUrls = originalUrls != null ? originalUrls.clone() : candidateUrls.clone();
+        mimeTypes = candidateMimeTypes != null ? candidateMimeTypes.clone() : new String[0];
         candidateSetKey = buildCandidateSetKey(urls);
         applyRememberedSourceOrder();
         nextCandidateIndex = 0;
@@ -190,6 +198,7 @@ public class TvPlayer {
         rotateToFront(referers, preferred);
         rotateToFront(uas, preferred);
         rotateToFront(reportedUrls, preferred);
+        rotateToFront(mimeTypes, preferred);
         Log.i(TAG, "remembered healthy source promoted to first position");
     }
 
@@ -392,11 +401,13 @@ public class TvPlayer {
             // is selected and attached to the visible surface.
             candidatePlayer.setPlayWhenReady(false);
             MediaItem.Builder mediaItem = new MediaItem.Builder().setUri(url);
+            String explicitMime = index < mimeTypes.length ? mimeTypes[index] : "";
             String mimeHintUrl = index < reportedUrls.length ? reportedUrls[index] : url;
             String lowerUrl = mimeHintUrl.toLowerCase(java.util.Locale.US);
-            if (lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
+            if (MimeTypes.APPLICATION_M3U8.equals(explicitMime)
+                    || lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
                 mediaItem.setMimeType(MimeTypes.APPLICATION_M3U8);
-            } else if (lowerUrl.contains(".mpd")) {
+            } else if (MimeTypes.APPLICATION_MPD.equals(explicitMime) || lowerUrl.contains(".mpd")) {
                 // DASH needs the optional Media3 DASH module. If it is not
                 // packaged, the candidate will fail quickly and fail over.
                 mediaItem.setMimeType(MimeTypes.APPLICATION_MPD);
@@ -593,6 +604,7 @@ public class TvPlayer {
         referers = new String[0];
         uas = new String[0];
         reportedUrls = new String[0];
+        mimeTypes = new String[0];
         nextCandidateIndex = 0;
     }
 
