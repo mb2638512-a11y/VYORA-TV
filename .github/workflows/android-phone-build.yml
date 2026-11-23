@@ -14,6 +14,7 @@ on:
       - ".github/workflows/android-phone-build.yml"
 permissions:
   contents: read
+  actions: write
 jobs:
   phone-apk:
     runs-on: ubuntu-latest
@@ -45,9 +46,20 @@ jobs:
         run: |
           cd android
           gradle --no-daemon --stacktrace :app:assemblePhoneDebug
+      - name: Remove previous phone APK artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "vyora-android-phone-debug") | .id' |
+          while read -r artifact_id; do
+            [ -n "$artifact_id" ] || continue
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/$artifact_id"
+            echo "Deleted previous phone APK artifact $artifact_id"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: vyora-android-phone-debug
           path: android/app/build/outputs/apk/phone/debug/*.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 1
