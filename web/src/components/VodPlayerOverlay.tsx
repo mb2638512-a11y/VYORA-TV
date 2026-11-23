@@ -67,7 +67,13 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
     video.load()
 
     const saved = Number(localStorage.getItem(progressKey) || 0)
-    const isHls = /\.m3u8(?:$|\?)/i.test(stream.url) || /format=m3u8/i.test(stream.url)
+    const isHls = Boolean((stream as Stream & { hls?: boolean }).hls || /\.m3u8(?:$|\?)/i.test(stream.url) || /format=m3u8/i.test(stream.url) || !/\.(mp4|webm|mkv|avi|mov)(?:$|\?)/i.test(stream.url))
+    const useProxy = currentMode() === 'server' || isNative
+    const playbackUrl = useProxy ? buildProxyUrl(stream.url, stream.referer || channel.website, stream.ua, channel.id) : stream.url
+    if (/\.mpd(?:$|\?)/i.test(stream.url)) {
+      setError('DASH streams are not supported by this web player yet. Choose an MP4 or HLS source.')
+      return
+    }
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: false, backBufferLength: 30 })
       hlsRef.current = hls
