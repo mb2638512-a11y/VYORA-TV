@@ -93,6 +93,18 @@ Write-Host '[3/7] app resources compiled'
 # ---------------------------------------------------------------- aapt2 link
 $genDir = Join-Path $build 'gen'
 New-Item -ItemType Directory -Force -Path $genDir | Out-Null
+# The custom aapt2/javac pipeline does not run AGP's BuildConfig generator.
+# Emit the same flavor constant that Gradle supplies for the selected APK.
+$buildConfigDir = Join-Path $genDir 'com\vyora\tv'
+New-Item -ItemType Directory -Force -Path $buildConfigDir | Out-Null
+$buildConfigPath = Join-Path $buildConfigDir 'BuildConfig.java'
+$buildConfigSource = @"
+package com.vyora.tv;
+public final class BuildConfig {
+  public static final String FLAVOR = "$Variant";
+}
+"@
+[System.IO.File]::WriteAllText($buildConfigPath, $buildConfigSource, [System.Text.UTF8Encoding]::new($false))
 $baseApk = Join-Path $build 'base.apk'
 $linkArgs = @(
   'link',
