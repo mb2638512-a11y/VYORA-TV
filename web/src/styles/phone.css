@@ -1117,3 +1117,245 @@
 .device-phone .player-hud-actions .hud-action-group:first-child { display: none !important; }
 .device-phone .player-status.player-error { width: min(92vw, 420px); max-height: 78dvh; overflow-y: auto; padding: 18px; gap: 10px; }
 .device-phone .player-error-hint { display: none; }
+
+/* Phone dock: expose Browser alongside the four primary destinations. */
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(7),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) {
+  display: flex !important;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(3),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(4),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(6),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(9),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(10) {
+  display: none !important;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1) { order: 1; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2) { order: 2; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5) { order: 3; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(7) { order: 4; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { order: 5; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav {
+  display: flex !important;
+  width: 100%;
+  gap: 2px;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 54px;
+  padding: 5px 1px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Browser chrome is redesigned as a compact, touch-friendly phone toolbar. */
+.device-phone .chromium-browser {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow: hidden;
+}
+.device-phone .chromium-tabstrip {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  gap: 4px;
+  padding: 4px 6px 0;
+  overflow: hidden;
+}
+.device-phone .chromium-tabs-scroll {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  gap: 3px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .chromium-tab {
+  flex: 0 0 auto;
+  min-width: 74px;
+  max-width: 138px;
+  gap: 5px;
+  padding: 7px 7px;
+  font-size: 11px;
+  border-radius: 8px 8px 0 0;
+}
+.device-phone .chromium-tab-title {
+  min-width: 0;
+  max-width: 62px;
+}
+.device-phone .chromium-tab-dup { display: none !important; }
+.device-phone .chromium-tab-close {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+.device-phone .chromium-newtab-btn {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}
+.device-phone .chromium-tabstrip-controls {
+  flex: 0 0 auto;
+  margin-left: 0;
+  gap: 2px;
+}
+.device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+  width: 29px;
+  min-width: 29px;
+  height: 30px;
+  min-height: 30px;
+  padding: 4px;
+}
+.device-phone .chromium-toolbar {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+  padding: 7px 8px;
+  flex-wrap: initial;
+}
+.device-phone .chromium-nav-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.device-phone .chromium-nav-buttons::-webkit-scrollbar,
+.device-phone .chromium-actions::-webkit-scrollbar { display: none; }
+.device-phone .chromium-nav-buttons .chromium-tool-btn {
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 5px;
+}
+.device-phone .chromium-nav-buttons .chromium-tool-btn:nth-child(4),
+.device-phone .chromium-nav-buttons .chromium-tool-btn:nth-child(5) {
+  display: none;
+}
+.device-phone .chromium-engine-select {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+.device-phone .chromium-engine-trigger {
+  min-width: 0;
+  min-height: 38px;
+  height: 38px;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 9px;
+}
+.device-phone .chromium-engine-trigger-name { font-size: 11px; }
+.device-phone .chromium-omnibox-form {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+.device-phone .chromium-omnibox {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 10px;
+}
+.device-phone .chromium-omnibox-engine-tag,
+.device-phone .chromium-omnibox-ssl { display: none; }
+.device-phone .chromium-omnibox-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px;
+}
+.device-phone .chromium-omnibox-go {
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  margin-left: 2px;
+}
+.device-phone .chromium-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 0 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .chromium-actions > .chromium-tool-btn,
+.device-phone .chromium-actions .chromium-badge-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 6px;
+  justify-content: center;
+}
+.device-phone .chromium-actions .install-app-btn {
+  flex-basis: 36px;
+  width: 36px;
+  min-width: 36px;
+}
+.device-phone .chromium-actions .install-app-btn .chromium-btn-label { display: none; }
+.device-phone .chromium-actions .chromium-zoom-group,
+.device-phone .chromium-actions .chromium-scroll-group { display: none !important; }
+.device-phone .chromium-actions > * { flex-shrink: 0; }
+.device-phone .chromium-find-bar {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+}
+.device-phone .chromium-bookmarks-bar {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+    width: 27px;
+    min-width: 27px;
+    padding: 3px;
+  }
+  .device-phone .chromium-tab { min-width: 66px; max-width: 112px; padding-left: 5px; padding-right: 5px; }
+  .device-phone .chromium-tab-title { max-width: 42px; }
+  .device-phone .chromium-engine-trigger-name { display: none; }
+  .device-phone .phone-tab-shell:not(.menu-open) .topnav-btn { font-size: 9px; }
+}
