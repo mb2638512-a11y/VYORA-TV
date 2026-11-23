@@ -409,7 +409,13 @@ export function PlayerOverlay({
       if (activeEngineId === 'exoplayer') {
         // Direct ExoPlayer mode: play only the selected source and let Media3
         // report/fail this source; VYORA Player retains multi-source racing.
-        nativePlay(stream.url, stream.referer || channel.website || '', stream.ua || '', channel.name, channel.logo)
+        nativePlayMulti([{
+          url: stream.url,
+          referer: stream.referer || channel.website || '',
+          ua: stream.ua || '',
+          hls: Boolean(stream.hls),
+          dash: Boolean(stream.dash),
+        }], channel.name, channel.logo)
       } else {
         // VYORA-managed mode starts with the health-preferred source, then
         // keeps every distinct channel source available for automatic recovery.
