@@ -74,7 +74,7 @@ try {
   } else if (!(await directVideo.count())) {
     throw new Error('VOD player opened without an iframe or native video element')
   }
-  await page.locator('.hud-btn-back').click()
+  await vodPlayer.getByRole('button', { name: 'Back', exact: true }).click()
   await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
