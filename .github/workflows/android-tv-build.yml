@@ -43,11 +43,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
+          git add -f server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
           if git diff --cached --quiet; then
             echo "Generated VOD catalog is already up to date."
           else
             git commit -m "chore: refresh generated VOD catalog [skip ci]"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
       - run: npx tsc --noEmit -p web/tsconfig.json
