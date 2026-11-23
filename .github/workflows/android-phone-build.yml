@@ -48,7 +48,7 @@ jobs:
             echo "Generated VOD catalog is already up to date."
           else
             git commit -m "chore: refresh generated VOD catalog [skip ci]"
-            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
       - run: npx tsc --noEmit -p web/tsconfig.json
