@@ -15,7 +15,7 @@ import {
   requestLookahead,
   resolveFastestStream,
 } from '../lib/api'
-import { downloadStreamM3u, isNative, launchExternalStream, nativePlay, nativePlayMulti, nativeStop } from '../lib/bridge'
+import { downloadStreamM3u, isNative, launchExternalStream, nativePlayMulti, nativeStop } from '../lib/bridge'
 import { Icon } from './Icon'
 
 type Props = {
