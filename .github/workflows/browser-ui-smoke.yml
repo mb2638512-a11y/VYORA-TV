@@ -9,6 +9,8 @@ on:
     branches:
       - fix/browser-search-engines
       - feature/orbit-browser-core-port
+      - feature/android-phone-app
+      - feature/android-tv-app
 
 permissions:
   contents: read
@@ -24,6 +26,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Generate VOD catalog before browser smoke tests
+        run: npm run build:vod
       - name: Install temporary Playwright test runner
         run: npm install --no-save --package-lock=false @playwright/test
       - name: Install Chromium
