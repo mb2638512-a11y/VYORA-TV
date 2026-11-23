@@ -70,7 +70,8 @@ export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
 }
 
 export function nativeStop() {
-  bridge?.stop()
+  // Browser/test bridge stubs may expose only a subset of the native API.
+  bridge?.stop?.()
 }
 
 export function speak(text: string) {
