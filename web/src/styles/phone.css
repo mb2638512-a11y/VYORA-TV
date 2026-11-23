@@ -1359,3 +1359,102 @@
   .device-phone .chromium-engine-trigger-name { display: none; }
   .device-phone .phone-tab-shell:not(.menu-open) .topnav-btn { font-size: 9px; }
 }
+
+
+/* Final phone player bounds: use the containing viewport, not 100vw (which
+   can include system/scrollbar width). Keep every control and video surface in
+   the visible Android screen in both portrait and landscape. */
+.device-phone .player-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  transform: none;
+  contain: layout paint;
+}
+.device-phone .player-stage {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+.device-phone .player-stage .player-video,
+.device-phone .player-stage .player-embed-frame,
+.device-phone .player-stage video,
+.device-phone .player-stage iframe {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border: 0;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+.device-phone .player-expand-toggle {
+  position: absolute !important;
+  right: max(12px, env(safe-area-inset-right)) !important;
+  bottom: max(14px, env(safe-area-inset-bottom)) !important;
+  z-index: 80 !important;
+  max-width: calc(100% - 24px);
+}
+.device-phone .player-close {
+  position: absolute !important;
+  top: max(10px, env(safe-area-inset-top)) !important;
+  right: max(10px, env(safe-area-inset-right)) !important;
+  z-index: 90 !important;
+}
+.device-phone .player-info {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: max(14px, env(safe-area-inset-left)) !important;
+  padding-right: max(14px, env(safe-area-inset-right)) !important;
+  padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
+}
+.device-phone .player-status,
+.device-phone .player-error,
+.device-phone .player-auto-recover {
+  box-sizing: border-box;
+  width: min(100%, 440px);
+  max-width: calc(100% - 24px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.device-phone .player-drawer {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: calc(100dvh - env(safe-area-inset-top)) !important;
+  box-sizing: border-box !important;
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
+.device-phone .player-engine-picker,
+.device-phone .player-external-picker-popover {
+  max-width: calc(100vw - 20px) !important;
+  box-sizing: border-box !important;
+}
+@media (orientation: landscape) {
+  .device-phone .player-info { max-height: 38dvh !important; }
+  .device-phone .player-expand-toggle { bottom: max(10px, env(safe-area-inset-bottom)) !important; }
+}
