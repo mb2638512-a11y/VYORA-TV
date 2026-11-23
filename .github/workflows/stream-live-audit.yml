@@ -44,7 +44,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vyora-stream-audit-${{ github.ref_name }}
+          name: vyora-stream-audit
           path: reports/stream-audit/
           if-no-files-found: warn
           retention-days: 7
