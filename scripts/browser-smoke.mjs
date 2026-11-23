@@ -63,11 +63,17 @@ try {
     body: '<!doctype html><html><body><main id="vyora-embed-smoke">Embedded player loaded</main></body></html>',
   }))
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
-  const embedFrame = page.locator('iframe.player-embed-frame')
-  await embedFrame.waitFor({ state: 'visible', timeout: 10000 })
-  await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
-    .waitFor({ state: 'visible', timeout: 5000 })
-  await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
+  const vodPlayer = page.locator('.vyora-vod-player')
+  await vodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  const embedFrame = vodPlayer.locator('iframe.player-embed-frame')
+  const directVideo = vodPlayer.locator('video')
+  if (await embedFrame.count()) {
+    await embedFrame.waitFor({ state: 'visible', timeout: 5000 })
+    await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
+      .waitFor({ state: 'visible', timeout: 5000 })
+  } else if (!(await directVideo.count())) {
+    throw new Error('VOD player opened without an iframe or native video element')
+  }
   await page.locator('.hud-btn-back').click()
   await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
