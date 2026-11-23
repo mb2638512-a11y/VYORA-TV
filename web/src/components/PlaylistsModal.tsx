@@ -306,6 +306,7 @@ export function PlaylistsModal({
                   >
                     {pl.type === 'xtream' ? 'Xtream Codes' : 'M3U URL'}
                   </span>
+                  {pl.enabled === false ? <span className="badge">Inactive</span> : <span className="badge badge-active">Enabled</span>}
                   {isActive ? (
                     <span className="badge badge-active">
                       <Icon name="check" size={12} /> {t('active')}
