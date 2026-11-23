@@ -38,6 +38,7 @@ import { Icon } from './components/Icon'
 import { ChannelLogo } from './components/ChannelLogo'
 import { ChannelCard, CountryCard, ThemeCard, MovieCard, SeriesCard } from './components/Cards'
 import { PlayerOverlay } from './components/PlayerOverlay'
+import { VodPlayerOverlay } from './components/VodPlayerOverlay'
 import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
@@ -3429,7 +3430,9 @@ export default function App() {
         </div>
       ) : null}
 
-      {playing ? (
+      {playing && (playing.categories?.includes('movies') || playing.categories?.includes('series') || playing.id.startsWith('download-')) ? (
+        <VodPlayerOverlay channel={playing} onExit={closePlayer} />
+      ) : playing ? (
         <PlayerOverlay
           channel={playing}
           country={countryByCode.get(playing.country)}
