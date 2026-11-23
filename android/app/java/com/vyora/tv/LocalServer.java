@@ -216,7 +216,8 @@ public class LocalServer {
                     return;
                 }
                 if (path.equals("/api/proxy")) {
-                    handleStreamProxy(method, query, headers, out, keepAlive);
+                    // Streaming responses close after the media body; do not advertise a reusable socket.
+                    handleStreamProxy(method, query, headers, out, false);
                     return;
                 }
                 if (path.equals("/api/webproxy") || path.equals("/webproxy")) {
