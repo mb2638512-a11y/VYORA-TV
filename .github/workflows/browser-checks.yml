@@ -101,6 +101,9 @@ jobs:
               public static final int player_hint = 1;
             }
           }
+          public final class BuildConfig {
+            public static final String FLAVOR = "phone";
+          }
           EOF
           mapfile -t SOURCES < <(find android/app/java -name '*.java' -print)
           javac -encoding UTF-8 -source 8 -target 8 -Xlint:none \
