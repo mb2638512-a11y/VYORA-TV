@@ -101,6 +101,9 @@ jobs:
               public static final int player_hint = 1;
             }
           }
+          EOF
+          cat > "$RUNNER_TEMP/vyora-stub/com/vyora/tv/BuildConfig.java" <<'EOF'
+          package com.vyora.tv;
           public final class BuildConfig {
             public static final String FLAVOR = "phone";
           }
