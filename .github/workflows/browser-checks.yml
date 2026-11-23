@@ -111,5 +111,6 @@ jobs:
           mapfile -t SOURCES < <(find android/app/java -name '*.java' -print)
           javac -encoding UTF-8 -source 8 -target 8 -Xlint:none \
             -classpath "$CP" -d "$RUNNER_TEMP/vyora-classes" \
-            "$RUNNER_TEMP/vyora-stub/com/vyora/tv/R.java" "${SOURCES[@]}"
+            "$RUNNER_TEMP/vyora-stub/com/vyora/tv/R.java" \
+            "$RUNNER_TEMP/vyora-stub/com/vyora/tv/BuildConfig.java" "${SOURCES[@]}"
           echo "Compiled ${#SOURCES[@]} Android Java source files; no APK was built."
