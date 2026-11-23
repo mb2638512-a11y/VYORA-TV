@@ -68,7 +68,8 @@ try {
   await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
     .waitFor({ state: 'visible', timeout: 5000 })
   await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
-  await page.locator('.hud-btn-back').click()
+  // Exit through the supported Escape/Back action rather than a TV-only HUD button.
+  await page.keyboard.press('Escape')
   await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
@@ -106,6 +107,10 @@ try {
   // Phone-first navigation: portrait viewport, persistent bottom navigation,
   // touch-sized controls, and a working Movies route without horizontal page overflow.
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => {
+    document.documentElement.dataset.device = 'phone'
+    document.body.classList.add('device-phone')
+  })
   const phoneNavWrapper = page.locator('.mobile-bottom-nav')
   const phoneNav = phoneNavWrapper.locator('.topnav')
   await phoneNav.getByRole('button', { name: 'Home', exact: true }).click()
@@ -148,6 +153,20 @@ try {
       phoneMovieLayout.right > phoneMovieLayout.viewport + 2) {
     throw new Error('Movie card does not fit portrait phone viewport: ' + JSON.stringify(phoneMovieLayout))
   }
+  await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
+  await page.locator('iframe.player-embed-frame').waitFor({ state: 'visible', timeout: 10000 })
+  const phonePlayerBounds = await page.locator('.player-overlay').evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight }
+  })
+  if (phonePlayerBounds.left < -2 || phonePlayerBounds.top < -2 ||
+      phonePlayerBounds.right > phonePlayerBounds.viewportWidth + 2 ||
+      phonePlayerBounds.bottom > phonePlayerBounds.viewportHeight + 2) {
+    throw new Error('Phone player escapes the device viewport: ' + JSON.stringify(phonePlayerBounds))
+  }
+  await page.keyboard.press('Escape')
+  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
   await page.setViewportSize({ width: 1440, height: 900 })
