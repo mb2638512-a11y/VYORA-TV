@@ -1440,7 +1440,7 @@ export default function App() {
               <Icon name="home" size={16} /> {t('home')}
             </button>
             <button
-              className={`topnav-btn ${view.name === 'movies' || view.name === 'moviebox' ? 'active' : ''}`}
+              className={`topnav-btn ${view.name === 'movies' || view.name === 'moviebox' || view.name === 'series' ? 'active' : ''}`}
               data-focusable
               onClick={() => {
                 setView({ name: 'movies' })
