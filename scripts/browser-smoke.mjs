@@ -69,7 +69,7 @@ try {
     .waitFor({ state: 'visible', timeout: 5000 })
   await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
   await page.locator('.hud-btn-back').click()
-  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
+  await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
   // Movies and series now share one library screen; verify both collections coexist.
@@ -177,9 +177,9 @@ try {
       throw new Error('TV D-pad navigation skipped a primary tab: expected ' + expectedText + ', got ' + focusedText)
     }
   }
-  const tvNavScroll = await tvNav.evaluate((element) => element.scrollLeft)
-  if (tvNavScroll <= 0) {
-    throw new Error('TV D-pad navigation did not scroll the primary navigation rail to reveal later tabs')
+  const tvNavMetrics = await tvNav.evaluate((element) => ({ scrollLeft: element.scrollLeft, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }))
+  if (tvNavMetrics.scrollWidth > tvNavMetrics.clientWidth + 2 && tvNavMetrics.scrollLeft <= 0) {
+    throw new Error('TV D-pad navigation did not scroll an overflowing primary navigation rail: ' + JSON.stringify(tvNavMetrics))
   }
 
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
