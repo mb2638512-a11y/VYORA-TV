@@ -423,7 +423,7 @@ export function PlayerOverlay({
         const candidates = orderedSources
           .filter((s) => typeof s?.url === 'string' && s.url.trim().length > 0)
           .filter((s, i, all) => all.findIndex((item) => item.url === s.url) === i)
-          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
+          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '', hls: Boolean(s.hls), dash: Boolean(s.dash) }))
         nativePlayMulti(candidates, channel.name, channel.logo)
       }
       setStatus('loading')
