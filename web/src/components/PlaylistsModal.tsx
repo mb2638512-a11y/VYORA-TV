@@ -340,11 +340,13 @@ export function PlaylistsModal({
                     <button className="btn btn-ghost btn-sm" disabled style={{ opacity: 0.8 }}>
                       <Icon name="check" size={14} /> Selected
                     </button>
+                  ) : pl.enabled === false ? (
+                    <button className="btn btn-ghost btn-sm" disabled><Icon name="pause" size={14} /> Inactive</button>
                   ) : (
                     <button
                       className="btn btn-primary btn-sm"
                       data-focusable
-                      onClick={() => onSelectPlaylist({ ...pl, enabled: true })}
+                      onClick={() => onSelectPlaylist(pl)}
                     >
                       <Icon name="play" size={14} /> {t('switchPlaylist')}
                     </button>
