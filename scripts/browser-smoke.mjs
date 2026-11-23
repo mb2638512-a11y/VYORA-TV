@@ -142,7 +142,7 @@ try {
   if (phoneOverflow.content > phoneOverflow.viewport + 2) {
     throw new Error('Phone home screen overflows horizontally: ' + JSON.stringify(phoneOverflow))
   }
-  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  await page.getByRole('button', { name: 'Movies & Series', exact: true }).click()
   await page.locator('.movie-card').first().waitFor({ state: 'visible', timeout: 10000 })
   const phoneMovieLayout = await page.locator('.movie-card').first().evaluate((element) => {
     const rect = element.getBoundingClientRect()
