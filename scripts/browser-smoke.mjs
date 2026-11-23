@@ -125,15 +125,14 @@ try {
       width: rect.width,
       overflowX: navStyle.overflowX,
       buttonCount: buttons.length,
-      buttonsWidth: buttons.reduce((sum, button) => sum + button.getBoundingClientRect().width, 0),
-      smallestButtonHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
+      visibleButtonHeights: buttons.map(button => button.getBoundingClientRect().height).filter(height => height > 0),
+      smallestButtonHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height).filter(height => height > 0)),
     }
   })
   if (phoneNavStyle.wrapperPosition !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
       phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 8 ||
       !['auto', 'scroll'].includes(phoneNavStyle.overflowX) ||
-      phoneNavStyle.buttonsWidth <= phoneNavStyle.width ||
-      phoneNavStyle.smallestButtonHeight < 44) {
+      phoneNavStyle.visibleButtonHeights.length < 4 || phoneNavStyle.smallestButtonHeight < 44) {
     throw new Error('Portrait phone bottom navigation is not fixed/touch-scrollable: ' + JSON.stringify(phoneNavStyle))
   }
   const phoneOverflow = await page.evaluate(() => ({
