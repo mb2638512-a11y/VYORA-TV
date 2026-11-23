@@ -584,7 +584,7 @@ export default function App() {
           if (alive) setVodLoading(false)
         })
     }
-    if (view.name === 'series' && !series.length) {
+    if ((view.name === 'movies' || view.name === 'moviebox' || view.name === 'series') && !series.length) {
       setVodLoading(true)
       loadSeries()
         .then((list) => {
