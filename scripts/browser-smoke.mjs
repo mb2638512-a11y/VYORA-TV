@@ -165,7 +165,7 @@ try {
     throw new Error('Phone player escapes the device viewport: ' + JSON.stringify(phonePlayerBounds))
   }
   await page.keyboard.press('Escape')
-  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
+  await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
   await page.setViewportSize({ width: 1440, height: 900 })
