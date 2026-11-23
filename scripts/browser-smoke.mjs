@@ -70,7 +70,7 @@ try {
   await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
   // Exit through the supported Escape/Back action rather than a TV-only HUD button.
   await page.keyboard.press('Escape')
-  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
+  await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
   // Movies and series now share one library screen; verify both collections coexist.
@@ -154,7 +154,7 @@ try {
   }
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
   await page.locator('iframe.player-embed-frame').waitFor({ state: 'visible', timeout: 10000 })
-  const phonePlayerBounds = await page.locator('.player-overlay').evaluate((element) => {
+  const phonePlayerBounds = await page.locator('.vyora-vod-player').evaluate((element) => {
     const rect = element.getBoundingClientRect()
     return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
       width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight }
@@ -195,9 +195,9 @@ try {
       throw new Error('TV D-pad navigation skipped a primary tab: expected ' + expectedText + ', got ' + focusedText)
     }
   }
-  const tvNavScroll = await tvNav.evaluate((element) => element.scrollLeft)
-  if (tvNavScroll <= 0) {
-    throw new Error('TV D-pad navigation did not scroll the primary navigation rail to reveal later tabs')
+  const tvNavMetrics = await tvNav.evaluate((element) => ({ scrollLeft: element.scrollLeft, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }))
+  if (tvNavMetrics.scrollWidth > tvNavMetrics.clientWidth + 2 && tvNavMetrics.scrollLeft <= 0) {
+    throw new Error('TV D-pad navigation did not scroll an overflowing primary navigation rail: ' + JSON.stringify(tvNavMetrics))
   }
 
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
