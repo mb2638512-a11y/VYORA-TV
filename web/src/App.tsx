@@ -416,7 +416,7 @@ export default function App() {
 
   const activePlaylist = useMemo(() => {
     if (activePlaylistId === 'default') return null
-    return playlists.find((p) => p.id === activePlaylistId) || null
+    return playlists.find((p) => p.id === activePlaylistId && p.enabled !== false) || null
   }, [activePlaylistId, playlists])
 
   /* ---------------- data bootstrap ---------------- */
@@ -3331,6 +3331,10 @@ export default function App() {
           }}
           onSavePlaylist={(newPl) => {
             setPlaylists((prev) => [...prev.filter((p) => p.id !== newPl.id), newPl])
+          }}
+          onTogglePlaylist={(id, enabled) => {
+            setPlaylists((prev) => prev.map((p) => p.id === id ? { ...p, enabled } : p))
+            if (!enabled && activePlaylistId === id) setActivePlaylistId('default')
           }}
           onDeletePlaylist={(id) => {
             setPlaylists((prev) => prev.filter((p) => p.id !== id))
