@@ -64,7 +64,18 @@ try {
   }))
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
   const vodPlayer = page.locator('.vyora-vod-player')
-  await vodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  try {
+    await vodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  } catch {
+    const diagnostics = await page.evaluate(() => ({
+      title: document.title,
+      playerNodes: document.querySelectorAll('.vyora-vod-player').length,
+      movieCards: Array.from(document.querySelectorAll('.movie-card')).slice(0, 3).map((el) => el.textContent?.trim()),
+      bodyTail: document.body.innerText.slice(-900),
+      activeElement: document.activeElement?.outerHTML?.slice(0, 300) || '',
+    }))
+    throw new Error('VOD player did not open after movie selection: ' + JSON.stringify({ diagnostics, pageErrors }))
+  }
   const embedFrame = vodPlayer.locator('iframe.player-embed-frame')
   const directVideo = vodPlayer.locator('video')
   if (await embedFrame.count()) {
