@@ -367,11 +367,16 @@ public class MainActivity extends Activity {
             String[] originalUrls = new String[n];
             String[] referers = new String[n];
             String[] uas = new String[n];
+            String[] mimeTypes = new String[n];
             for (int i = 0; i < n; i++) {
                 org.json.JSONObject o = arr.getJSONObject(i);
                 originalUrls[i] = o.optString("url", "");
                 referers[i] = o.optString("referer", "");
                 uas[i] = o.optString("ua", "");
+                mimeTypes[i] = o.optBoolean("hls", false)
+                        ? androidx.media3.common.MimeTypes.APPLICATION_M3U8
+                        : (o.optBoolean("dash", false)
+                            ? androidx.media3.common.MimeTypes.APPLICATION_MPD : "");
                 urls[i] = localServer != null
                         ? localServer.proxyUrl(originalUrls[i], referers[i], uas[i], "")
                         : originalUrls[i];
@@ -379,7 +384,7 @@ public class MainActivity extends Activity {
             surface.setVisibility(View.VISIBLE);
             surface.bringToFront();
             showNativeLoading(title);
-            player.play(urls, referers, uas, originalUrls);
+            player.play(urls, referers, uas, originalUrls, mimeTypes);
             showOverlay(title, "");
             showPhonePlayerControls();
         } catch (Throwable t) {
