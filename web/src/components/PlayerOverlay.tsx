@@ -448,7 +448,10 @@ export function PlayerOverlay({
 
     if (!video) return
 
-    const useProxy = currentMode() === 'server'
+    // Android's embedded LocalServer exposes the same /api/proxy endpoint even
+    // when the catalogue itself is loaded from bundled static JSON. Use it for
+    // WebView HLS/HTML5 engines as well as the native Media3 player.
+    const useProxy = currentMode() === 'server' || isNative
     const src = useProxy
       ? buildProxyUrl(stream.url, stream.referer, stream.ua, channel.id)
       : stream.url
