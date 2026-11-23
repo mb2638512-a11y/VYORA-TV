@@ -38,7 +38,7 @@ try {
   await page.waitForTimeout(1200)
 
   // Exercise the newly integrated entertainment hubs against the local catalogue.
-  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  await page.getByRole('button', { name: 'Movies & Series', exact: true }).click()
   const movieCards = page.locator('.movie-card')
   await movieCards.first().waitFor({ state: 'visible', timeout: 15000 })
   if (await movieCards.count() !== 48) {
@@ -72,13 +72,13 @@ try {
   await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
-  await page.getByRole('button', { name: 'Series', exact: true }).click()
+  // Movies and series now share one library screen; verify both collections coexist.
   const seriesCards = page.locator('.series-card')
   await seriesCards.first().waitFor({ state: 'visible', timeout: 10000 })
   if (await seriesCards.count() !== 23) {
     throw new Error('Series hub expected 23 catalogue entries, found ' + await seriesCards.count())
   }
-  const seriesSearch = page.locator('.moviebox-search-input').first()
+  const seriesSearch = page.locator('.moviebox-search-input').nth(1)
   await seriesSearch.fill('House of the Dragon')
   if (await seriesCards.count() !== 1) {
     throw new Error('Series search should return exactly House of the Dragon')
@@ -125,7 +125,7 @@ try {
     }
   })
   if (phoneNavStyle.wrapperPosition !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
-      phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 8 ||
+      phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 7 ||
       !['auto', 'scroll'].includes(phoneNavStyle.overflowX) ||
       phoneNavStyle.buttonsWidth <= phoneNavStyle.width ||
       phoneNavStyle.smallestButtonHeight < 44) {
