@@ -60,6 +60,8 @@ public class TvPlayer {
     private String[] urls = new String[0];
     private String[] referers = new String[0];
     private String[] uas = new String[0];
+    // Original catalogue URLs are retained for accurate UI/health callbacks when playback uses the local proxy.
+    private String[] reportedUrls = new String[0];
     private int nextCandidateIndex = 0;
     private int activeAttempts = 0;
     private long playbackStartedAt;
@@ -129,11 +131,18 @@ public class TvPlayer {
 
     /** Start with one source, then stagger one alternate if the first is slow. */
     public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas) {
+        play(candidateUrls, candidateReferers, candidateUas, candidateUrls);
+    }
+
+    /** Play proxied URLs while reporting the original catalogue URLs to the web UI. */
+    public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas,
+                     String[] originalUrls) {
         if (candidateUrls == null || candidateUrls.length == 0) return;
         release();
         urls = candidateUrls.clone();
         referers = candidateReferers != null ? candidateReferers.clone() : new String[0];
         uas = candidateUas != null ? candidateUas.clone() : new String[0];
+        reportedUrls = originalUrls != null ? originalUrls.clone() : candidateUrls.clone();
         candidateSetKey = buildCandidateSetKey(urls);
         applyRememberedSourceOrder();
         nextCandidateIndex = 0;
@@ -180,6 +189,7 @@ public class TvPlayer {
         rotateToFront(urls, preferred);
         rotateToFront(referers, preferred);
         rotateToFront(uas, preferred);
+        rotateToFront(reportedUrls, preferred);
         Log.i(TAG, "remembered healthy source promoted to first position");
     }
 
@@ -355,7 +365,7 @@ public class TvPlayer {
                         Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" + startupMs);
                         if (lastNotifiedSourceIndex != index && playbackListener != null) {
                             lastNotifiedSourceIndex = index;
-                            playbackListener.onFirstFrame(urls[index], startupMs);
+                            playbackListener.onFirstFrame(index < reportedUrls.length ? reportedUrls[index] : urls[index], startupMs);
                         }
                         // Keep a prepared alternate only until the selected source
                         // proves it can render. Once the first frame is visible,
@@ -382,7 +392,8 @@ public class TvPlayer {
             // is selected and attached to the visible surface.
             candidatePlayer.setPlayWhenReady(false);
             MediaItem.Builder mediaItem = new MediaItem.Builder().setUri(url);
-            String lowerUrl = url.toLowerCase(java.util.Locale.US);
+            String mimeHintUrl = index < reportedUrls.length ? reportedUrls[index] : url;
+            String lowerUrl = mimeHintUrl.toLowerCase(java.util.Locale.US);
             if (lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
                 mediaItem.setMimeType(MimeTypes.APPLICATION_M3U8);
             } else if (lowerUrl.contains(".mpd")) {
@@ -402,7 +413,7 @@ public class TvPlayer {
             }
             cancelWatchdog(index);
             if (playbackListener != null && index >= 0 && index < urls.length) {
-                playbackListener.onSourceFailed(urls[index],
+                playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index],
                         SystemClock.elapsedRealtime() - candidateStartedAt);
             }
             startMoreCandidates();
@@ -466,7 +477,7 @@ public class TvPlayer {
         if (player != failedPlayer || !winnerChosen) return;
         Log.w(TAG, "active source " + index + " failed: " + reason);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index], 0L);
+            playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index], 0L);
         }
         cancelFirstFrameWatchdog();
         player = null;
@@ -581,6 +592,7 @@ public class TvPlayer {
         urls = new String[0];
         referers = new String[0];
         uas = new String[0];
+        reportedUrls = new String[0];
         nextCandidateIndex = 0;
     }
 
