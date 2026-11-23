@@ -35,6 +35,8 @@ jobs:
       - run: npm ci
       - run: npm run data
       - run: npm run build:vod
+      - name: Validate all VOD catalogue mirrors before packaging
+        run: npm run validate:vod
       - name: Commit generated VOD catalog for the app and API
         shell: bash
         run: |
