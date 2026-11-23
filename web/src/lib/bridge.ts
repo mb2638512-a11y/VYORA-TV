@@ -8,7 +8,7 @@ type AndroidBridge = {
   isTvDevice?(): boolean
   play(url: string, referer: string, ua: string, title: string, logo: string): void
   playMulti?(candidates: string, title: string, logo: string): void
-  stop(): void
+  stop?(): void
   setVolume(volume: number): void
   getVolume(): number
   speak(text: string): void
@@ -71,7 +71,7 @@ export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
 
 export function nativeStop() {
   // Browser/test bridge stubs may expose only a subset of the native API.
-  bridge?.stop?.()
+  if (typeof bridge?.stop === 'function') bridge.stop()
 }
 
 export function speak(text: string) {
