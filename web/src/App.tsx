@@ -241,7 +241,10 @@ export default function App() {
   const [movieboxSearch, setMovieboxSearch] = useState('')
   const [movieboxGenre, setMovieboxGenre] = useState('all')
   const [movieQualityFilter, setMovieQualityFilter] = useState('all')
-  const [movieSort, setMovieSort] = useState<'trending' | 'rating' | 'year' | 'title'>('trending')
+  const [movieSort, setMovieSort] = useState<'trending' | 'rating' | 'year' | 'title'>('year')
+  const [movieYearFilter, setMovieYearFilter] = useState('all')
+  const [seriesYearFilter, setSeriesYearFilter] = useState('all')
+  const [seriesSort, setSeriesSort] = useState<'newest' | 'rating' | 'title'>('newest')
   const [seriesSearch, setSeriesSearch] = useState('')
   const [songsSearch, setSongsSearch] = useState('')
   const [network, setNetwork] = useState<{
@@ -1147,8 +1150,13 @@ export default function App() {
     return movies.filter((m) => m.genre && m.genre.toLowerCase() === gLower)
   }, [movies, movieGenre])
 
+  const movieYears = useMemo(() => Array.from(new Set([new Date().getFullYear(), ...movies.map((m) => Number(m.year)).filter((y) => Number.isFinite(y) && y > 0)])).sort((a, b) => b - a), [movies])
+
+  const seriesYears = useMemo(() => Array.from(new Set([new Date().getFullYear(), ...series.map((item) => Number(item.year)).filter((y) => Number.isFinite(y) && y > 0)])).sort((a, b) => b - a), [series])
+
   const movieboxFiltered = useMemo(() => {
     let list = movies
+    if (movieYearFilter !== 'all') list = list.filter((m) => String(m.year || '') === movieYearFilter)
     if (movieboxGenre !== 'all') {
       const g = movieboxGenre.toLowerCase()
       list = list.filter((m) => (m.genre || '').toLowerCase().includes(g))
@@ -1174,7 +1182,7 @@ export default function App() {
       list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
     }
     return list
-  }, [movies, movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+  }, [movies, movieYearFilter, movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
 
   const spotlightMovie = useMemo(() => {
     return movies.find((m) => m.backdrop) || movies[0] || null
@@ -1193,6 +1201,7 @@ export default function App() {
 
   const visibleSeries = useMemo(() => {
     let list = series
+    if (seriesYearFilter !== 'all') list = list.filter((item) => String(item.year || '') === seriesYearFilter)
     if (seriesGenre !== 'all') {
       const gLower = seriesGenre.toLowerCase()
       list = list.filter((s) => s.genre && s.genre.toLowerCase() === gLower)
@@ -1206,8 +1215,11 @@ export default function App() {
           (s.description || '').toLowerCase().includes(q),
       )
     }
+    if (seriesSort === 'rating') list = [...list].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
+    else if (seriesSort === 'title') list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+    else list = [...list].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0))
     return list
-  }, [series, seriesGenre, seriesSearch])
+  }, [series, seriesYearFilter, seriesGenre, seriesSearch, seriesSort])
 
   const songsFiltered = useMemo(() => {
     let list = songs
@@ -1233,7 +1245,7 @@ export default function App() {
   // Keep large VOD grids lightweight on Android TV and low-memory devices.
   useEffect(() => {
     setMovieShownCount(48)
-  }, [movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+  }, [movieboxGenre, movieYearFilter, movieQualityFilter, movieboxSearch, movieSort])
 
   useEffect(() => {
     setSongsShownCount(240)
@@ -2405,6 +2417,11 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="moviebox-genre-chips" aria-label="Filter movies by release year">
+                <button className={`chip ${movieYearFilter === 'all' ? 'active' : ''}`} data-focusable onClick={() => setMovieYearFilter('all')}>All Years</button>
+                {movieYears.map((year) => <button key={year} className={`chip ${movieYearFilter === String(year) ? 'active' : ''}`} data-focusable onClick={() => setMovieYearFilter(String(year))}>{year}</button>)}
+              </div>
+
               <div className="moviebox-genre-chips">
                 {['all', 'Action', 'Sci-Fi', 'Comedy', 'Drama', 'Animation', 'Horror', 'Adventure', 'Crime', 'Classic'].map((g) => (
                   <button
@@ -2504,6 +2521,14 @@ export default function App() {
                     ✕
                   </button>
                 ) : null}
+              </div>
+
+              <div className="moviebox-genre-chips" aria-label="Sort series">
+                {(['newest', 'rating', 'title'] as const).map((sort) => <button key={sort} className={`chip ${seriesSort === sort ? 'active' : ''}`} data-focusable onClick={() => setSeriesSort(sort)}>{sort === 'newest' ? 'Latest' : sort === 'rating' ? 'Top Rated' : 'A-Z'}</button>)}
+              </div>
+              <div className="moviebox-genre-chips" aria-label="Filter series by release year">
+                <button className={`chip ${seriesYearFilter === 'all' ? 'active' : ''}`} data-focusable onClick={() => setSeriesYearFilter('all')}>All Years</button>
+                {seriesYears.map((year) => <button key={year} className={`chip ${seriesYearFilter === String(year) ? 'active' : ''}`} data-focusable onClick={() => setSeriesYearFilter(String(year))}>{year}</button>)}
               </div>
 
               <div className="moviebox-genre-chips">
