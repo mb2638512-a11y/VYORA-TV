@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
 import type { Channel, Stream } from '../types'
-import { nativeStop } from '../lib/bridge'
+import { nativeStop, isNative } from '../lib/bridge'
+import { buildProxyUrl, currentMode } from '../lib/api'
 
 type Props = {
   channel: Channel
@@ -70,7 +71,7 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: false, backBufferLength: 30 })
       hlsRef.current = hls
-      hls.loadSource(stream.url)
+      hls.loadSource(playbackUrl)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (saved > 0) video.currentTime = saved
@@ -80,7 +81,7 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
         if (data.fatal) setError('This video source could not be decoded. Try another source or use the provider player.')
       })
     } else {
-      video.src = stream.url
+      video.src = playbackUrl
       const onReady = () => {
         if (saved > 0 && Number.isFinite(video.duration) && saved < video.duration - 10) video.currentTime = saved
         void video.play().catch(() => setShowControls(true))
