@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
-import type { Channel, Stream } from '../types'
+import type { Channel, Episode, Stream } from '../types'
 import { nativeStop, isNative } from '../lib/bridge'
 import { buildProxyUrl, currentMode } from '../lib/api'
 
 type Props = {
   channel: Channel
   onExit: () => void
+  episodes?: Episode[]
+  currentEpisodeId?: string
+  onEpisodeSelect?: (episode: Episode) => void
 }
 
 /**
@@ -15,7 +18,7 @@ type Props = {
  * Provider embed pages stay in an iframe because their media URL is not exposed
  * to the app. Direct MP4/HLS/DASH-compatible sources use the built-in controls.
  */
-export function VodPlayerOverlay({ channel, onExit }: Props) {
+export function VodPlayerOverlay({ channel, onExit, episodes = [], currentEpisodeId, onEpisodeSelect }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
   const [sourceIndex, setSourceIndex] = useState(0)
@@ -33,6 +36,7 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
   const isEmbed = Boolean((stream as (Stream & { embed?: boolean }) | undefined)?.embed ||
     (stream?.url && /(\/embed\/|autoembed|vidsrc|vidlink|multiembed|player\.php)/i.test(stream.url)))
   const progressKey = `vyora.vod.progress.${channel.id}`
+  const episodeIndex = episodes.findIndex((episode) => String(episode.id) === String(currentEpisodeId))
 
   const exit = useCallback(() => {
     hlsRef.current?.destroy()
@@ -233,6 +237,10 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
         {error && <div role="alert" style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 10, background: '#7f1d1d', color: '#fff' }}>{error}</div>}
       </main>
       <footer style={{ padding: '10px 16px max(12px, env(safe-area-inset-bottom))', color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
+        {episodes.length > 1 && episodeIndex >= 0 && <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
+          <button type="button" disabled={episodeIndex <= 0} onClick={() => onEpisodeSelect?.(episodes[episodeIndex - 1])} style={{ ...smallButtonStyle, opacity: episodeIndex <= 0 ? 0.4 : 1 }}>‹ Previous episode</button>
+          <button type="button" disabled={episodeIndex >= episodes.length - 1} onClick={() => onEpisodeSelect?.(episodes[episodeIndex + 1])} style={{ ...smallButtonStyle, opacity: episodeIndex >= episodes.length - 1 ? 0.4 : 1 }}>Next episode ›</button>
+        </div>}
         {isEmbed ? 'Provider video player • use its playback controls' : '← / →: seek 10 seconds • Space: play / pause • Back: close'}
       </footer>
     </div>
