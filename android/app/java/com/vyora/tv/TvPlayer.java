@@ -531,7 +531,7 @@ public class TvPlayer {
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index],
+            playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index],
                     SystemClock.elapsedRealtime() - candidateStartedAt);
         }
         safeRelease(failedPlayer);
