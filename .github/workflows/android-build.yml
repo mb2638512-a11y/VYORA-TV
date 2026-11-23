@@ -61,6 +61,10 @@ jobs:
 
       - name: Build bundled channel data
         run: npm run data
+      - name: Build and validate movies, series and music catalogues
+        run: |
+          npm run build:vod
+          npm run validate:vod
 
       - name: Build web app
         run: npm --workspace web run build
