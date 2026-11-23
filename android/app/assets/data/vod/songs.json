@@ -1335,11 +1335,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://tvi-live-hls.akamaized.net/hls/live/2038650/TVI-Live-HLS/master.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "BelRTL.be-0",
         "url": "https://bel-live-hls.akamaized.net/hls/live/2038650/BEL-Live-HLS/master.m3u8",
         "quality": "1080p",
@@ -5510,11 +5505,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://ocko-live.ssl.cdn.cra.cz/channels/ocko_gold/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "OckoStar.cz-0",
         "url": "https://dash4.antik.sk/live/test_ocko_star/playlist.m3u8",
         "quality": "",
@@ -6898,8 +6888,8 @@
     ],
     "country": "EE",
     "website": "https://www.dancetv.net/tech-house/",
-    "logo": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
-    "icon": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
+    "logo": "",
+    "icon": "",
     "launched": null,
     "closed": null,
     "lang": "",
@@ -14089,11 +14079,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://company.fluid.stream/CompanyTV/smil:Company_ALL.smil/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "CompanyTV.it-0",
         "url": "https://5929b138b139d.streamlock.net/CompanyTV/smil:CompanyTV.smil/master.m3u8",
         "quality": "720p",
@@ -14152,11 +14137,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://stream1.xdevel.com/video0s975817-1182/stream/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "FMITALIA.it-0",
         "url": "https://stream2.xdevel.com/video0s975817-1183/stream/playlist.m3u8",
         "quality": "1080p",
@@ -14214,11 +14194,6 @@
     "closed": null,
     "lang": "",
     "streams": [
-      {
-        "url": "https://kk.fluid.stream/KKMulti/smil:KissKissTV.smil/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
       {
         "id": "KissKissTV.it-0",
         "url": "https://58f12ffd2447a.streamlock.net/KKMulti/livestream/playlist.m3u8",
@@ -14295,11 +14270,6 @@
     "closed": null,
     "lang": "",
     "streams": [
-      {
-        "url": "https://router.xdevel.com/video0s975758-473/stream/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
       {
         "id": "RadioBrunoTV.it-0",
         "url": "http://stream7.xdevel.com/video0s975758-1051/stream/playlist.m3u8",
@@ -14400,11 +14370,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://tvd-piter.fluid.stream/RadioPiterpanTV/livestream/chunklist_w1866496033.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "RadioPiterPanTV.it-0",
         "url": "https://58d921499d3d3.streamlock.net/RadioPiterpanTV/livestream/playlist.m3u8",
         "quality": "720p",
@@ -14433,11 +14398,6 @@
     "closed": null,
     "lang": "",
     "streams": [
-      {
-        "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S9346184/XEx1LqlYbNic/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
       {
         "id": "RadioZeta.it-0",
         "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S9346184/XEx1LqlYbNic/playlist_video.m3u8",
@@ -14478,11 +14438,6 @@
     "closed": null,
     "lang": "",
     "streams": [
-      {
-        "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S3160845/0tuSetc8UFkF/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
       {
         "id": "Radiofreccia.it-0",
         "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S3160845/0tuSetc8UFkF/playlist_video.m3u8",
@@ -14677,11 +14632,6 @@
     "closed": null,
     "lang": "",
     "streams": [
-      {
-        "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S38122967/2lyQRIAAGgRR/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
       {
         "id": "RTL1025Traffic.it-0",
         "url": "https://dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S38122967/2lyQRIAAGgRR/playlist_video.m3u8",
@@ -18513,11 +18463,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://w2.manasat.com/kmusic/kmusic.smil/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "KuriakosMusic.pt-0",
         "url": "http://195.23.211.179:1935/kmusic/smil:kmusic.smil/playlist.m3u8",
         "quality": "1080p",
@@ -21018,11 +20963,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://streaming102.interskytech.com/live/618.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "MuzTV.ru-0",
         "url": "http://31.148.5.241/kanal_20/index.m3u8",
         "quality": "576p",
@@ -23343,11 +23283,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://lightning-now80s-samsunguk.amagi.tv/playlist.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "Now80s.uk-0",
         "url": "https://lightning-now80s-rakuten.amagi.tv/hls/amagi_hls_data_rakutenAA-lightning-now80s-rakuten/CDN/playlist.m3u8",
         "quality": "1080p",
@@ -23619,8 +23554,8 @@
     ],
     "country": "UK",
     "website": "http://www.thats.tv/",
-    "logo": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
-    "icon": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
+    "logo": "",
+    "icon": "",
     "launched": null,
     "closed": null,
     "lang": "",
@@ -25286,11 +25221,6 @@
     "lang": "",
     "streams": [
       {
-        "url": "https://FFFFFFF110156200.tvustream.com/ryfy.m3u8",
-        "quality": "",
-        "label": "HLS"
-      },
-      {
         "id": "StrykTV.us-0",
         "url": "https://fffffff110156200.tvustream.com:8298/ryfy.m3u8",
         "quality": "1080p",
@@ -25351,8 +25281,8 @@
     ],
     "country": "US",
     "website": "",
-    "logo": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
-    "icon": "https://raw.githubusercontent.com/wizakorhd/iptv/main/docs/logos/genre/music.png",
+    "logo": "",
+    "icon": "",
     "launched": null,
     "closed": null,
     "lang": "",
