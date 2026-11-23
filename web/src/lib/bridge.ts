@@ -46,7 +46,7 @@ export function nativePlay(url: string, referer = '', ua = '', title = '', logo 
  * black screen.
  */
 export function nativePlayMulti(
-  candidates: Array<{ url: string; referer?: string; ua?: string }>,
+  candidates: Array<{ url: string; referer?: string; ua?: string; hls?: boolean; dash?: boolean }>,
   title = '',
   logo = '',
 ) {
