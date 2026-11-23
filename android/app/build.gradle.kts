@@ -76,6 +76,6 @@ dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     // DASH sources need the Media3 DASH media-source module at runtime.
-    implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.4.1") { isTransitive = false }
     implementation("com.google.android.material:material:1.13.0")
 }
