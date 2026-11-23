@@ -189,7 +189,7 @@ export function VodPlayerOverlay({ channel, onExit }: Props) {
       </header>
       <main style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }} onClick={() => setShowControls((value) => !value)}>
         {isEmbed && stream ? (
-          <iframe title={channel.name} src={stream.url} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="no-referrer-when-downgrade" style={{ width: '100%', height: '100%', border: 0, background: '#000' }} />
+          <iframe className="player-embed-frame" title={channel.name} src={stream.url} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="no-referrer-when-downgrade" style={{ width: '100%', height: '100%', border: 0, background: '#000' }} />
         ) : (
           <>
             <video ref={videoRef} playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: fit, background: '#000' }} onError={() => {
