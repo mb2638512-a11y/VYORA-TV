@@ -10,6 +10,7 @@ export function PlaylistsModal({
   onSelectPlaylist,
   onSavePlaylist,
   onDeletePlaylist,
+  onTogglePlaylist,
   onClose,
   t,
 }: {
@@ -18,6 +19,7 @@ export function PlaylistsModal({
   onSelectPlaylist: (playlist: CustomPlaylist | null) => void
   onSavePlaylist: (playlist: CustomPlaylist) => void
   onDeletePlaylist: (id: string) => void
+  onTogglePlaylist: (id: string, enabled: boolean) => void
   onClose: () => void
   t: (key: string) => string
 }) {
@@ -31,7 +33,7 @@ export function PlaylistsModal({
     try {
       const res = await importM3UPlaylist(item.url)
       if (!res.ok || !res.total) throw new Error(res.error || 'No entries found in this playlist.')
-      const playlist: CustomPlaylist = { id: 'catalog-' + item.id, name: item.name, type: 'm3u', url: item.url, channelsCount: res.total, addedAt: Date.now() }
+      const playlist: CustomPlaylist = { id: 'catalog-' + item.id, name: item.name, type: 'm3u', url: item.url, channelsCount: res.total, addedAt: Date.now(), enabled: true }
       onSavePlaylist(playlist); onSelectPlaylist(playlist); setTab('list')
     } catch (error: any) { setCatalogMessage(item.name + ': ' + (error?.message || 'Import failed.')) }
     finally { setCatalogBusy(null) }
@@ -232,11 +234,10 @@ export function PlaylistsModal({
         >
           <Icon name="plus" size={15} /> {t('addM3U')}
         </button>
-      </div>
-
         <button className={`chip ${tab === 'catalog' ? 'active' : ''}`} data-focusable onClick={() => setTab('catalog')}>
           <Icon name="globe" size={15} /> Public Catalog ({CURATED_PLAYLISTS.length})
         </button>
+      </div>
 
       {tab === 'catalog' && (
         <div className="playlist-form-container">
@@ -246,11 +247,11 @@ export function PlaylistsModal({
           </div>
           {catalogMessage && <div className="result-banner result-error">{catalogMessage}</div>}
           <div className="playlists-list-grid">
-            {CURATED_PLAYLISTS.filter(item => catalogFilter === 'All' || item.group === catalogFilter).map(item => <div className="playlist-card" key={item.id}>
-              <div className="playlist-card-header"><span className="badge badge-m3u">{item.group}</span></div>
+            {CURATED_PLAYLISTS.filter(item => catalogFilter === 'All' || item.group === catalogFilter).map(item => { const saved = playlists.some(pl => pl.id === 'catalog-' + item.id); return <div className="playlist-card" key={item.id}>
+              <div className="playlist-card-header"><span className="badge badge-m3u">{item.group}</span>{saved && <span className="badge badge-active">Added to My Playlists</span>}</div>
               <div className="playlist-card-title">{item.name}</div><div className="playlist-card-desc">External M3U playlist · imported on demand</div>
-              <div className="playlist-card-actions"><button className="btn btn-primary btn-sm" data-focusable disabled={catalogBusy !== null} onClick={() => void importCurated(item)}><Icon name={catalogBusy === item.id ? 'refresh' : 'download'} size={14} /> {catalogBusy === item.id ? 'Importing…' : 'Import & Open'}</button><button className="btn btn-ghost btn-sm" data-focusable onClick={() => { void navigator.clipboard?.writeText(item.url); setCatalogMessage('URL copied: ' + item.name) }}>Copy URL</button></div>
-            </div>)}
+              <div className="playlist-card-actions"><button className="btn btn-primary btn-sm" data-focusable disabled={catalogBusy !== null} onClick={() => void importCurated(item)}><Icon name={catalogBusy === item.id ? 'refresh' : 'download'} size={14} /> {catalogBusy === item.id ? 'Importing…' : saved ? 'Import Again & Open' : 'Add to My Playlists'}</button><button className="btn btn-ghost btn-sm" data-focusable onClick={() => { void navigator.clipboard?.writeText(item.url); setCatalogMessage('URL copied: ' + item.name) }}>Copy URL</button></div>
+            </div> })}
           </div>
         </div>
       )}
@@ -332,6 +333,9 @@ export function PlaylistsModal({
                   ) : null}
                 </div>
                 <div className="playlist-card-actions">
+                  <button className="btn btn-ghost btn-sm" data-focusable onClick={() => onTogglePlaylist(pl.id, pl.enabled === false)}>
+                    <Icon name={pl.enabled === false ? 'check' : 'pause'} size={14} /> {pl.enabled === false ? 'Enable' : 'Disable'}
+                  </button>
                   {isActive ? (
                     <button className="btn btn-ghost btn-sm" disabled style={{ opacity: 0.8 }}>
                       <Icon name="check" size={14} /> Selected
@@ -340,7 +344,7 @@ export function PlaylistsModal({
                     <button
                       className="btn btn-primary btn-sm"
                       data-focusable
-                      onClick={() => onSelectPlaylist(pl)}
+                      onClick={() => onSelectPlaylist({ ...pl, enabled: true })}
                     >
                       <Icon name="play" size={14} /> {t('switchPlaylist')}
                     </button>
