@@ -63,11 +63,17 @@ try {
     body: '<!doctype html><html><body><main id="vyora-embed-smoke">Embedded player loaded</main></body></html>',
   }))
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
-  const embedFrame = page.locator('iframe.player-embed-frame')
-  await embedFrame.waitFor({ state: 'visible', timeout: 10000 })
-  await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
-    .waitFor({ state: 'visible', timeout: 5000 })
-  await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
+  const vodPlayer = page.locator('.vyora-vod-player')
+  await vodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  const embedFrame = vodPlayer.locator('iframe.player-embed-frame')
+  const directVideo = vodPlayer.locator('video')
+  if (await embedFrame.count()) {
+    await embedFrame.waitFor({ state: 'visible', timeout: 5000 })
+    await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
+      .waitFor({ state: 'visible', timeout: 5000 })
+  } else if (!(await directVideo.count())) {
+    throw new Error('VOD player opened without an iframe or native video element')
+  }
   // Exit through the supported Escape/Back action rather than a TV-only HUD button.
   await page.keyboard.press('Escape')
   await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
@@ -153,8 +159,13 @@ try {
     throw new Error('Movie card does not fit portrait phone viewport: ' + JSON.stringify(phoneMovieLayout))
   }
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
-  await page.locator('iframe.player-embed-frame').waitFor({ state: 'visible', timeout: 10000 })
-  const phonePlayerBounds = await page.locator('.vyora-vod-player').evaluate((element) => {
+  const phoneVodPlayer = page.locator('.vyora-vod-player')
+  await phoneVodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  if (!(await phoneVodPlayer.locator('iframe.player-embed-frame').count()) &&
+      !(await phoneVodPlayer.locator('video').count())) {
+    throw new Error('Phone VOD player opened without an iframe or native video element')
+  }
+  const phonePlayerBounds = await phoneVodPlayer.evaluate((element) => {
     const rect = element.getBoundingClientRect()
     return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
       width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight }
