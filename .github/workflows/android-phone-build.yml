@@ -43,6 +43,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git update-index --no-assume-unchanged --no-skip-worktree -- server/data/vod/movies.json web/public/data/vod/movies.json android/app/assets/data/vod/movies.json
+          echo "Generated VOD file sizes:"
+          wc -c server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
+          git status --short --untracked-files=all -- server/data/vod web/public/data/vod android/app/assets/data/vod
           git add -f server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
           if git diff --cached --quiet; then
             echo "Generated VOD catalog is already up to date."
