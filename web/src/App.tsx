@@ -1458,17 +1458,7 @@ export default function App() {
                 setMobileNavOpen(false)
               }}
             >
-              <Icon name="film" size={16} /> {t('movies')}
-            </button>
-            <button
-              className={`topnav-btn ${view.name === 'series' ? 'active' : ''}`}
-              data-focusable
-              onClick={() => {
-                setView({ name: 'series' })
-                setMobileNavOpen(false)
-              }}
-            >
-              <Icon name="grid" size={16} /> {t('series')}
+              <Icon name="film" size={16} /> Movies & Series
             </button>
             <button
               className={`topnav-btn ${view.name === 'songs' ? 'active' : ''}`}
@@ -2472,7 +2462,7 @@ export default function App() {
           </section>
         ) : null}
 
-        {view.name === 'series' ? (
+        {view.name === 'movies' || view.name === 'moviebox' || view.name === 'series' ? (
           <section className="row" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {series[0] ? (
               <div
