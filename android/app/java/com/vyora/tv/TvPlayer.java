@@ -50,6 +50,7 @@ public class TvPlayer {
 
     private final Context ctx;
     private final SurfaceView surfaceView;
+    private float videoAspectRatio = 16f / 9f;
     private ExoPlayer player;
     private boolean active = false;
     private boolean winnerChosen = false;
@@ -80,6 +81,12 @@ public class TvPlayer {
     public TvPlayer(Context ctx, SurfaceView surfaceView) {
         this.ctx = ctx;
         this.surfaceView = surfaceView;
+        // Keep the native video surface inside the usable phone viewport.
+        // Recalculate whenever Android changes the available area (rotation/system bars).
+        if (surfaceView.getParent() instanceof View) {
+            View parent = (View) surfaceView.getParent();
+            parent.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> fitSurfaceToVideo());
+        }
         this.bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(ctx);
         this.streamPreferences = ctx.getApplicationContext().getSharedPreferences("vyora_stream_health", Context.MODE_PRIVATE);
         this.bandwidthMeter.addEventListener(main, (elapsedMs, bytes, bitrate) -> {
@@ -94,6 +101,36 @@ public class TvPlayer {
 
     public void setPlaybackListener(PlaybackListener listener) {
         this.playbackListener = listener;
+    }
+
+    /**
+     * Fit the decoded video into the real available viewport without cropping.
+     * SurfaceView itself does not provide PlayerView's aspect-ratio container,
+     * so explicitly size and center it for phones in portrait and landscape.
+     */
+    private void fitSurfaceToVideo() {
+        if (surfaceView == null) return;
+        View parent = (surfaceView.getParent() instanceof View) ? (View) surfaceView.getParent() : null;
+        if (parent == null) return;
+        int availableWidth = parent.getWidth();
+        int availableHeight = parent.getHeight();
+        if (availableWidth <= 0 || availableHeight <= 0) return;
+
+        float aspect = videoAspectRatio > 0f ? videoAspectRatio : (16f / 9f);
+        int fittedWidth = availableWidth;
+        int fittedHeight = Math.round(fittedWidth / aspect);
+        if (fittedHeight > availableHeight) {
+            fittedHeight = availableHeight;
+            fittedWidth = Math.round(fittedHeight * aspect);
+        }
+        android.view.ViewGroup.LayoutParams raw = surfaceView.getLayoutParams();
+        android.widget.FrameLayout.LayoutParams params = raw instanceof android.widget.FrameLayout.LayoutParams
+                ? (android.widget.FrameLayout.LayoutParams) raw
+                : new android.widget.FrameLayout.LayoutParams(fittedWidth, fittedHeight);
+        params.width = fittedWidth;
+        params.height = fittedHeight;
+        params.gravity = android.view.Gravity.CENTER;
+        surfaceView.setLayoutParams(params);
     }
 
     /** Returns a real Media3 throughput estimate; zero until bytes were measured. */
@@ -342,6 +379,20 @@ public class TvPlayer {
             activeAttempts++;
 
             candidatePlayer.addListener(new Player.Listener() {
+                @Override
+                public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
+                    if (videoSize != null && videoSize.width > 0 && videoSize.height > 0) {
+                        float ratio = (videoSize.width * videoSize.pixelWidthHeightRatio) / videoSize.height;
+                        if (videoSize.unappliedRotationDegrees == 90 || videoSize.unappliedRotationDegrees == 270) {
+                            ratio = 1f / ratio;
+                        }
+                        if (ratio > 0f && !Float.isInfinite(ratio) && !Float.isNaN(ratio)) {
+                            videoAspectRatio = ratio;
+                            fitSurfaceToVideo();
+                        }
+                    }
+                }
+
                 @Override
                 public void onPlaybackStateChanged(int state) {
                     if (state == Player.STATE_READY) {
