@@ -2423,7 +2423,7 @@ export default function App() {
               </div>
 
               <div className="moviebox-genre-chips">
-                {['all', 'Action', 'Sci-Fi', 'Comedy', 'Drama', 'Animation', 'Horror', 'Adventure', 'Crime', 'Classic'].map((g) => (
+                {movieGenres.list.map((g) => (
                   <button
                     key={g}
                     className={`chip ${movieboxGenre === g.toLowerCase() ? 'active' : ''}`}
@@ -2532,7 +2532,7 @@ export default function App() {
               </div>
 
               <div className="moviebox-genre-chips">
-                {['all', 'Fantasy', 'Sci-Fi', 'Action', 'Drama', 'Comedy', 'Crime', 'Adventure'].map((g) => (
+                {seriesGenres.list.map((g) => (
                   <button
                     key={g}
                     className={`chip ${seriesGenre === g.toLowerCase() ? 'active' : ''}`}
