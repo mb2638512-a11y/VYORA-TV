@@ -409,7 +409,7 @@ public class LocalServer {
 
     /** Absolute proxy URL for Media3. Original URLs remain separate for UI health reporting. */
     public String proxyUrl(String target, String referer, String userAgent, String channelId) {
-        if (target == null || !(target.startsWith("http://") || target.startsWith("https://"))) {
+        if (target == null || !(target.startsWith("http://") || target.startsWith("https://")) || port <= 0) {
             return target == null ? "" : target;
         }
         StringBuilder result = new StringBuilder("http://127.0.0.1:")
@@ -427,6 +427,10 @@ public class LocalServer {
 
     private void handleStreamProxy(String method, String query, Map<String, String> requestHeaders,
                                    OutputStream out, boolean keepAlive) throws IOException {
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            respondProxy(204, "text/plain; charset=utf-8", new byte[0], out, keepAlive, null);
+            return;
+        }
         String target = decodeParam(queryParam(query, "u"));
         String referer = decodeParam(queryParam(query, "r"));
         String userAgent = decodeParam(queryParam(query, "a"));
@@ -555,6 +559,7 @@ public class LocalServer {
         String reason;
         switch (code) {
             case 200: reason = "OK"; break;
+            case 204: reason = "No Content"; break;
             case 206: reason = "Partial Content"; break;
             case 400: reason = "Bad Request"; break;
             case 401: reason = "Unauthorized"; break;
