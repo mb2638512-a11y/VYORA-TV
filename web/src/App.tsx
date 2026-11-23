@@ -205,6 +205,7 @@ export default function App() {
   const [favourites, setFavourites] = useState<string[]>(() => readJSON<string[]>(FAV_KEY, []))
   const [recent, setRecent] = useState<string[]>(() => readJSON<string[]>(RECENT_KEY, []))
   const [playing, setPlaying] = useState<Channel | null>(null)
+  const [vodEpisodeContext, setVodEpisodeContext] = useState<{ series: Series; episodeId: string } | null>(null)
   const [clock, setClock] = useState('')
   const [overlay, setOverlay] = useState<'none' | 'search' | 'settings' | 'number' | 'playlists'>('none')
   const [playlists, setPlaylists] = useState<CustomPlaylist[]>(() =>
@@ -398,6 +399,7 @@ export default function App() {
         },
       ],
     }
+    setVodEpisodeContext(null)
     setPlaying(virtualCh)
   }, [])
 
@@ -740,6 +742,7 @@ export default function App() {
 
   const closePlayer = useCallback(() => {
     setPlaying(null)
+    setVodEpisodeContext(null)
     setDrawerOpen(false)
     mainRef.current?.focus()
   }, [])
@@ -1264,6 +1267,7 @@ export default function App() {
   }, [songsGenre, songsSearch])
 
   const playMovie = useCallback((m: Movie) => {
+    setVodEpisodeContext(null)
     const streamsList: Stream[] = m.streams && m.streams.length > 0
       ? m.streams
       : [
@@ -1318,6 +1322,7 @@ export default function App() {
         },
       ],
     }
+    setVodEpisodeContext({ series: s, episodeId: String(ep.id) })
     setPlaying(episodeChannel)
     setSelectedSeries(null)
   }, [])
@@ -3431,7 +3436,7 @@ export default function App() {
       ) : null}
 
       {playing && (playing.categories?.includes('movies') || playing.categories?.includes('series') || playing.id.startsWith('download-')) ? (
-        <VodPlayerOverlay channel={playing} onExit={closePlayer} />
+        <VodPlayerOverlay channel={playing} onExit={closePlayer} episodes={vodEpisodeContext?.series.episodes} currentEpisodeId={vodEpisodeContext?.episodeId} onEpisodeSelect={(episode) => { if (vodEpisodeContext) playEpisode(vodEpisodeContext.series, episode) }} />
       ) : playing ? (
         <PlayerOverlay
           channel={playing}
