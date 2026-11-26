@@ -4219,6 +4219,22 @@ button {
   text-overflow: ellipsis;
 }
 
+/* Keep browser controls above the embedded page: iframe hit-testing can
+   otherwise swallow clicks on the engine picker while a site is loaded. */
+.chromium-toolbar {
+  position: relative;
+  z-index: 120;
+}
+.chromium-engine-select {
+  position: relative;
+  z-index: 122;
+}
+.chromium-engine-backdrop {
+  z-index: 121;
+}
+.chromium-engine-menu {
+  z-index: 123;
+}
 .chromium-engine-backdrop {
   position: fixed;
   inset: 0;
@@ -4245,6 +4261,87 @@ button {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.chromium-engine-menu {
+  width: min(390px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: min(72dvh, 620px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chromium-engine-menu-count {
+  padding: 0 10px 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 650;
+}
+.chromium-engine-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 7px;
+  padding: 0 6px 9px;
+}
+.chromium-engine-filters input,
+.chromium-engine-filters select {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.82);
+  color: #f1f5f9;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12px;
+}
+.chromium-engine-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px 3px 5px;
+}
+.chromium-engine-empty {
+  padding: 18px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+.chromium-engine-option-via {
+  font-size: 9px;
+  font-weight: 750;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+@media (max-width: 600px) {
+  .chromium-engine-menu {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    max-height: min(72dvh, 620px);
+  }
+  .chromium-engine-options { max-height: 48dvh; }
+  .chromium-engine-filters { grid-template-columns: minmax(0, 1fr) 118px; }
+}
+.device-tv .chromium-engine-menu {
+  width: min(520px, 42vw);
+  max-width: 42vw;
+  max-height: 70vh;
+}
+.device-tv .chromium-engine-options { max-height: 48vh; }
+.device-tv .chromium-engine-filters input,
+.device-tv .chromium-engine-filters select { min-height: 48px; font-size: 16px; }
+.device-tv .chromium-engine-option { min-height: 58px; padding: 12px 14px; }
+.device-tv .chromium-engine-option-text strong { font-size: 16px; }
+.device-tv .chromium-engine-option-text small { font-size: 13px; }
 
 .chromium-engine-menu-head {
   font-size: 10px;
@@ -7178,4 +7275,484 @@ button {
 .chromium-browser-standalone .webapp-exit:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 2px;
+}
+
+
+/* VYORA main navigation rail remains available while the browser is open. */
+.chromium-browser:not(.chromium-browser-standalone) {
+  padding-left: 68px;
+}
+.vyora-browser-sidebar {
+  position: absolute;
+  z-index: 120;
+  inset: 0 auto 0 0;
+  width: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px max(10px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Frosted glass rail: keep the page visible beneath the navigation. */
+  background: rgba(8, 13, 23, 0.58);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+  border-right: 1px solid rgba(255,255,255,.16);
+  box-shadow: 8px 0 28px rgba(0,0,0,.14);
+  scrollbar-width: thin;
+}
+.vyora-browser-sidebar-brand {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  margin: 2px 0 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #06101b;
+  background: linear-gradient(135deg,rgba(56,189,248,.92),rgba(129,140,248,.9));
+  box-shadow: 0 5px 18px rgba(56,189,248,.18);
+  font-weight: 950;
+  font-size: 22px;
+}
+.vyora-browser-sidebar-item {
+  flex: 0 0 auto;
+  width: 54px;
+  min-height: 52px;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 11px;
+  color: #c1ccdc;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.045);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+}
+.vyora-browser-sidebar-item:hover,
+.vyora-browser-sidebar-item:focus-visible {
+  color: #fff;
+  background: rgba(56,189,248,.19);
+  border-color: rgba(125,211,252,.28);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.vyora-browser-sidebar-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.vyora-browser-sidebar-back {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: 12px;
+}
+.chromium-browser-standalone { padding-left: 0 !important; }
+@media (max-width: 600px) {
+  .chromium-browser:not(.chromium-browser-standalone) {
+    padding-left: 54px;
+    height: calc(100dvh - 116px);
+    border-radius: 12px;
+  }
+  .vyora-browser-sidebar { width: 54px; padding: 8px 3px max(8px, env(safe-area-inset-bottom)); gap: 3px; }
+  .vyora-browser-sidebar-brand { width: 34px; height: 34px; flex-basis: 34px; }
+  .vyora-browser-sidebar-item { width: 46px; min-height: 48px; font-size: 8px; }
+}
+.device-tv .chromium-browser:not(.chromium-browser-standalone) { padding-left: 82px; }
+.device-tv .vyora-browser-sidebar { width: 82px; padding: 16px 8px; gap: 8px; }
+.device-tv .vyora-browser-sidebar-brand { width: 50px; height: 50px; flex-basis: 50px; font-size: 28px; }
+.device-tv .vyora-browser-sidebar-item { width: 66px; min-height: 62px; font-size: 12px; gap: 6px; }
+
+
+/* Phone-first live channel layout: two useful cards per row on compact phones. */
+@media (max-width: 599px) {
+  .grid { gap: 10px; }
+  .grid-channels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .channel-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 13px;
+  }
+  .channel-card-logo {
+    width: 100%;
+    height: clamp(86px, 28vw, 124px);
+    min-height: 0;
+  }
+  .channel-card-name { font-size: clamp(12px, 3.5vw, 14px); }
+  .channel-card-sub { font-size: 10px; gap: 4px; }
+  .channel-category-tag { max-width: 42%; overflow: hidden; text-overflow: ellipsis; font-size: 9px; }
+  .channel-card .status-tag { top: 6px; left: 6px; padding: 2px 5px; font-size: 8px; }
+  .channel-card .fav-btn { right: 6px; top: 6px; }
+  .badge-quality.card-quality { right: 5px; bottom: 5px; font-size: 9px; padding: 2px 5px; }
+  .country-card { min-width: 0; width: 100%; padding: 12px 8px; }
+  .theme-card { min-width: 0; padding: 12px; }
+  .cinema-sports-rail .channel-card { min-width: 210px; max-width: 76vw; }
+  .card:hover { transform: none; }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  .grid-channels { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .channel-card { min-width: 0; padding: 10px; }
+  .channel-card-logo { height: clamp(110px, 18vw, 150px); }
+}
+@media (max-width: 359px) {
+  .grid-channels { gap: 7px; }
+  .channel-card { padding: 6px; }
+  .channel-card-sub { font-size: 9px; }
+}
+
+
+/* VYORA phone: keep the AllSiteHub launch action full-width and readable. */
+@media (max-width: 700px) {
+  .allsitehub-featured-card {
+    display: grid !important;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start !important;
+    gap: 12px !important;
+    width: 100%;
+    min-width: 0;
+    padding: 16px !important;
+  }
+  .allsitehub-featured-card .app-card-badge {
+    grid-column: 1;
+    grid-row: 1;
+    width: 56px;
+    height: 56px;
+    margin: 0;
+  }
+  .allsitehub-featured-card .app-card-body {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    width: 100%;
+  }
+  .allsitehub-featured-card .app-card-title,
+  .allsitehub-featured-card .app-card-desc {
+    overflow-wrap: anywhere;
+  }
+  .allsitehub-featured-card .app-card-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .allsitehub-featured-card .app-card-launch {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 54px;
+    flex: none !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    justify-content: center;
+    margin: 0;
+  }
+}
+
+.player-auto-recover {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: min(92vw, 420px);
+  padding: 12px 14px;
+  border: 1px solid var(--line-bright);
+  border-radius: 16px;
+  background: rgba(8, 12, 22, .92);
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0,0,0,.4);
+  backdrop-filter: blur(14px);
+  font-size: 14px;
+  font-weight: 700;
+}
+.player-auto-recover .btn { flex: 0 0 auto; }
+
+
+/* Phone player: keep the video clean, without the channel-name/transport HUD at the top. */
+@media (max-width: 700px) {
+  .device-phone .player-info {
+    display: none !important;
+  }
+  .device-phone .player-hud-actions {
+    display: none !important;
+  }
+}
+
+
+/* VYORA phone UX pass: settings, navigation layering, and clean player. */
+@media (max-width: 768px) {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 140 !important;
+  }
+  .topbar-nav-wrapper {
+    position: static !important;
+  }
+  .topnav.mobile-nav-open {
+    position: absolute !important;
+    top: calc(100% - 1px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    z-index: 150 !important;
+    max-height: calc(100dvh - 76px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--line-bright);
+    border-radius: 0 0 18px 18px;
+    background: rgba(7, 11, 22, .98);
+    box-shadow: 0 18px 42px rgba(0,0,0,.55);
+  }
+  [data-theme='light'] .topnav.mobile-nav-open {
+    background: rgba(248,250,252,.99);
+  }
+
+  .cinema-settings-modal {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 9999;
+  }
+  .cinema-settings-head {
+    min-height: 62px;
+    padding: 10px 14px;
+    gap: 10px;
+    align-items: center;
+  }
+  .cinema-settings-title-group {
+    min-width: 0;
+  }
+  .cinema-settings-title-group h2 {
+    font-size: 18px;
+    gap: 8px;
+  }
+  .cinema-settings-title-group h2 svg {
+    width: 19px;
+    height: 19px;
+  }
+  .cinema-settings-subhead {
+    display: none !important;
+  }
+  .cinema-settings-head-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .cinema-toast-pill {
+    display: none;
+  }
+  .cinema-settings-close {
+    min-height: 40px;
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+  .cinema-settings-body {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column !important;
+    overflow: hidden;
+  }
+  .cinema-settings-nav {
+    width: 100% !important;
+    min-width: 0;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--line) !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    background: var(--bg-2) !important;
+  }
+  .cinema-settings-nav::-webkit-scrollbar { display: none; }
+  .cinema-settings-nav-item {
+    width: auto !important;
+    min-width: max-content;
+    min-height: 42px;
+    flex: 0 0 auto;
+    padding: 9px 13px !important;
+    gap: 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .cinema-settings-nav-item svg {
+    width: 15px;
+    height: 15px;
+  }
+  .nav-badge { display: none; }
+  .cinema-settings-content {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    padding: 16px 14px calc(28px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-tab-pane {
+    width: 100%;
+    max-width: none;
+    gap: 18px;
+  }
+  .settings-banner {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .settings-banner-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+  }
+  .settings-banner-info h3 { font-size: 15px; }
+  .settings-banner-info p { font-size: 12px; line-height: 1.45; }
+  .active-player-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+  .active-player-left { min-width: 0; gap: 10px; }
+  .active-player-title { font-size: 19px; overflow-wrap: anywhere; }
+  .active-player-desc { font-size: 12px; }
+  .active-player-status { align-self: flex-start; }
+  .settings-section { min-width: 0; }
+  .section-head-with-badge {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .section-head-with-badge h3 { font-size: 15px; }
+  .settings-hint { font-size: 12px; line-height: 1.45; }
+  .player-category-preferences {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  .player-category-preferences label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+  }
+  .player-category-preferences select,
+  .cinema-settings-content select,
+  .cinema-settings-content input,
+  .cinema-settings-content textarea {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .top-players-grid,
+  .player-assignment-grid,
+  .layout-picker-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px;
+  }
+  .player-engine-card,
+  .assignment-card {
+    min-width: 0;
+    padding: 13px;
+  }
+  .settings-row,
+  .settings-control-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .settings-row > *,
+  .settings-control-row > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .cinema-settings-content button {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .cinema-settings-head { padding: 9px 10px; }
+  .cinema-settings-title-group h2 { font-size: 16px; }
+  .cinema-settings-close { padding: 7px 9px; }
+  .cinema-settings-content { padding-left: 11px !important; padding-right: 11px !important; }
+  .cinema-settings-nav { padding-left: 10px !important; padding-right: 10px !important; }
+  .cinema-settings-nav-item { padding: 8px 11px !important; font-size: 11px; }
+}
+
+/* The phone player should be video-first: no persistent channel-title/transport HUD. */
+@media (max-width: 700px) {
+  .player-info,
+  .player-info-right,
+  .player-hud-actions {
+    display: none !important;
+  }
+  .player-status.player-error {
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 14px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    background: rgba(0,0,0,.78);
+  }
+  .player-error .error-channel-name,
+  .player-error .player-sources-box,
+  .player-error .player-error-hint {
+    display: none !important;
+  }
+  .player-error .error-status-badge {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+  .player-error .error-description {
+    max-width: 320px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .player-error-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    width: min(100%, 340px);
+    gap: 9px;
+  }
+  .player-error-actions button {
+    min-height: 46px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+  .player-error-actions button:nth-child(2),
+  .player-error-actions button:nth-child(3) {
+    display: none !important;
+  }
+  .player-expand-toggle {
+    top: max(12px, env(safe-area-inset-top));
+    right: 12px;
+    z-index: 90;
+  }
 }

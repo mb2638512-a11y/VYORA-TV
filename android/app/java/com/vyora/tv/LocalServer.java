@@ -215,6 +215,11 @@ public class LocalServer {
                     handleLogo(query, out, keepAlive);
                     return;
                 }
+                if (path.equals("/api/proxy")) {
+                    // Streaming responses close after the media body; do not advertise a reusable socket.
+                    handleStreamProxy(method, query, headers, out, false);
+                    return;
+                }
                 if (path.equals("/api/webproxy") || path.equals("/webproxy")) {
                     handleWebProxy(method, query, headers, body, out, keepAlive);
                     return;
@@ -397,6 +402,262 @@ public class LocalServer {
         if (u.endsWith(".ico")) return "image/x-icon";
         if (u.endsWith(".jpg") || u.endsWith(".jpeg")) return "image/jpeg";
         return "image/png";
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* HLS / media stream proxy                                               */
+    /* ------------------------------------------------------------------ */
+
+    /** Absolute proxy URL for Media3. Original URLs remain separate for UI health reporting. */
+    public String proxyUrl(String target, String referer, String userAgent, String channelId) {
+        if (target == null || !(target.startsWith("http://") || target.startsWith("https://")) || port <= 0) {
+            return target == null ? "" : target;
+        }
+        StringBuilder result = new StringBuilder("http://127.0.0.1:")
+                .append(port).append("/api/proxy?u=").append(encodeParam(target));
+        if (referer != null && !referer.isEmpty()) result.append("&r=").append(encodeParam(referer));
+        if (userAgent != null && !userAgent.isEmpty()) result.append("&a=").append(encodeParam(userAgent));
+        if (channelId != null && !channelId.isEmpty()) result.append("&cid=").append(encodeParam(channelId));
+        return result.toString();
+    }
+
+    private static String encodeParam(String value) {
+        return android.util.Base64.encodeToString(value.getBytes(UTF8),
+                android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+    }
+
+    private void handleStreamProxy(String method, String query, Map<String, String> requestHeaders,
+                                   OutputStream out, boolean keepAlive) throws IOException {
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            respondProxy(204, "text/plain; charset=utf-8", new byte[0], out, keepAlive, null);
+            return;
+        }
+        String target = decodeParam(queryParam(query, "u"));
+        String referer = decodeParam(queryParam(query, "r"));
+        String userAgent = decodeParam(queryParam(query, "a"));
+        if (target == null || !(target.startsWith("http://") || target.startsWith("https://"))) {
+            respondProxy(400, "application/json; charset=utf-8",
+                    "{\"error\":\"invalid-stream-url\"}".getBytes(UTF8), out, keepAlive, null);
+            return;
+        }
+
+        HttpURLConnection conn = null;
+        InputStream upstream = null;
+        try {
+            conn = (HttpURLConnection) new URL(target).openConnection();
+            conn.setConnectTimeout(7000);
+            conn.setReadTimeout(20000);
+            conn.setInstanceFollowRedirects(true);
+            boolean head = "HEAD".equalsIgnoreCase(method);
+            conn.setRequestMethod(head ? "HEAD" : "GET");
+            conn.setRequestProperty("User-Agent",
+                    userAgent == null || userAgent.isEmpty() ? UA : userAgent);
+            conn.setRequestProperty("Accept", requestHeaders.get("accept") == null
+                    ? "*/*" : requestHeaders.get("accept"));
+            conn.setRequestProperty("Accept-Encoding", "identity");
+            conn.setRequestProperty("Connection", "close");
+            if (referer != null && !referer.isEmpty()) {
+                conn.setRequestProperty("Referer", referer);
+                try {
+                    URL ref = new URL(referer);
+                    conn.setRequestProperty("Origin", ref.getProtocol() + "://" + ref.getAuthority());
+                } catch (Throwable ignored) { }
+            } else {
+                try {
+                    URL source = new URL(target);
+                    conn.setRequestProperty("Referer", source.getProtocol() + "://" + source.getAuthority() + "/");
+                    conn.setRequestProperty("Origin", source.getProtocol() + "://" + source.getAuthority());
+                } catch (Throwable ignored) { }
+            }
+            String range = requestHeaders.get("range");
+            if (range != null && !range.isEmpty()) conn.setRequestProperty("Range", range);
+
+            int status = conn.getResponseCode();
+            String contentType = conn.getContentType();
+            if (contentType == null || contentType.isEmpty()) contentType = "application/octet-stream";
+            String finalUrl = conn.getURL() == null ? target : conn.getURL().toString();
+            String lowerPath = finalUrl.toLowerCase(Locale.US);
+            int queryAt = lowerPath.indexOf('?');
+            if (queryAt >= 0) lowerPath = lowerPath.substring(0, queryAt);
+            boolean playlist = status >= 200 && status < 300
+                    && (contentType.toLowerCase(Locale.US).contains("mpegurl")
+                        || lowerPath.endsWith(".m3u8"));
+
+            Map<String, String> extra = new HashMap<String, String>();
+            String contentRange = conn.getHeaderField("Content-Range");
+            String acceptRanges = conn.getHeaderField("Accept-Ranges");
+            String lastModified = conn.getHeaderField("Last-Modified");
+            String etag = conn.getHeaderField("ETag");
+            if (contentRange != null) extra.put("Content-Range", contentRange);
+            if (acceptRanges != null) extra.put("Accept-Ranges", acceptRanges);
+            if (lastModified != null) extra.put("Last-Modified", lastModified);
+            if (etag != null) extra.put("ETag", etag);
+            extra.put("Cache-Control", "no-store");
+
+            upstream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            if (playlist && !head) {
+                byte[] payload = upstream == null ? new byte[0] : readAll(upstream, null);
+                String rewritten = rewriteHlsForProxy(new String(payload, UTF8), finalUrl,
+                        referer, userAgent, queryParam(query, "cid"));
+                respondProxy(status, "application/vnd.apple.mpegurl; charset=utf-8",
+                        rewritten.getBytes(UTF8), out, keepAlive, extra);
+            } else {
+                long contentLength = -1L;
+                try {
+                    String value = conn.getHeaderField("Content-Length");
+                    if (value != null) contentLength = Long.parseLong(value);
+                } catch (Throwable ignored) { }
+                respondProxyStream(status, contentType, upstream, contentLength, head,
+                        out, keepAlive, extra);
+                upstream = null; // response helper owns and closes the stream
+            }
+        } catch (Throwable error) {
+            Log.w(TAG, "stream proxy failed: " + target, error);
+            respondProxy(502, "application/json; charset=utf-8",
+                    ("{\"error\":\"upstream-failed\",\"detail\":"
+                            + jsonString(error.getMessage() == null ? "network error" : error.getMessage()) + "}")
+                            .getBytes(UTF8), out, keepAlive, null);
+        } finally {
+            closeQuietly(upstream);
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /** Streams media bytes through instead of buffering entire TV segments in RAM. */
+    private static void respondProxyStream(int code, String contentType, InputStream body,
+                                           long contentLength, boolean head, OutputStream out,
+                                           boolean keepAlive, Map<String, String> extra) throws IOException {
+        String reason;
+        switch (code) {
+            case 200: reason = "OK"; break;
+            case 204: reason = "No Content"; break;
+            case 206: reason = "Partial Content"; break;
+            case 400: reason = "Bad Request"; break;
+            case 401: reason = "Unauthorized"; break;
+            case 403: reason = "Forbidden"; break;
+            case 404: reason = "Not Found"; break;
+            case 416: reason = "Range Not Satisfiable"; break;
+            case 429: reason = "Too Many Requests"; break;
+            case 500: reason = "Internal Server Error"; break;
+            case 502: reason = "Bad Gateway"; break;
+            case 503: reason = "Service Unavailable"; break;
+            default: reason = "Upstream Response";
+        }
+        boolean chunked = !head && body != null && contentLength < 0;
+        StringBuilder header = new StringBuilder();
+        header.append("HTTP/1.1 ").append(code).append(' ').append(reason).append("\r\n");
+        header.append("Content-Type: ").append(contentType == null ? "application/octet-stream" : contentType).append("\r\n");
+        if (contentLength >= 0) header.append("Content-Length: ").append(contentLength).append("\r\n");
+        if (chunked) header.append("Transfer-Encoding: chunked\r\n");
+        header.append("Access-Control-Allow-Origin: *\r\n");
+        header.append("Access-Control-Allow-Methods: GET, HEAD, OPTIONS\r\n");
+        header.append("Access-Control-Allow-Headers: *\r\n");
+        header.append("Access-Control-Expose-Headers: *\r\n");
+        if (extra != null) {
+            for (Map.Entry<String, String> entry : extra.entrySet()) {
+                header.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
+            }
+        }
+        header.append("Connection: ").append(keepAlive ? "keep-alive" : "close").append("\r\n\r\n");
+        out.write(header.toString().getBytes(UTF8));
+        out.flush();
+        if (head || body == null) return;
+
+        byte[] buffer = new byte[32 * 1024];
+        int count;
+        while ((count = body.read(buffer)) != -1) {
+            if (count == 0) continue;
+            if (chunked) {
+                out.write(Integer.toHexString(count).getBytes(UTF8));
+                out.write("\r\n".getBytes(UTF8));
+                out.write(buffer, 0, count);
+                out.write("\r\n".getBytes(UTF8));
+            } else {
+                out.write(buffer, 0, count);
+            }
+            out.flush();
+        }
+        if (chunked) out.write("0\r\n\r\n".getBytes(UTF8));
+        out.flush();
+        closeQuietly(body);
+    }
+
+    private String rewriteHlsForProxy(String playlist, String baseUrl, String referer,
+                                      String userAgent, String channelId) {
+        StringBuilder rewritten = new StringBuilder();
+        String[] lines = playlist.split("\\r?\\n");
+        Pattern uriAttribute = Pattern.compile("URI=\"([^\"]+)\"");
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.isEmpty()) {
+                rewritten.append(raw).append('\n');
+                continue;
+            }
+            if (line.startsWith("#")) {
+                Matcher matcher = uriAttribute.matcher(line);
+                StringBuffer replaced = new StringBuffer();
+                while (matcher.find()) {
+                    String original = matcher.group(1);
+                    String proxied = proxyResolvedUrl(baseUrl, original, referer, userAgent, channelId);
+                    matcher.appendReplacement(replaced, Matcher.quoteReplacement("URI=\"" + proxied + "\""));
+                }
+                matcher.appendTail(replaced);
+                rewritten.append(replaced).append('\n');
+            } else {
+                rewritten.append(proxyResolvedUrl(baseUrl, line, referer, userAgent, channelId)).append('\n');
+            }
+        }
+        return rewritten.toString();
+    }
+
+    private String proxyResolvedUrl(String baseUrl, String value, String referer,
+                                    String userAgent, String channelId) {
+        if (value == null || value.isEmpty() || value.startsWith("data:")
+                || value.startsWith("skd:") || value.startsWith("urn:")) return value;
+        try {
+            URL resolved = new URL(new URL(baseUrl), value);
+            String absolute = resolved.toString();
+            if (!absolute.startsWith("http://") && !absolute.startsWith("https://")) return value;
+            return proxyUrl(absolute, referer, userAgent, channelId);
+        } catch (Throwable ignored) {
+            return value;
+        }
+    }
+
+    private static void respondProxy(int code, String contentType, byte[] body, OutputStream out,
+                                     boolean keepAlive, Map<String, String> extra) throws IOException {
+        String reason;
+        switch (code) {
+            case 200: reason = "OK"; break;
+            case 204: reason = "No Content"; break;
+            case 206: reason = "Partial Content"; break;
+            case 400: reason = "Bad Request"; break;
+            case 401: reason = "Unauthorized"; break;
+            case 403: reason = "Forbidden"; break;
+            case 404: reason = "Not Found"; break;
+            case 416: reason = "Range Not Satisfiable"; break;
+            case 429: reason = "Too Many Requests"; break;
+            case 500: reason = "Internal Server Error"; break;
+            case 502: reason = "Bad Gateway"; break;
+            case 503: reason = "Service Unavailable"; break;
+            default: reason = "Upstream Response";
+        }
+        StringBuilder head = new StringBuilder();
+        head.append("HTTP/1.1 ").append(code).append(' ').append(reason).append("\r\n");
+        head.append("Content-Type: ").append(contentType == null ? "application/octet-stream" : contentType).append("\r\n");
+        head.append("Content-Length: ").append(body == null ? 0 : body.length).append("\r\n");
+        head.append("Access-Control-Allow-Origin: *\r\n");
+        head.append("Access-Control-Allow-Methods: GET, HEAD, OPTIONS\r\n");
+        head.append("Access-Control-Allow-Headers: *\r\n");
+        head.append("Access-Control-Expose-Headers: *\r\n");
+        if (extra != null) {
+            for (Map.Entry<String, String> entry : extra.entrySet()) {
+                head.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
+            }
+        }
+        head.append("Connection: ").append(keepAlive ? "keep-alive" : "close").append("\r\n\r\n");
+        out.write(head.toString().getBytes(UTF8));
+        if (body != null && body.length > 0) out.write(body);
     }
 
     /* ------------------------------------------------------------------ */

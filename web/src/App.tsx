@@ -31,17 +31,18 @@ import {
 } from './lib/api'
 import { installNavigation } from './lib/nav'
 import { categoryName, translate } from './lib/i18n'
-import { downloadStreamM3u, isNative, nativeInstallApk, speak } from './lib/bridge'
+import { downloadStreamM3u, isNative, nativeInstallApk, nativeOpenBrowser, speak } from './lib/bridge'
 import { useChannelHealth, statusOf } from './hooks/useChannelHealth'
 import { TopBar } from './components/TopBar'
 import { Icon } from './components/Icon'
 import { ChannelLogo } from './components/ChannelLogo'
 import { ChannelCard, CountryCard, ThemeCard, MovieCard, SeriesCard } from './components/Cards'
 import { PlayerOverlay } from './components/PlayerOverlay'
+import { VodPlayerOverlay } from './components/VodPlayerOverlay'
 import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
-import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BrandLogo, faviconFor } from './components/ChromiumBrowser'
+import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, BrandLogo, faviconFor } from './components/ChromiumBrowser'
 import { AllSiteHub, ALLSITEHUB_CATEGORIES, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
 
 /**
@@ -97,7 +98,7 @@ function AppBadgeLogo({ app, size = 28 }: { app: InstalledApp; size?: number }) 
 }
 
 const APP_VERSION = '1.0.0'
-const PAGE_SIZE = 240
+const PAGE_SIZE = 120
 const FAV_KEY = 'vyora.favourites'
 const SETTINGS_KEY = 'vyora.settings'
 const RECENT_KEY = 'vyora.recent'
@@ -114,7 +115,7 @@ const DEFAULT_SETTINGS: Settings = {
     announceFocus: true,
   },
   autoPlayBest: true,
-  autoSkipOffline: false,
+  autoSkipOffline: true,
   verifiedOnly: false,
   defaultPlayer: 'internal',
   channelsPlayer: 'internal',
@@ -204,6 +205,7 @@ export default function App() {
   const [favourites, setFavourites] = useState<string[]>(() => readJSON<string[]>(FAV_KEY, []))
   const [recent, setRecent] = useState<string[]>(() => readJSON<string[]>(RECENT_KEY, []))
   const [playing, setPlaying] = useState<Channel | null>(null)
+  const [vodEpisodeContext, setVodEpisodeContext] = useState<{ series: Series; episodeId: string } | null>(null)
   const [clock, setClock] = useState('')
   const [overlay, setOverlay] = useState<'none' | 'search' | 'settings' | 'number' | 'playlists'>('none')
   const [playlists, setPlaylists] = useState<CustomPlaylist[]>(() =>
@@ -221,6 +223,8 @@ export default function App() {
   const [globalItems, setGlobalItems] = useState<Channel[]>([])
   const [globalTotal, setGlobalTotal] = useState(0)
   const [globalLoading, setGlobalLoading] = useState(false)
+  const [globalError, setGlobalError] = useState('')
+  const globalRequestRef = useRef(0)
   const [numberEntry, setNumberEntry] = useState('')
   const [liveRegion, setLiveRegion] = useState('')
   const [recentList, setRecentList] = useState<Channel[]>([])
@@ -241,7 +245,10 @@ export default function App() {
   const [movieboxSearch, setMovieboxSearch] = useState('')
   const [movieboxGenre, setMovieboxGenre] = useState('all')
   const [movieQualityFilter, setMovieQualityFilter] = useState('all')
-  const [movieSort, setMovieSort] = useState<'trending' | 'rating' | 'year' | 'title'>('trending')
+  const [movieSort, setMovieSort] = useState<'trending' | 'rating' | 'year' | 'title'>('year')
+  const [movieYearFilter, setMovieYearFilter] = useState('all')
+  const [seriesYearFilter, setSeriesYearFilter] = useState('all')
+  const [seriesSort, setSeriesSort] = useState<'newest' | 'rating' | 'title'>('newest')
   const [seriesSearch, setSeriesSearch] = useState('')
   const [songsSearch, setSongsSearch] = useState('')
   const [network, setNetwork] = useState<{
@@ -392,6 +399,7 @@ export default function App() {
         },
       ],
     }
+    setVodEpisodeContext(null)
     setPlaying(virtualCh)
   }, [])
 
@@ -416,7 +424,7 @@ export default function App() {
 
   const activePlaylist = useMemo(() => {
     if (activePlaylistId === 'default') return null
-    return playlists.find((p) => p.id === activePlaylistId) || null
+    return playlists.find((p) => p.id === activePlaylistId && p.enabled !== false) || null
   }, [activePlaylistId, playlists])
 
   /* ---------------- data bootstrap ---------------- */
@@ -581,7 +589,7 @@ export default function App() {
           if (alive) setVodLoading(false)
         })
     }
-    if (view.name === 'series' && !series.length) {
+    if ((view.name === 'movies' || view.name === 'moviebox' || view.name === 'series') && !series.length) {
       setVodLoading(true)
       loadSeries()
         .then((list) => {
@@ -619,7 +627,9 @@ export default function App() {
         setGlobalLoading(false)
         return
       }
+      const requestId = ++globalRequestRef.current
       setGlobalLoading(true)
+      setGlobalError('')
       const offset = reset ? 0 : globalItems.length
       try {
         const page = await loadGlobalChannels(
@@ -630,12 +640,15 @@ export default function App() {
           PAGE_SIZE,
           settings.verifiedOnly,
         )
+        if (requestId !== globalRequestRef.current) return
         setGlobalTotal(page.total)
         setGlobalItems((prev) => (reset ? page.items : [...prev, ...page.items]))
-      } catch {
+      } catch (error) {
+        if (requestId !== globalRequestRef.current) return
+        setGlobalError(error instanceof Error ? error.message : 'Channels could not be loaded')
         if (reset) setGlobalItems([])
       } finally {
-        setGlobalLoading(false)
+        if (requestId === globalRequestRef.current) setGlobalLoading(false)
       }
     },
     [
@@ -681,6 +694,19 @@ export default function App() {
     root.lang = settings.lang
   }, [settings])
 
+  // The native app marks its product flavor in the WebView user agent so the
+  // same web bundle can select a phone-touch or TV-remote layout reliably.
+  useEffect(() => {
+    const root = document.documentElement
+    const ua = navigator.userAgent.toLowerCase()
+    const isTv = ua.includes('vyoradevice/tv') || ua.includes('leanback')
+    root.classList.toggle('device-tv', isTv)
+    root.classList.toggle('device-phone', !isTv)
+    return () => {
+      root.classList.remove('device-tv', 'device-phone')
+    }
+  }, [])
+
   /* ---------------- country lookup ---------------- */
   const countryByCode = useMemo(() => {
     const m = new Map<string, Country>()
@@ -716,6 +742,7 @@ export default function App() {
 
   const closePlayer = useCallback(() => {
     setPlaying(null)
+    setVodEpisodeContext(null)
     setDrawerOpen(false)
     mainRef.current?.focus()
   }, [])
@@ -732,12 +759,15 @@ export default function App() {
         const bestIdx = getHealthRecord(ch.id)?.bestStream ?? 0
         const stream = ch.streams[bestIdx] || ch.streams[0]
         if (!stream) return
-        await fetch(`/api/prefetch?${prefetchParams(stream, ch.id)}`)
-        // Warm the runner-up source too, so the race always has a hot backup.
-        const backup = ch.streams.find((s, i) => i !== bestIdx && s.url !== stream.url)
-        if (backup) {
-          void fetch(`/api/prefetch?${prefetchParams(backup, ch.id)}`).catch(() => undefined)
-        }
+        // Warm the best source and one backup concurrently. Waiting for the
+        // primary before requesting the backup wastes the user's focus time.
+        const backup = ch.streams.find((candidate, i) => i !== bestIdx && candidate.url !== stream.url)
+        const jobs = [stream, backup].filter(Boolean).map((candidate) =>
+          fetch(`/api/prefetch?${prefetchParams(candidate!, ch.id)}`).then((response) => {
+            if (!response.ok) throw new Error(`prefetch ${response.status}`)
+          }),
+        )
+        await Promise.allSettled(jobs)
       } catch {
         /* prefetch is best effort */
       }
@@ -805,11 +835,12 @@ export default function App() {
         if (view.name !== 'home') setView({ name: 'home' })
       },
       onFocus: (el) => {
+        // Warm the focused channel even when spoken focus announcements are off.
+        const id = el.getAttribute('data-channel-id')
+        if (id) prefetchChannelNow(id)
         if (!settings.a11y.announceFocus) return
         const label = el.getAttribute('aria-label') || el.textContent?.trim() || ''
         if (label) setLiveRegion(label)
-        const id = el.getAttribute('data-channel-id')
-        if (id) prefetchChannelNow(id)
       },
       onChannelUp: () => {
         if (!playing) return
@@ -1001,7 +1032,10 @@ export default function App() {
         if (primary <= 4) continue
         const secondary = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
           ? Math.abs(dy) : Math.abs(dx)
-        const score = primary + secondary * 1.6
+        // Prefer candidates on the same visual row/column. This keeps
+        // horizontal TV navigation inside the TV tab rail instead of jumping
+        // to a nearby utility button in the header row above it.
+        const score = primary + secondary * 3
         if (score < nearestScore) {
           nearest = candidate
           nearestScore = score
@@ -1131,8 +1165,13 @@ export default function App() {
     return movies.filter((m) => m.genre && m.genre.toLowerCase() === gLower)
   }, [movies, movieGenre])
 
+  const movieYears = useMemo(() => Array.from(new Set([new Date().getFullYear(), ...movies.map((m) => Number(m.year)).filter((y) => Number.isFinite(y) && y > 0)])).sort((a, b) => b - a), [movies])
+
+  const seriesYears = useMemo(() => Array.from(new Set([new Date().getFullYear(), ...series.map((item) => Number(item.year)).filter((y) => Number.isFinite(y) && y > 0)])).sort((a, b) => b - a), [series])
+
   const movieboxFiltered = useMemo(() => {
     let list = movies
+    if (movieYearFilter !== 'all') list = list.filter((m) => String(m.year || '') === movieYearFilter)
     if (movieboxGenre !== 'all') {
       const g = movieboxGenre.toLowerCase()
       list = list.filter((m) => (m.genre || '').toLowerCase().includes(g))
@@ -1158,7 +1197,7 @@ export default function App() {
       list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
     }
     return list
-  }, [movies, movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+  }, [movies, movieYearFilter, movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
 
   const spotlightMovie = useMemo(() => {
     return movies.find((m) => m.backdrop) || movies[0] || null
@@ -1177,6 +1216,7 @@ export default function App() {
 
   const visibleSeries = useMemo(() => {
     let list = series
+    if (seriesYearFilter !== 'all') list = list.filter((item) => String(item.year || '') === seriesYearFilter)
     if (seriesGenre !== 'all') {
       const gLower = seriesGenre.toLowerCase()
       list = list.filter((s) => s.genre && s.genre.toLowerCase() === gLower)
@@ -1190,8 +1230,11 @@ export default function App() {
           (s.description || '').toLowerCase().includes(q),
       )
     }
+    if (seriesSort === 'rating') list = [...list].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
+    else if (seriesSort === 'title') list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+    else list = [...list].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0))
     return list
-  }, [series, seriesGenre, seriesSearch])
+  }, [series, seriesYearFilter, seriesGenre, seriesSearch, seriesSort])
 
   const songsFiltered = useMemo(() => {
     let list = songs
@@ -1217,13 +1260,14 @@ export default function App() {
   // Keep large VOD grids lightweight on Android TV and low-memory devices.
   useEffect(() => {
     setMovieShownCount(48)
-  }, [movieboxGenre, movieQualityFilter, movieboxSearch, movieSort])
+  }, [movieboxGenre, movieYearFilter, movieQualityFilter, movieboxSearch, movieSort])
 
   useEffect(() => {
     setSongsShownCount(240)
   }, [songsGenre, songsSearch])
 
   const playMovie = useCallback((m: Movie) => {
+    setVodEpisodeContext(null)
     const streamsList: Stream[] = m.streams && m.streams.length > 0
       ? m.streams
       : [
@@ -1278,6 +1322,7 @@ export default function App() {
         },
       ],
     }
+    setVodEpisodeContext({ series: s, episodeId: String(ep.id) })
     setPlaying(episodeChannel)
     setSelectedSeries(null)
   }, [])
@@ -1412,24 +1457,14 @@ export default function App() {
               <Icon name="home" size={16} /> {t('home')}
             </button>
             <button
-              className={`topnav-btn ${view.name === 'movies' || view.name === 'moviebox' ? 'active' : ''}`}
+              className={`topnav-btn ${view.name === 'movies' || view.name === 'moviebox' || view.name === 'series' ? 'active' : ''}`}
               data-focusable
               onClick={() => {
                 setView({ name: 'movies' })
                 setMobileNavOpen(false)
               }}
             >
-              <Icon name="film" size={16} /> {t('movies')}
-            </button>
-            <button
-              className={`topnav-btn ${view.name === 'series' ? 'active' : ''}`}
-              data-focusable
-              onClick={() => {
-                setView({ name: 'series' })
-                setMobileNavOpen(false)
-              }}
-            >
-              <Icon name="grid" size={16} /> {t('series')}
+              <Icon name="film" size={16} /> Movies & Series
             </button>
             <button
               className={`topnav-btn ${view.name === 'songs' ? 'active' : ''}`}
@@ -1678,7 +1713,7 @@ export default function App() {
 
             <section className="row home-engines-row">
               <div className="home-engines-header">
-                <span className="home-engines-title"><Icon name="search" size={20} /> 5 Search Engines</span>
+                <span className="home-engines-title"><Icon name="search" size={20} /> {BROWSER_ENGINES_LIST.length} Search Destinations</span>
                 <span className="muted">Launch Chromium Browser with your chosen engine</span>
               </div>
               <div className="home-engines-strip">
@@ -1841,7 +1876,7 @@ export default function App() {
                 <button className="btn btn-primary" data-focusable onClick={() => setView({ name: 'allsitehub' })}>See All <Icon name="arrow-right" size={15}/></button>
               </div>
               <div className="apps-grid">
-                <div className="app-card featured-app-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
+                <div className="app-card featured-app-card allsitehub-featured-card" data-focusable onClick={() => setView({ name: 'allsitehub' })}>
                   <div className="app-card-badge"><Icon name="grid" size={34}/></div>
                   <div className="app-card-body"><div className="app-badge-tag">Protected Built-in App</div><h3 className="app-card-title">AllSiteHub Directory</h3><p className="app-card-desc">Explore websites across all supported categories in one built-in directory. More categories will appear here as they are added.</p><div className="app-card-pills"><span className="pill">{ALLSITEHUB_SITE_COUNT} Sites</span><span className="pill">Search & Filters</span><span className="pill">{ALLSITEHUB_CATEGORIES.length} categories</span></div></div>
                   <button className="btn btn-primary app-card-launch" data-focusable onClick={e=>{e.stopPropagation();setView({name:'allsitehub'})}}>Open Directory</button>
@@ -1930,8 +1965,8 @@ export default function App() {
                       <h3 className="app-card-title">{t('chromiumBrowser')}</h3>
                       <p className="app-card-desc">{t('chromiumDesc')}</p>
                       <div className="app-card-pills">
-                        <span className="pill">5 Search Engines</span>
-                        <span className="pill">Dual-Lane Proxy</span>
+                        <span className="pill">{BROWSER_ENGINES_LIST.length} Search Destinations</span>
+                        <span className="pill">{BROWSER_ENGINE_CATEGORIES.length} Categories</span><span className="pill">Dual-Lane Proxy</span>
                         <span className="pill">TV Zoom</span>
                         <span className="pill">Web App Installer</span>
                       </div>
@@ -2389,8 +2424,13 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="moviebox-genre-chips" aria-label="Filter movies by release year">
+                <button className={`chip ${movieYearFilter === 'all' ? 'active' : ''}`} data-focusable onClick={() => setMovieYearFilter('all')}>All Years</button>
+                {movieYears.map((year) => <button key={year} className={`chip ${movieYearFilter === String(year) ? 'active' : ''}`} data-focusable onClick={() => setMovieYearFilter(String(year))}>{year}</button>)}
+              </div>
+
               <div className="moviebox-genre-chips">
-                {['all', 'Action', 'Sci-Fi', 'Comedy', 'Drama', 'Animation', 'Horror', 'Adventure', 'Crime', 'Classic'].map((g) => (
+                {movieGenres.list.map((g) => (
                   <button
                     key={g}
                     className={`chip ${movieboxGenre === g.toLowerCase() ? 'active' : ''}`}
@@ -2428,7 +2468,7 @@ export default function App() {
           </section>
         ) : null}
 
-        {view.name === 'series' ? (
+        {view.name === 'movies' || view.name === 'moviebox' || view.name === 'series' ? (
           <section className="row" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {series[0] ? (
               <div
@@ -2490,8 +2530,16 @@ export default function App() {
                 ) : null}
               </div>
 
+              <div className="moviebox-genre-chips" aria-label="Sort series">
+                {(['newest', 'rating', 'title'] as const).map((sort) => <button key={sort} className={`chip ${seriesSort === sort ? 'active' : ''}`} data-focusable onClick={() => setSeriesSort(sort)}>{sort === 'newest' ? 'Latest' : sort === 'rating' ? 'Top Rated' : 'A-Z'}</button>)}
+              </div>
+              <div className="moviebox-genre-chips" aria-label="Filter series by release year">
+                <button className={`chip ${seriesYearFilter === 'all' ? 'active' : ''}`} data-focusable onClick={() => setSeriesYearFilter('all')}>All Years</button>
+                {seriesYears.map((year) => <button key={year} className={`chip ${seriesYearFilter === String(year) ? 'active' : ''}`} data-focusable onClick={() => setSeriesYearFilter(String(year))}>{year}</button>)}
+              </div>
+
               <div className="moviebox-genre-chips">
-                {['all', 'Fantasy', 'Sci-Fi', 'Action', 'Drama', 'Comedy', 'Crime', 'Adventure'].map((g) => (
+                {seriesGenres.list.map((g) => (
                   <button
                     key={g}
                     className={`chip ${seriesGenre === g.toLowerCase() ? 'active' : ''}`}
@@ -2724,6 +2772,23 @@ export default function App() {
               </span>
             </div>
 
+            {globalLoading && globalItems.length === 0 ? (
+              <div className="channel-loading-state" role="status" aria-live="polite">
+                <div className="spinner" aria-hidden="true" />
+                <strong>Loading live channels…</strong>
+                <span className="muted">Connecting to the channel catalogue</span>
+              </div>
+            ) : globalError && globalItems.length === 0 ? (
+              <div className="channel-loading-state channel-load-error" role="alert">
+                <Icon name="alert" size={22} />
+                <strong>Channels could not be loaded</strong>
+                <span className="muted">{globalError}</span>
+                <button className="btn btn-primary" data-focusable onClick={() => void loadGlobal(true)}>Try again</button>
+              </div>
+            ) : null}
+            {!globalLoading && !globalError && globalItems.length === 0 ? (
+              <div className="channel-loading-state"><strong>No channels found</strong><span className="muted">Try another country or category filter</span></div>
+            ) : null}
             {groupByCountry ? (
               <div>
                 {(boot?.countries ?? [])
@@ -2970,6 +3035,19 @@ export default function App() {
               })
             }}
             onClose={() => setView({ name: 'home' })}
+            onNavigate={(destination) => {
+              switch (destination) {
+                case 'home': setView({ name: 'home' }); break
+                case 'movies': setView({ name: 'movies' }); break
+                case 'series': setView({ name: 'series' }); break
+                case 'songs': setView({ name: 'songs' }); break
+                case 'global': setView({ name: 'global' }); break
+                case 'favorites': setView({ name: 'favorites' }); break
+                case 'apps': setView({ name: 'apps' }); break
+                case 'allsitehub': setView({ name: 'allsitehub' }); break
+                case 'downloads': setView({ name: 'downloads' }); break
+              }
+            }}
             onInstallApp={handleInstallApp}
             onPlayMovie={handlePlayDownloadedMovie}
             onNavigateToDownloads={() => setView({ name: 'downloads' })}
@@ -3005,7 +3083,7 @@ export default function App() {
                   <h3 className="app-card-title">{t('chromiumBrowser')}</h3>
                   <p className="app-card-desc">{t('chromiumDesc')}</p>
                   <div className="app-card-pills">
-                    <span className="pill">5 Search Engines</span>
+                    <span className="pill">{BROWSER_ENGINES_LIST.length} Search Destinations</span>
                     <span className="pill">Dual-Lane Proxy</span>
                     <span className="pill">TV Zoom</span>
                     <span className="pill">Web App Installer</span>
@@ -3093,7 +3171,10 @@ export default function App() {
         ) : null}
 
         {view.name === 'allsitehub' ? (
-          <AllSiteHub onOpenSite={(url) => setView({ name: 'browser', initialUrl: url })} />
+          <AllSiteHub onOpenSite={(url) => {
+            const opened = nativeOpenBrowser(url, 'google0', 'auto')
+            if (!opened) setView({ name: 'browser', initialUrl: url })
+          }} />
         ) : null}
 
         {view.name === 'downloads' ? (
@@ -3303,6 +3384,10 @@ export default function App() {
           onSavePlaylist={(newPl) => {
             setPlaylists((prev) => [...prev.filter((p) => p.id !== newPl.id), newPl])
           }}
+          onTogglePlaylist={(id, enabled) => {
+            setPlaylists((prev) => prev.map((p) => p.id === id ? { ...p, enabled } : p))
+            if (!enabled && activePlaylistId === id) setActivePlaylistId('default')
+          }}
           onDeletePlaylist={(id) => {
             setPlaylists((prev) => prev.filter((p) => p.id !== id))
             if (activePlaylistId === id) {
@@ -3350,7 +3435,9 @@ export default function App() {
         </div>
       ) : null}
 
-      {playing ? (
+      {playing && (playing.categories?.includes('movies') || playing.categories?.includes('series') || playing.id.startsWith('download-')) ? (
+        <VodPlayerOverlay channel={playing} onExit={closePlayer} episodes={vodEpisodeContext?.series.episodes} currentEpisodeId={vodEpisodeContext?.episodeId} onEpisodeSelect={(episode) => { if (vodEpisodeContext) playEpisode(vodEpisodeContext.series, episode) }} />
+      ) : playing ? (
         <PlayerOverlay
           channel={playing}
           country={countryByCode.get(playing.country)}
@@ -3368,7 +3455,7 @@ export default function App() {
           onSwitch={(ch) => play(ch)}
           onCycleStream={() => undefined}
           onQueue={addToQueue}
-          autoSkipOffline={settings.autoSkipOffline ?? false}
+          autoSkipOffline={false}
           assignedPlayerId={
             playing.id.startsWith('download-')
               ? settings.downloadsPlayer || settings.defaultPlayer || 'internal'

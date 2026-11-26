@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.vyora.tv"
-    android:versionCode="1"
-    android:versionName="1.0.0">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.vyora.tv">
 
     <queries>
         <package android:name="org.videolan.vlc" />
@@ -43,7 +40,7 @@
             android:exported="true"
             android:icon="@drawable/ic_launcher"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
+            android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/VyoraTheme">
 
@@ -57,5 +54,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".BrowserActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/VyoraTheme" />
     </application>
 </manifest>

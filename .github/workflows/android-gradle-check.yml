@@ -1,0 +1,40 @@
+name: Android Gradle migration check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feature/separate-phone-tv-frontends
+  push:
+    branches:
+      - feature/orbit-browser-core-port
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Assemble phone and TV debug APKs
+        run: |
+          cd android
+          gradle --no-daemon --stacktrace :app:assemblePhoneDebug :app:assembleTvDebug
+      - name: Upload migration-check APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyora-gradle-migration-check
+          path: |
+            android/app/build/outputs/apk/phone/debug/*.apk
+            android/app/build/outputs/apk/tv/debug/*.apk
+          if-no-files-found: error

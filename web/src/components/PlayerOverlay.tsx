@@ -15,7 +15,7 @@ import {
   requestLookahead,
   resolveFastestStream,
 } from '../lib/api'
-import { downloadStreamM3u, isNative, launchExternalStream, nativePlay, nativePlayMulti, nativeStop } from '../lib/bridge'
+import { downloadStreamM3u, isNative, launchExternalStream, nativePlayMulti, nativeStop } from '../lib/bridge'
 import { Icon } from './Icon'
 
 type Props = {
@@ -90,12 +90,19 @@ export function PlayerOverlay({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
+
+  useEffect(() => {
+    const handleNativePlayerClosed = () => onExit()
+    window.addEventListener('vyora-native-player-closed', handleNativePlayerClosed)
+    return () => window.removeEventListener('vyora-native-player-closed', handleNativePlayerClosed)
+  }, [onExit])
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'error'>('loading')
   const [buffering, setBuffering] = useState(false)
   const [needUnmute, setNeedUnmute] = useState(false)
   const [message, setMessage] = useState('')
   const [streamIndex, setStreamIndex] = useState(0)
   const [showInfo, setShowInfo] = useState(true)
+  const [phoneWideMode, setPhoneWideMode] = useState(false)
   const [toast, setToast] = useState('')
   const [volume, setVolume] = useState<number>(() => {
     try {
@@ -239,38 +246,6 @@ export function PlayerOverlay({
     return () => window.clearTimeout(deadline)
   }, [channel.id])
 
-  const nextOnlineChannel = useCallback(() => {
-    const i = channels.findIndex((c) => c.id === channel.id)
-    if (i === -1 || channels.length < 2) return false
-
-    // 1. Search forward for a verified online channel
-    let target = channels.slice(i + 1).find((c) => statuses[c.id]?.status === 'online')
-    // 2. Search wrap-around from beginning
-    if (!target) {
-      target = channels.slice(0, i).find((c) => statuses[c.id]?.status === 'online')
-    }
-    // 3. Search forward for any non-offline channel
-    if (!target) {
-      target = channels.slice(i + 1).find((c) => statuses[c.id]?.status !== 'offline')
-    }
-    // 4. Search wrap-around for any non-offline channel
-    if (!target) {
-      target = channels.slice(0, i).find((c) => statuses[c.id]?.status !== 'offline')
-    }
-    // 5. Fallback to next channel
-    if (!target) {
-      target = channels[(i + 1) % channels.length]
-    }
-    if (target && target.id !== channel.id) {
-      setToast(t('tuningNextLive'))
-      window.setTimeout(() => {
-        onSwitch(target)
-      }, 250)
-      return true
-    }
-    return false
-  }, [channels, channel.id, statuses, t, onSwitch])
-
   const tryNextStream = useCallback(() => {
     const list = channel.streams || []
     if (list.length < 2) return false
@@ -364,11 +339,22 @@ export function PlayerOverlay({
 
     const onAllSourcesFailed = () => {
       setBuffering(false)
+      // Native Media3 has already tried the channel's candidate list. Retry the
+      // SAME channel twice with a cool-down before declaring it offline. Never
+      // auto-hop to another channel from this event.
+      if (cycleCountRef.current < 2) {
+        cycleCountRef.current += 1
+        setStatus('loading')
+        setOffline(false)
+        setToast('Reconnecting to this channel…')
+        window.setTimeout(() => {
+          setRetryNonce((n) => n + 1)
+        }, 3500)
+        return
+      }
       setStatus('error')
       setOffline(true)
       setMessage(t('offlineHint'))
-      // Each native candidate already emitted its own source-failed event.
-      // This final event changes only the channel-level status.
       void reportStreamPlayback(channel.id, false, 0, -1, true, false)
     }
 
@@ -423,7 +409,13 @@ export function PlayerOverlay({
       if (activeEngineId === 'exoplayer') {
         // Direct ExoPlayer mode: play only the selected source and let Media3
         // report/fail this source; VYORA Player retains multi-source racing.
-        nativePlay(stream.url, stream.referer || '', stream.ua || '', channel.name, channel.logo)
+        nativePlayMulti([{
+          url: stream.url,
+          referer: stream.referer || channel.website || '',
+          ua: stream.ua || '',
+          hls: Boolean(stream.hls),
+          dash: Boolean(stream.dash),
+        }], channel.name, channel.logo)
       } else {
         // VYORA-managed mode starts with the health-preferred source, then
         // keeps every distinct channel source available for automatic recovery.
@@ -437,7 +429,7 @@ export function PlayerOverlay({
         const candidates = orderedSources
           .filter((s) => typeof s?.url === 'string' && s.url.trim().length > 0)
           .filter((s, i, all) => all.findIndex((item) => item.url === s.url) === i)
-          .map((s) => ({ url: s.url, referer: s.referer || '', ua: s.ua || '' }))
+          .map((s) => ({ url: s.url, referer: s.referer || channel.website || '', ua: s.ua || '', hls: Boolean(s.hls), dash: Boolean(s.dash) }))
         nativePlayMulti(candidates, channel.name, channel.logo)
       }
       setStatus('loading')
@@ -462,9 +454,12 @@ export function PlayerOverlay({
 
     if (!video) return
 
-    const useProxy = currentMode() === 'server'
+    // Android's embedded LocalServer exposes the same /api/proxy endpoint even
+    // when the catalogue itself is loaded from bundled static JSON. Use it for
+    // WebView HLS/HTML5 engines as well as the native Media3 player.
+    const useProxy = currentMode() === 'server' || isNative
     const src = useProxy
-      ? buildProxyUrl(stream.url, stream.referer, stream.ua, channel.id)
+      ? buildProxyUrl(stream.url, stream.referer || channel.website, stream.ua, channel.id)
       : stream.url
 
     const isHls = Boolean(
@@ -986,13 +981,11 @@ export function PlayerOverlay({
   }, [channels, channel.id, onSwitch])
 
   const nextChannel = useCallback(() => {
-    if (!nextOnlineChannel()) {
-      const i = channels.findIndex((c) => c.id === channel.id)
-      if (i !== -1 && channels.length > 1) {
-        onSwitch(channels[(i + 1) % channels.length])
-      }
+    const i = channels.findIndex((c) => c.id === channel.id)
+    if (i !== -1 && channels.length > 1) {
+      onSwitch(channels[(i + 1) % channels.length])
     }
-  }, [nextOnlineChannel, channels, channel.id, onSwitch])
+  }, [channels, channel.id, onSwitch])
 
   // Apply volume setting to video element when playing or mounted
   useEffect(() => {
@@ -1066,8 +1059,36 @@ export function PlayerOverlay({
   }, [stream])
 
   return (
-    <div className="player-overlay">
+    <div className={`player-overlay${phoneWideMode ? ' phone-wide-mode' : ''}`}>
       <div className="player-stage">
+        <button
+          type="button"
+          className="player-expand-toggle"
+          aria-label={phoneWideMode ? 'Return to portrait player' : 'Expand player to landscape'}
+          title={phoneWideMode ? 'Portrait view' : 'Expand to landscape'}
+          onClick={() => {
+            const next = !phoneWideMode
+            setPhoneWideMode(next)
+            if (next) {
+              const root = document.querySelector('.player-overlay') as HTMLElement | null
+              if (root && !document.fullscreenElement && root.requestFullscreen) {
+                void root.requestFullscreen().catch(() => {})
+              }
+              const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> }
+              if (orientation?.lock) void orientation.lock('landscape').catch(() => {})
+            } else {
+              const orientation = screen.orientation as ScreenOrientation & { unlock?: () => void }
+              orientation?.unlock?.()
+              if (document.fullscreenElement && document.exitFullscreen) {
+                void document.exitFullscreen().catch(() => {})
+              }
+            }
+          }}
+          data-focusable
+        >
+          <Icon name={phoneWideMode ? 'minimize' : 'maximize'} size={18} />
+          <span>{phoneWideMode ? 'Portrait' : 'Expand'}</span>
+        </button>
         {!isNative ? (
           isEmbedStream ? (
             <iframe
@@ -1147,8 +1168,15 @@ export function PlayerOverlay({
           </button>
         ) : null}
 
-        {/* Error State with Smart Actions & Channel-Specific Stream Picker */}
-        {status === 'error' ? (
+        {/* Compact recovery while VYORA finds another working channel automatically. */}
+        {status === 'error' && autoSkipOffline ? (
+          <div className="player-auto-recover" role="status" aria-live="polite">
+            <div className="spinner-sm" aria-hidden="true" />
+            <span>Finding the next working channel…</span>
+            <button className="btn btn-ghost" data-focusable onClick={onExit}><Icon name="close" size={16} /> Back</button>
+          </div>
+        ) : null}
+        {status === 'error' && !autoSkipOffline ? (
           <div className="player-status player-error" role="alert">
             <ChannelLogo channel={channel} size="lg" />
             <strong className="error-channel-name">{channel.name}</strong>
@@ -1190,8 +1218,13 @@ export function PlayerOverlay({
                 data-focusable
                 onClick={() => {
                   triedRef.current.clear()
-                  setStatus('loading')
+                  cycleCountRef.current = 0
+                  networkFailsRef.current = 0
                   setOffline(false)
+                  setBuffering(true)
+                  setStatus('loading')
+                  setToast('Retrying this channel…')
+                  setRetryNonce((n) => n + 1)
                 }}
               >
                 <Icon name="refresh" size={18} /> {t('retry')}

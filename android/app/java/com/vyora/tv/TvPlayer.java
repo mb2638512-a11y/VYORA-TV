@@ -44,12 +44,13 @@ public class TvPlayer {
     }
 
     private static final String TAG = "VyoraPlayer";
-    private static final long READY_TIMEOUT_MS = 8000;
-    private static final long FIRST_FRAME_TIMEOUT_MS = 10000;
+    private static final long READY_TIMEOUT_MS = 18000;
+    private static final long FIRST_FRAME_TIMEOUT_MS = 24000;
     private static final int MAX_PARALLEL_CANDIDATES = 2;
 
     private final Context ctx;
     private final SurfaceView surfaceView;
+    private float videoAspectRatio = 16f / 9f;
     private ExoPlayer player;
     private boolean active = false;
     private boolean winnerChosen = false;
@@ -60,6 +61,9 @@ public class TvPlayer {
     private String[] urls = new String[0];
     private String[] referers = new String[0];
     private String[] uas = new String[0];
+    // Original catalogue URLs are retained for accurate UI/health callbacks when playback uses the local proxy.
+    private String[] reportedUrls = new String[0];
+    private String[] mimeTypes = new String[0];
     private int nextCandidateIndex = 0;
     private int activeAttempts = 0;
     private long playbackStartedAt;
@@ -77,6 +81,12 @@ public class TvPlayer {
     public TvPlayer(Context ctx, SurfaceView surfaceView) {
         this.ctx = ctx;
         this.surfaceView = surfaceView;
+        // Keep the native video surface inside the usable phone viewport.
+        // Recalculate whenever Android changes the available area (rotation/system bars).
+        if (surfaceView.getParent() instanceof View) {
+            View parent = (View) surfaceView.getParent();
+            parent.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> fitSurfaceToVideo());
+        }
         this.bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(ctx);
         this.streamPreferences = ctx.getApplicationContext().getSharedPreferences("vyora_stream_health", Context.MODE_PRIVATE);
         this.bandwidthMeter.addEventListener(main, (elapsedMs, bytes, bitrate) -> {
@@ -91,6 +101,36 @@ public class TvPlayer {
 
     public void setPlaybackListener(PlaybackListener listener) {
         this.playbackListener = listener;
+    }
+
+    /**
+     * Fit the decoded video into the real available viewport without cropping.
+     * SurfaceView itself does not provide PlayerView's aspect-ratio container,
+     * so explicitly size and center it for phones in portrait and landscape.
+     */
+    private void fitSurfaceToVideo() {
+        if (surfaceView == null) return;
+        View parent = (surfaceView.getParent() instanceof View) ? (View) surfaceView.getParent() : null;
+        if (parent == null) return;
+        int availableWidth = parent.getWidth();
+        int availableHeight = parent.getHeight();
+        if (availableWidth <= 0 || availableHeight <= 0) return;
+
+        float aspect = videoAspectRatio > 0f ? videoAspectRatio : (16f / 9f);
+        int fittedWidth = availableWidth;
+        int fittedHeight = Math.round(fittedWidth / aspect);
+        if (fittedHeight > availableHeight) {
+            fittedHeight = availableHeight;
+            fittedWidth = Math.round(fittedHeight * aspect);
+        }
+        android.view.ViewGroup.LayoutParams raw = surfaceView.getLayoutParams();
+        android.widget.FrameLayout.LayoutParams params = raw instanceof android.widget.FrameLayout.LayoutParams
+                ? (android.widget.FrameLayout.LayoutParams) raw
+                : new android.widget.FrameLayout.LayoutParams(fittedWidth, fittedHeight);
+        params.width = fittedWidth;
+        params.height = fittedHeight;
+        params.gravity = android.view.Gravity.CENTER;
+        surfaceView.setLayoutParams(params);
     }
 
     /** Returns a real Media3 throughput estimate; zero until bytes were measured. */
@@ -129,11 +169,25 @@ public class TvPlayer {
 
     /** Start with one source, then stagger one alternate if the first is slow. */
     public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas) {
+        play(candidateUrls, candidateReferers, candidateUas, candidateUrls);
+    }
+
+    /** Play proxied URLs while reporting the original catalogue URLs to the web UI. */
+    public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas,
+                     String[] originalUrls) {
+        play(candidateUrls, candidateReferers, candidateUas, originalUrls, null);
+    }
+
+    /** Explicit manifest type avoids relying on URL suffixes for HLS/DASH feeds. */
+    public void play(String[] candidateUrls, String[] candidateReferers, String[] candidateUas,
+                     String[] originalUrls, String[] candidateMimeTypes) {
         if (candidateUrls == null || candidateUrls.length == 0) return;
         release();
         urls = candidateUrls.clone();
         referers = candidateReferers != null ? candidateReferers.clone() : new String[0];
         uas = candidateUas != null ? candidateUas.clone() : new String[0];
+        reportedUrls = originalUrls != null ? originalUrls.clone() : candidateUrls.clone();
+        mimeTypes = candidateMimeTypes != null ? candidateMimeTypes.clone() : new String[0];
         candidateSetKey = buildCandidateSetKey(urls);
         applyRememberedSourceOrder();
         nextCandidateIndex = 0;
@@ -180,6 +234,8 @@ public class TvPlayer {
         rotateToFront(urls, preferred);
         rotateToFront(referers, preferred);
         rotateToFront(uas, preferred);
+        rotateToFront(reportedUrls, preferred);
+        rotateToFront(mimeTypes, preferred);
         Log.i(TAG, "remembered healthy source promoted to first position");
     }
 
@@ -223,7 +279,7 @@ public class TvPlayer {
                     }
                 }
             };
-            main.postDelayed(staggeredCandidateStart, 1200);
+            main.postDelayed(staggeredCandidateStart, 450);
         }
 
         if (activeAttempts == 0 && nextCandidateIndex >= urls.length && !winnerChosen) {
@@ -260,8 +316,8 @@ public class TvPlayer {
             DefaultHttpDataSource.Factory httpFactory =
                     new DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
-                            .setConnectTimeoutMs(6000)
-                            .setReadTimeoutMs(12000)
+                            .setConnectTimeoutMs(5000)
+                            .setReadTimeoutMs(20000)
                             .setTransferListener(bandwidthMeter);
 
             if (ua != null && !ua.isEmpty()) {
@@ -324,6 +380,20 @@ public class TvPlayer {
 
             candidatePlayer.addListener(new Player.Listener() {
                 @Override
+                public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
+                    if (videoSize != null && videoSize.width > 0 && videoSize.height > 0) {
+                        float ratio = (videoSize.width * videoSize.pixelWidthHeightRatio) / videoSize.height;
+                        if (videoSize.unappliedRotationDegrees == 90 || videoSize.unappliedRotationDegrees == 270) {
+                            ratio = 1f / ratio;
+                        }
+                        if (ratio > 0f && !Float.isInfinite(ratio) && !Float.isNaN(ratio)) {
+                            videoAspectRatio = ratio;
+                            fitSurfaceToVideo();
+                        }
+                    }
+                }
+
+                @Override
                 public void onPlaybackStateChanged(int state) {
                     if (state == Player.STATE_READY) {
                         if (pendingPlayers.get(index) == candidatePlayer) {
@@ -355,7 +425,7 @@ public class TvPlayer {
                         Log.i(TAG, "FIRST_FRAME source=" + index + " total_ms=" + startupMs);
                         if (lastNotifiedSourceIndex != index && playbackListener != null) {
                             lastNotifiedSourceIndex = index;
-                            playbackListener.onFirstFrame(urls[index], startupMs);
+                            playbackListener.onFirstFrame(index < reportedUrls.length ? reportedUrls[index] : urls[index], startupMs);
                         }
                         // Keep a prepared alternate only until the selected source
                         // proves it can render. Once the first frame is visible,
@@ -382,10 +452,13 @@ public class TvPlayer {
             // is selected and attached to the visible surface.
             candidatePlayer.setPlayWhenReady(false);
             MediaItem.Builder mediaItem = new MediaItem.Builder().setUri(url);
-            String lowerUrl = url.toLowerCase(java.util.Locale.US);
-            if (lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
+            String explicitMime = index < mimeTypes.length ? mimeTypes[index] : "";
+            String mimeHintUrl = index < reportedUrls.length ? reportedUrls[index] : url;
+            String lowerUrl = mimeHintUrl.toLowerCase(java.util.Locale.US);
+            if (MimeTypes.APPLICATION_M3U8.equals(explicitMime)
+                    || lowerUrl.contains(".m3u8") || lowerUrl.contains("format=m3u8")) {
                 mediaItem.setMimeType(MimeTypes.APPLICATION_M3U8);
-            } else if (lowerUrl.contains(".mpd")) {
+            } else if (MimeTypes.APPLICATION_MPD.equals(explicitMime) || lowerUrl.contains(".mpd")) {
                 // DASH needs the optional Media3 DASH module. If it is not
                 // packaged, the candidate will fail quickly and fail over.
                 mediaItem.setMimeType(MimeTypes.APPLICATION_MPD);
@@ -402,7 +475,7 @@ public class TvPlayer {
             }
             cancelWatchdog(index);
             if (playbackListener != null && index >= 0 && index < urls.length) {
-                playbackListener.onSourceFailed(urls[index],
+                playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index],
                         SystemClock.elapsedRealtime() - candidateStartedAt);
             }
             startMoreCandidates();
@@ -466,7 +539,7 @@ public class TvPlayer {
         if (player != failedPlayer || !winnerChosen) return;
         Log.w(TAG, "active source " + index + " failed: " + reason);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index], 0L);
+            playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index], 0L);
         }
         cancelFirstFrameWatchdog();
         player = null;
@@ -520,7 +593,7 @@ public class TvPlayer {
         activeAttempts = Math.max(0, activeAttempts - 1);
         cancelWatchdog(index);
         if (playbackListener != null && index >= 0 && index < urls.length) {
-            playbackListener.onSourceFailed(urls[index],
+            playbackListener.onSourceFailed(index < reportedUrls.length ? reportedUrls[index] : urls[index],
                     SystemClock.elapsedRealtime() - candidateStartedAt);
         }
         safeRelease(failedPlayer);
@@ -581,6 +654,8 @@ public class TvPlayer {
         urls = new String[0];
         referers = new String[0];
         uas = new String[0];
+        reportedUrls = new String[0];
+        mimeTypes = new String[0];
         nextCandidateIndex = 0;
     }
 

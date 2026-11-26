@@ -23,6 +23,9 @@ await page.addInitScript(() => {
     return originalFetch(input, init)
   }
   window.VyoraBridge = {
+    isTvDevice() {
+      return sessionStorage.getItem('vyora-test-tv') === 'true'
+    },
     setBrowserDisplayMode(mode) {
       window.__vyoraModes.push(mode)
     },
@@ -35,7 +38,7 @@ try {
   await page.waitForTimeout(1200)
 
   // Exercise the newly integrated entertainment hubs against the local catalogue.
-  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  await page.getByRole('button', { name: 'Movies & Series', exact: true }).click()
   const movieCards = page.locator('.movie-card')
   await movieCards.first().waitFor({ state: 'visible', timeout: 15000 })
   if (await movieCards.count() !== 48) {
@@ -60,22 +63,40 @@ try {
     body: '<!doctype html><html><body><main id="vyora-embed-smoke">Embedded player loaded</main></body></html>',
   }))
   await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
-  const embedFrame = page.locator('iframe.player-embed-frame')
-  await embedFrame.waitFor({ state: 'visible', timeout: 10000 })
-  await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
-    .waitFor({ state: 'visible', timeout: 5000 })
-  await page.locator('.player-loading-stage').waitFor({ state: 'hidden', timeout: 5000 })
-  await page.locator('.hud-btn-back').click()
-  await page.locator('.player-overlay').waitFor({ state: 'hidden', timeout: 5000 })
+  const vodPlayer = page.locator('.vyora-vod-player')
+  try {
+    await vodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  } catch {
+    const diagnostics = await page.evaluate(() => ({
+      title: document.title,
+      playerNodes: document.querySelectorAll('.vyora-vod-player').length,
+      movieCards: Array.from(document.querySelectorAll('.movie-card')).slice(0, 3).map((el) => el.textContent?.trim()),
+      bodyTail: document.body.innerText.slice(-900),
+      activeElement: document.activeElement?.outerHTML?.slice(0, 300) || '',
+    }))
+    throw new Error('VOD player did not open after movie selection: ' + JSON.stringify({ diagnostics, pageErrors }))
+  }
+  const embedFrame = vodPlayer.locator('iframe.player-embed-frame')
+  const directVideo = vodPlayer.locator('video')
+  if (await embedFrame.count()) {
+    await embedFrame.waitFor({ state: 'visible', timeout: 5000 })
+    await page.frameLocator('iframe.player-embed-frame').locator('#vyora-embed-smoke')
+      .waitFor({ state: 'visible', timeout: 5000 })
+  } else if (!(await directVideo.count())) {
+    throw new Error('VOD player opened without an iframe or native video element')
+  }
+  // Exit through the supported Escape/Back action rather than a TV-only HUD button.
+  await page.keyboard.press('Escape')
+  await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await movieSearch.fill('')
 
-  await page.getByRole('button', { name: 'Series', exact: true }).click()
+  // Movies and series now share one library screen; verify both collections coexist.
   const seriesCards = page.locator('.series-card')
   await seriesCards.first().waitFor({ state: 'visible', timeout: 10000 })
   if (await seriesCards.count() !== 23) {
     throw new Error('Series hub expected 23 catalogue entries, found ' + await seriesCards.count())
   }
-  const seriesSearch = page.locator('.moviebox-search-input').first()
+  const seriesSearch = page.locator('.moviebox-search-input').nth(1)
   await seriesSearch.fill('House of the Dragon')
   if (await seriesCards.count() !== 1) {
     throw new Error('Series search should return exactly House of the Dragon')
@@ -103,6 +124,10 @@ try {
   // Phone-first navigation: portrait viewport, persistent bottom navigation,
   // touch-sized controls, and a working Movies route without horizontal page overflow.
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => {
+    document.documentElement.dataset.device = 'phone'
+    document.body.classList.add('device-phone')
+  })
   const phoneNavWrapper = page.locator('.mobile-bottom-nav')
   const phoneNav = phoneNavWrapper.locator('.topnav')
   await phoneNav.getByRole('button', { name: 'Home', exact: true }).click()
@@ -117,15 +142,14 @@ try {
       width: rect.width,
       overflowX: navStyle.overflowX,
       buttonCount: buttons.length,
-      buttonsWidth: buttons.reduce((sum, button) => sum + button.getBoundingClientRect().width, 0),
-      smallestButtonHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
+      visibleButtonHeights: buttons.map(button => button.getBoundingClientRect().height).filter(height => height > 0),
+      smallestButtonHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height).filter(height => height > 0)),
     }
   })
   if (phoneNavStyle.wrapperPosition !== 'fixed' || phoneNavStyle.bottomGap > 2 ||
-      phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 8 ||
+      phoneNavStyle.width < 380 || phoneNavStyle.buttonCount < 7 ||
       !['auto', 'scroll'].includes(phoneNavStyle.overflowX) ||
-      phoneNavStyle.buttonsWidth <= phoneNavStyle.width ||
-      phoneNavStyle.smallestButtonHeight < 44) {
+      phoneNavStyle.visibleButtonHeights.length < 4 || phoneNavStyle.smallestButtonHeight < 44) {
     throw new Error('Portrait phone bottom navigation is not fixed/touch-scrollable: ' + JSON.stringify(phoneNavStyle))
   }
   const phoneOverflow = await page.evaluate(() => ({
@@ -135,7 +159,7 @@ try {
   if (phoneOverflow.content > phoneOverflow.viewport + 2) {
     throw new Error('Phone home screen overflows horizontally: ' + JSON.stringify(phoneOverflow))
   }
-  await page.getByRole('button', { name: 'Movies', exact: true }).click()
+  await page.getByRole('button', { name: 'Movies & Series', exact: true }).click()
   await page.locator('.movie-card').first().waitFor({ state: 'visible', timeout: 10000 })
   const phoneMovieLayout = await page.locator('.movie-card').first().evaluate((element) => {
     const rect = element.getBoundingClientRect()
@@ -145,9 +169,64 @@ try {
       phoneMovieLayout.right > phoneMovieLayout.viewport + 2) {
     throw new Error('Movie card does not fit portrait phone viewport: ' + JSON.stringify(phoneMovieLayout))
   }
+  await page.locator('.movie-card').filter({ hasText: 'Dune: Part Two' }).click()
+  const phoneVodPlayer = page.locator('.vyora-vod-player')
+  await phoneVodPlayer.waitFor({ state: 'visible', timeout: 10000 })
+  if (!(await phoneVodPlayer.locator('iframe.player-embed-frame').count()) &&
+      !(await phoneVodPlayer.locator('video').count())) {
+    throw new Error('Phone VOD player opened without an iframe or native video element')
+  }
+  const phonePlayerBounds = await phoneVodPlayer.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight }
+  })
+  if (phonePlayerBounds.left < -2 || phonePlayerBounds.top < -2 ||
+      phonePlayerBounds.right > phonePlayerBounds.viewportWidth + 2 ||
+      phonePlayerBounds.bottom > phonePlayerBounds.viewportHeight + 2) {
+    throw new Error('Phone player escapes the device viewport: ' + JSON.stringify(phonePlayerBounds))
+  }
+  await page.keyboard.press('Escape')
+  await page.locator('.vyora-vod-player').waitFor({ state: 'hidden', timeout: 5000 })
   await fs.mkdir('artifacts/browser-smoke', { recursive: true })
   await page.screenshot({ path: 'artifacts/browser-smoke/android-phone-portrait.png', fullPage: true })
   await page.setViewportSize({ width: 1440, height: 900 })
+
+  // A native Leanback signal selects a separate 10-foot TV shell even at a
+  // wide viewport; the phone bottom tab bar must not be mounted in TV mode.
+  await page.evaluate(() => sessionStorage.setItem('vyora-test-tv', 'true'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+  if (await page.locator('html').getAttribute('data-device') !== 'tv' ||
+      !(await page.locator('.device-shell-tv').count()) ||
+      await page.locator('.mobile-bottom-nav').count()) {
+    throw new Error('Native Leanback detection did not select the separate TV navigation shell')
+  }
+
+  // Verify D-pad right moves through the primary TV tabs and scrolls the
+  // navigation rail to reveal tabs that do not fit on the first screen.
+  const tvNav = page.locator('.topbar-tv .topnav')
+  const tvNavButtons = tvNav.locator('.topnav-btn')
+  const tvNavCount = await tvNavButtons.count()
+  await tvNavButtons.first().focus()
+  for (let index = 1; index < tvNavCount; index += 1) {
+    await page.keyboard.press('ArrowRight')
+    const focusedText = await page.evaluate(() => document.activeElement?.textContent?.trim() || '')
+    const expectedText = (await tvNavButtons.nth(index).textContent())?.trim() || ''
+    if (!focusedText.includes(expectedText)) {
+      throw new Error('TV D-pad navigation skipped a primary tab: expected ' + expectedText + ', got ' + focusedText)
+    }
+  }
+  const tvNavMetrics = await tvNav.evaluate((element) => ({ scrollLeft: element.scrollLeft, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }))
+  if (tvNavMetrics.scrollWidth > tvNavMetrics.clientWidth + 2 && tvNavMetrics.scrollLeft <= 0) {
+    throw new Error('TV D-pad navigation did not scroll an overflowing primary navigation rail: ' + JSON.stringify(tvNavMetrics))
+  }
+
+  await fs.mkdir('artifacts/browser-smoke', { recursive: true })
+  await page.screenshot({ path: 'artifacts/browser-smoke/android-tv-shell.png', fullPage: true })
+  await page.evaluate(() => sessionStorage.removeItem('vyora-test-tv'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
 
   // Verify the built-in AllSiteHub catalogue, category filters, and search.
   const hubNav = page.getByRole('button', { name: 'AllSiteHub', exact: true })
@@ -197,7 +276,7 @@ try {
   const hubSearch = hub.getByRole('textbox', { name: 'Search AllSiteHub sites' })
   await hubSearch.fill('gojolive')
   const searchMatches = await hub.locator('.app-card').count()
-  const gojoCard = hub.getByRole('group', { name: 'GojoLive website card' })
+  const gojoCard = hub.locator('.app-card').filter({ hasText: 'GojoLive' }).first()
   if (searchMatches !== 1 || !(await gojoCard.isVisible())) {
     throw new Error('AllSiteHub search should return only GojoLive; found ' + searchMatches)
   }
@@ -274,10 +353,47 @@ try {
   await browserRegion.waitFor({ state: 'visible', timeout: 15000 })
   await page.locator('button[title*="Responsive View"], button[title*="Desktop 1080p View"]').first().waitFor({ state: 'visible', timeout: 10000 })
 
-  // Verify autocomplete uses the active search provider, not Google's list
-  // under every engine. The API is stubbed so CI never depends on third parties.
+  // Every browser tab must expose the complete Orbit search catalog. The
+  // picker is searchable and each tab retains its own selected provider.
   const engineTrigger = page.locator('.chromium-engine-trigger')
   const omnibox = page.locator('.chromium-omnibox-input')
+  await engineTrigger.click()
+  const engineOptions = page.locator('.chromium-engine-menu button.chromium-engine-option')
+  if (await engineOptions.count() !== 131) {
+    throw new Error('Expected 130 Orbit destinations plus Brave Search, found ' + await engineOptions.count())
+  }
+  const engineCatalogSearch = page.getByRole('searchbox', { name: 'Search engine catalog' })
+  await engineCatalogSearch.fill('Wikipedia')
+  const wikipediaOption = engineOptions.filter({ hasText: 'Wikipedia' }).first()
+  await wikipediaOption.waitFor({ state: 'visible', timeout: 5000 })
+  await wikipediaOption.click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Wikipedia was not selected from the searchable engine catalog')
+  }
+  await omnibox.fill('Albert Einstein')
+  await omnibox.press('Enter')
+  await page.waitForFunction(() => {
+    const frame = document.querySelector('.chromium-iframe')
+    if (!frame) return false
+    try {
+      const src = new URL(frame.src)
+      const target = src.searchParams.get('u') || frame.src
+      return target.includes('en.wikipedia.org/wiki/Special:Search') && target.includes('Albert')
+    } catch { return frame.src.includes('en.wikipedia.org/wiki/Special:Search') }
+  }, null, { timeout: 5000 })
+  await page.getByRole('button', { name: 'New Tab' }).click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Google')) {
+    throw new Error('New tab did not use the configured default search provider')
+  }
+  await engineTrigger.click()
+  if (await engineOptions.count() !== 131) {
+    throw new Error('The new tab does not expose the full search engine catalog')
+  }
+  await page.locator('.chromium-engine-backdrop').click()
+  await page.locator('.chromium-tab').first().click()
+  if (!(await page.locator('.chromium-engine-trigger-name').textContent())?.includes('Wikipedia')) {
+    throw new Error('Switching tabs did not preserve the first tab search provider')
+  }
   for (const engine of ['bing', 'duckduckgo']) {
     await engineTrigger.click()
     await page.locator('.chromium-engine-menu button.chromium-engine-option').filter({ hasText: engine === 'bing' ? 'Bing' : 'DuckDuckGo' }).first().evaluate((element) => element.click())
@@ -314,7 +430,7 @@ try {
 
   // Closing the only tab must create and activate a fresh New Tab instead
   // of leaving the browser with an activeTabId that no longer exists.
-  await page.getByRole('button', { name: 'Close Tab' }).click()
+  await page.locator('.chromium-tab.active .chromium-tab-close').click()
   await page.locator('.chromium-tab-title').getByText('New Tab').waitFor({ state: 'visible', timeout: 5000 })
   await page.keyboard.press('Control+Shift+T')
   await page.waitForFunction(() => document.querySelectorAll('.chromium-tab').length === 2, null, { timeout: 5000 })

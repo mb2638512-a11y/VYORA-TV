@@ -1,0 +1,96 @@
+name: Build VYORA Android Phone APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/android-phone-app]
+    paths:
+      - "android/**"
+      - "web/**"
+      - "server/**"
+      - "server-go/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-phone-build.yml"
+permissions:
+  contents: write
+  actions: write
+jobs:
+  phone-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - run: npm ci
+      - run: npm run data
+      - run: npm run build:vod
+      - name: Validate all VOD catalogue mirrors before packaging
+        run: npm run validate:vod
+      - name: Commit generated VOD catalog for the app and API
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git update-index --no-assume-unchanged --no-skip-worktree -- server/data/vod/movies.json web/public/data/vod/movies.json android/app/assets/data/vod/movies.json
+          echo "Generated VOD file sizes:"
+          wc -c server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
+          git status --short --untracked-files=all -- server/data/vod web/public/data/vod android/app/assets/data/vod
+          # Rebase-free sync: generated catalog files may be refreshed by another
+          # phone/TV build at the same time. Reset to the latest remote tip while
+          # keeping generated working-tree files, then retry a raced push.
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --mixed "origin/${GITHUB_REF_NAME}"
+            git add -f server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
+            if git diff --cached --quiet; then
+              echo "Generated VOD catalog is already up to date."
+              exit 0
+            fi
+            git commit -m "chore: refresh generated VOD catalog [skip ci]"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "Branch changed during generated-catalog push; retrying (attempt ${attempt}/3)."
+          done
+          echo "Could not sync generated VOD catalog after three attempts."
+          exit 1
+      - run: npx tsc --noEmit -p web/tsconfig.json
+      - run: npm --workspace web run build
+      - name: Bundle latest web platform into Android phone app
+        run: |
+          rm -rf android/app/assets
+          mkdir -p android/app/assets
+          cp -a web/dist/. android/app/assets/
+      - name: Build phone APK
+        run: |
+          cd android
+          gradle --no-daemon --stacktrace :app:assemblePhoneDebug
+      - name: Remove previous phone APK artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "vyora-android-phone-debug") | .id' |
+          while read -r artifact_id; do
+            [ -n "$artifact_id" ] || continue
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/$artifact_id"
+            echo "Deleted previous phone APK artifact $artifact_id"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vyora-android-phone-debug
+          path: android/app/build/outputs/apk/phone/debug/*.apk
+          if-no-files-found: error
+          retention-days: 1

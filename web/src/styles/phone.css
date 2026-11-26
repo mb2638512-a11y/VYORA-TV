@@ -1,0 +1,1996 @@
+/* Dedicated phone presentation entry point.
+   The legacy responsive rules are retained as the phone design foundation. */
+@import './mobile.css';
+
+:root[data-device='phone'] {
+  color-scheme: dark;
+}
+.device-phone #root,
+.device-phone .app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100vw;
+}
+.device-phone button,
+.device-phone a,
+.device-phone [role='button'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.device-phone :focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 2px;
+}
+@media (max-width: 390px) {
+  .device-phone .main { padding-left: 10px; padding-right: 10px; }
+  .device-phone .mobile-bottom-nav .topnav-btn {
+    flex-basis: 60px !important;
+    width: 60px;
+    min-width: 60px !important;
+  }
+}
+
+
+/* Device-selected phone shell also works on wide phones and landscape mode. */
+.device-phone .device-shell-phone { flex: 0 0 auto; width: 100%; min-width: 0; }
+.device-phone .topbar-phone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: max(7px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 7px max(12px, env(safe-area-inset-left));
+  gap: 8px;
+}
+.device-phone .topbar-phone .brand-mark { width: 36px; height: 36px; }
+.device-phone .topbar-phone .brand-name { font-size: 17px; }
+.device-phone .topbar-phone .brand-edition,
+.device-phone .topbar-phone .clock-pill { display: none; }
+.device-phone .phone-tab-shell {
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  padding: 6px max(7px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  border-top: 1px solid var(--line-bright);
+  background: rgba(8, 11, 20, .96);
+  box-shadow: 0 -10px 32px rgba(0,0,0,.28);
+}
+.device-phone .phone-tab-shell .topnav {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-height: 60px;
+  gap: 2px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  scrollbar-width: none;
+}
+.device-phone .phone-tab-shell .topnav::-webkit-scrollbar { display: none; }
+.device-phone .phone-tab-shell .topnav-btn {
+  flex: 0 0 64px;
+  width: 64px;
+  min-width: 64px;
+  min-height: 52px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 3px;
+  border-radius: 12px;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.device-phone .main {
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+}
+
+.device-phone .topbar-phone .topbar-right { gap: 6px; min-width: 0; }
+.device-phone .topbar-phone .topbar-right .btn,
+.device-phone .topbar-phone .topbar-right .theme-toggle-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 12px;
+}
+.device-phone .topbar-phone .topbar-right .btn span,
+.device-phone .topbar-phone .topbar-right .theme-toggle-btn span { display: none; }
+.device-phone .grid,
+.device-phone .grid-channels,
+.device-phone .grid-movies,
+.device-phone .grid-countries,
+.device-phone .grid-themes,
+.device-phone .apps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.device-phone .main > *,
+.device-phone .main section,
+.device-phone .row { min-width: 0; max-width: 100%; }
+.device-phone .row-track,
+.device-phone .chips,
+.device-phone .chips-scroll,
+.device-phone .moviebox-genre-chips {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* Phone playback is a thumb-first full-screen surface, not a scaled TV HUD. */
+.device-phone .player-overlay {
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.device-phone .player-stage { min-height: 0; width: 100%; }
+.device-phone .player-info {
+  gap: 10px;
+  padding: 14px 14px 42px;
+  flex-wrap: wrap;
+}
+.device-phone .player-info-left { min-width: 0; gap: 9px; }
+.device-phone .player-name { font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
+.device-phone .player-sub { gap: 6px; flex-wrap: wrap; font-size: 11px; }
+.device-phone .player-info-right { display: none; }
+.device-phone .player-close {
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  width: 42px;
+  height: 42px;
+  opacity: 1;
+}
+.device-phone .player-toast {
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 28px);
+  white-space: normal;
+  text-align: center;
+}
+.device-phone .player-buffering-badge { top: 68px; right: 12px; font-size: 11px; }
+.device-phone .unmute-banner { top: 74px; max-width: calc(100vw - 24px); padding: 10px 13px; font-size: 12px; }
+.device-phone .player-status { padding: 22px; font-size: 15px; }
+.device-phone .player-error strong { font-size: 20px; }
+.device-phone .player-error span { max-width: 100%; font-size: 13px; }
+.device-phone .player-drawer {
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  height: min(78dvh, 720px);
+  border-left: 0;
+  border-top: 1px solid var(--line-bright);
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.device-phone .drawer-head { display: block; padding: 12px; }
+.device-phone .drawer-head-top { display: flex; align-items: center; gap: 8px; }
+.device-phone .drawer-search { margin-top: 10px; min-height: 42px; }
+.device-phone .drawer-filter-tabs {
+  max-width: 100%;
+  width: 100%;
+  margin: 10px 0 0;
+}
+.device-phone .drawer-tab-btn { min-height: 36px; font-size: 12px; }
+.device-phone .drawer-item { min-height: 58px; padding: 9px 10px; }
+.device-phone .drawer-name { font-size: 13px; }
+.device-phone .drawer-foot { padding-bottom: 10px; }
+.device-phone .player-engine-picker {
+  left: 10px;
+  right: 10px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: none;
+}
+.device-phone .player-engine-picker-item { min-height: 48px; }
+.device-phone .cinema-settings-modal {
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.device-phone .cinema-settings-head { padding: 12px; }
+.device-phone .cinema-settings-title-group h2 { font-size: 18px; }
+.device-phone .cinema-settings-content { padding: 12px; }
+.device-phone .settings-section { padding: 14px; }
+.device-phone .settings-row { gap: 12px; align-items: flex-start; }
+.device-phone .settings-value { text-align: right; overflow-wrap: anywhere; }
+.device-phone .allsitehub-section .apps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.device-phone .allsitehub-section .app-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px;
+  gap: 8px;
+}
+.device-phone .allsitehub-section .app-card-badge { width: 42px; height: 42px; }
+.device-phone .allsitehub-section .app-card-launch { width: 100%; min-height: 40px; }
+@media (max-width: 360px) {
+  .device-phone .allsitehub-section .apps-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+/* ================================================================
+   Phone layout correction — safe-area, compact home cards and players
+   Applies only to the Android/phone presentation; TV and desktop stay intact.
+   ================================================================ */
+.device-phone,
+:root[data-device='phone'] { min-width: 0; width: 100%; overflow: hidden; }
+.device-phone #root { height: 100dvh; min-height: 0; overflow: hidden; }
+.device-phone .app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+.device-phone .device-shell-phone {
+  position: relative;
+  z-index: 50;
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 0;
+  padding-top: env(safe-area-inset-top);
+}
+.device-phone .topbar-phone {
+  position: relative;
+  top: auto;
+  z-index: 50;
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  height: auto;
+  max-height: 64px;
+  padding: 5px max(10px, env(safe-area-inset-right)) 5px max(10px, env(safe-area-inset-left));
+  overflow: visible;
+}
+.device-phone .topbar-phone .topbar-left { flex: 0 1 auto; min-width: 0; }
+.device-phone .topbar-phone .brand { min-width: 0; max-width: 100%; }
+.device-phone .topbar-phone .brand-titles { min-width: 0; }
+.device-phone .topbar-phone .brand-name { white-space: nowrap; font-size: clamp(15px, 4.5vw, 17px); }
+.device-phone .topbar-phone .topbar-right {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 56%;
+  margin-left: auto;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow: visible;
+}
+.device-phone .topbar-phone .topbar-right > * { flex: 0 0 auto; }
+.device-phone .phone-tab-shell {
+  position: fixed !important;
+  z-index: 10050 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  min-height: calc(62px + env(safe-area-inset-bottom));
+  padding: 5px max(5px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
+  overflow: hidden;
+  transform: translateZ(0);
+}
+.device-phone .phone-tab-shell .topnav {
+  display: flex !important;
+  width: 100%;
+  min-height: 52px;
+  height: auto;
+  max-height: 58px;
+  align-items: stretch;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+.device-phone .phone-tab-shell .topnav-btn {
+  flex: 1 0 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 88px;
+  min-height: 50px;
+  padding: 5px 2px;
+  gap: 3px;
+  font-size: clamp(9px, 2.6vw, 10px);
+}
+.device-phone .main {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 8px;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
+/* Compact the two oversized featured launch cards on the home screen. */
+.device-phone .apps-featured-row,
+.device-phone .allsitehub-featured-row { margin-top: 14px; margin-bottom: 18px; }
+.device-phone .apps-featured-row .home-filter-head,
+.device-phone .allsitehub-featured-row .home-filter-head {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.device-phone .apps-featured-row .row-title,
+.device-phone .allsitehub-featured-row .row-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}
+.device-phone .apps-featured-banner { width: 100%; min-width: 0; }
+.device-phone .featured-browser-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 12px;
+  border-radius: 15px;
+}
+.device-phone .featured-browser-icon {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+}
+.device-phone .featured-browser-icon svg { width: 25px; height: 25px; }
+.device-phone .featured-browser-text { min-width: 0; gap: 5px; }
+.device-phone .featured-browser-text h3 { margin: 0; font-size: 16px; line-height: 1.2; }
+.device-phone .featured-browser-text p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.device-phone .featured-browser-text .browser-badge-pill { font-size: 9px; padding: 3px 7px; }
+.device-phone .featured-browser-text .browser-features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  margin-top: 3px;
+  font-size: 9px;
+  line-height: 1.25;
+}
+.device-phone .featured-browser-card > .btn {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  justify-content: center;
+  font-size: 12px;
+}
+.device-phone .allsitehub-featured-row > .apps-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.device-phone .allsitehub-featured-row .featured-app-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 11px;
+  border-radius: 15px;
+}
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-badge {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+}
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-badge svg { width: 23px; height: 23px; }
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-body { min-width: 0; gap: 4px; }
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-desc {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.device-phone .allsitehub-featured-row .featured-app-card .app-card-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.device-phone .allsitehub-featured-row .featured-app-card .pill { font-size: 9px; padding: 3px 6px; }
+
+/* AllSiteHub's full directory cards remain compact and easy to tap. */
+.device-phone .allsitehub-section .apps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.device-phone .allsitehub-section .app-card {
+  min-width: 0;
+  min-height: 0;
+  padding: 10px;
+  gap: 7px;
+  border-radius: 13px;
+}
+.device-phone .allsitehub-section .app-card-badge { width: 38px; height: 38px; }
+.device-phone .allsitehub-section .app-card-badge img { width: 28px !important; height: 28px !important; }
+.device-phone .allsitehub-section .app-card-title { font-size: 12px; line-height: 1.25; }
+.device-phone .allsitehub-section .app-card-desc { font-size: 10px !important; overflow-wrap: anywhere; }
+.device-phone .allsitehub-section .app-card-launch { min-height: 36px; padding: 7px 9px; font-size: 11px; }
+
+/* Full-screen live/VOD playback: no cropped controls or hidden player area. */
+.device-phone .player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.device-phone .player-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.device-phone .player-stage video,
+.device-phone .player-stage iframe,
+.device-phone .player-stage .video-js,
+.device-phone .player-stage .vjs-tech {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  object-fit: contain;
+}
+.device-phone .player-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  max-height: 32dvh;
+  overflow-y: auto;
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+}
+.device-phone .player-close { z-index: 45; }
+.device-phone .player-menu-btn { z-index: 45; }
+.device-phone .player-volume-osd { top: max(12px, env(safe-area-inset-top)); min-width: 0; width: min(280px, calc(100vw - 32px)); padding: 10px 14px; }
+.device-phone .player-external-picker-popover { z-index: 60; }
+.device-phone .player-drawer { z-index: 55; max-height: 82dvh; overflow: hidden; }
+.device-phone .drawer-list { min-height: 0; overscroll-behavior: contain; }
+.device-phone .player-engine-picker { z-index: 65; max-height: 70dvh; overflow-y: auto; }
+
+/* Browser and embedded web video controls fit the physical phone viewport. */
+.device-phone .chromium-browser,
+.device-phone .chromium-shell,
+.device-phone .chromium-layout {
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+.device-phone .chromium-viewport {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  flex: 1 1 auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .chromium-iframe-wrapper,
+.device-phone .chromium-iframe-scaler,
+.device-phone .chromium-iframe {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.device-phone .chromium-iframe-wrapper { height: 100%; min-height: 0; }
+.device-phone .chromium-iframe { height: 100% !important; border: 0; }
+.device-phone .chromium-toolbar,
+.device-phone .chromium-topbar,
+.device-phone .chromium-controls {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.device-phone .chromium-toolbar button,
+.device-phone .chromium-topbar button,
+.device-phone .chromium-controls button { min-width: 36px; min-height: 38px; }
+.device-phone .chromium-dialog-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+.device-phone .chromium-history-dialog,
+.device-phone .chromium-settings-dialog,
+.device-phone .chromium-downloads-dialog {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: auto;
+}
+
+@media (max-width: 380px) {
+  .device-phone .phone-tab-shell .topnav-btn { flex-basis: 0 !important; padding-left: 1px; padding-right: 1px; font-size: 9px; }
+  .device-phone .topbar-phone .topbar-right { max-width: 52%; gap: 3px; }
+  .device-phone .featured-browser-card { grid-template-columns: 40px minmax(0, 1fr); padding: 10px; }
+  .device-phone .featured-browser-icon { width: 38px; height: 38px; min-width: 38px; }
+  .device-phone .allsitehub-section .apps-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .device-phone .topbar-phone { min-height: 46px; max-height: 50px; }
+  .device-phone .phone-tab-shell { min-height: calc(52px + env(safe-area-inset-bottom)); }
+  .device-phone .phone-tab-shell .topnav-btn { min-height: 42px; }
+  .device-phone .main { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  .device-phone .player-info { max-height: 25dvh; }
+}
+
+
+/* Final phone-wide responsive audit: remaining pages, forms, overlays and players. */
+.device-phone *,
+.device-phone *::before,
+.device-phone *::after { box-sizing: border-box; }
+.device-phone { -webkit-text-size-adjust: 100%; }
+.device-phone .main {
+  display: block;
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
+}
+.device-phone .main > * { width: 100%; min-width: 0; max-width: 100%; }
+.device-phone .main section,
+.device-phone .main article,
+.device-phone .main aside,
+.device-phone .main header,
+.device-phone .main footer { min-width: 0; max-width: 100%; }
+.device-phone img,
+.device-phone video,
+.device-phone canvas,
+.device-phone svg { max-width: 100%; }
+.device-phone input,
+.device-phone select,
+.device-phone textarea { min-width: 0; max-width: 100%; font-size: 16px; }
+.device-phone button { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Every browse/library/category collection must shrink to the real viewport. */
+.device-phone .grid,
+.device-phone .grid-channels,
+.device-phone .grid-movies,
+.device-phone .grid-countries,
+.device-phone .grid-themes,
+.device-phone .grid-movies-banners,
+.device-phone .apps-grid,
+.device-phone .playlist-grid,
+.device-phone .playlists-grid,
+.device-phone .top-players-grid,
+.device-phone .layout-picker-grid {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.device-phone .card,
+.device-phone .channel-card,
+.device-phone .movie-card,
+.device-phone .country-card,
+.device-phone .theme-card,
+.device-phone .app-card,
+.device-phone .playlist-card,
+.device-phone .movie-banner-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.device-phone .card img,
+.device-phone .channel-card img,
+.device-phone .movie-card img,
+.device-phone .movie-poster-wrap img {
+  max-width: 100%;
+  object-fit: cover;
+}
+.device-phone .card-title,
+.device-phone .movie-card-title,
+.device-phone .channel-card-name,
+.device-phone .country-name,
+.device-phone .app-card-title,
+.device-phone .playlist-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.device-phone .toolbar,
+.device-phone .filter-bar,
+.device-phone .moviebox-filter-bar,
+.device-phone .player-actions-row,
+.device-phone .form-actions,
+.device-phone .cinema-hero-actions,
+.device-phone .billboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 7px;
+}
+.device-phone .toolbar > *,
+.device-phone .filter-bar > *,
+.device-phone .moviebox-filter-bar > * { min-width: 0; max-width: 100%; }
+.device-phone .row-track,
+.device-phone .chips,
+.device-phone .chips-scroll,
+.device-phone .moviebox-genre-chips,
+.device-phone .playlist-tabs,
+.device-phone .playlist-tab-bar,
+.device-phone .drawer-filter-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.device-phone .row-track > *,
+.device-phone .chips > *,
+.device-phone .chips-scroll > *,
+.device-phone .playlist-tabs > *,
+.device-phone .playlist-tab-bar > * { flex: 0 0 auto; }
+
+/* Browser, settings, downloads and app-management workspaces. */
+.device-phone .chromium-browser:not(.chromium-browser-standalone) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: none;
+  padding-left: 0;
+  border-radius: 0;
+}
+.device-phone .vyora-browser-sidebar { display: none; }
+.device-phone .chromium-browser-standalone {
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+.device-phone .chromium-browser-standalone .chromium-iframe-wrapper,
+.device-phone .chromium-browser-standalone .chromium-iframe-scaler,
+.device-phone .chromium-browser-standalone .chromium-iframe {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.device-phone .cinema-settings-modal,
+.device-phone .settings-overlay,
+.device-phone .search-overlay,
+.device-phone .playlists-overlay,
+.device-phone .cinema-settings-content,
+.device-phone .settings-tab-pane,
+.device-phone .settings-section {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.device-phone .cinema-settings-modal,
+.device-phone .settings-overlay,
+.device-phone .search-overlay,
+.device-phone .playlists-overlay {
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.device-phone .settings-row,
+.device-phone .settings-banner,
+.device-phone .settings-card,
+.device-phone .form-row,
+.device-phone .form-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+.device-phone .settings-row { flex-wrap: wrap; }
+.device-phone .settings-row > * { min-width: 0; max-width: 100%; }
+.device-phone table { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
+.device-phone pre,
+.device-phone code { max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Correct actual player DOM classes (player-video is the video/iframe node). */
+.device-phone .player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: #000;
+}
+.device-phone .player-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.device-phone .player-video {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  border: 0;
+  background: #000;
+  object-fit: contain;
+}
+.device-phone .player-embed-frame { position: absolute; inset: 0; }
+.device-phone .player-status { max-width: calc(100vw - 28px); overflow-wrap: anywhere; }
+.device-phone .player-info {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 38dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+}
+.device-phone .player-hud-actions {
+  justify-content: flex-start;
+  gap: 5px;
+}
+.device-phone .hud-action-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  justify-content: center;
+}
+.device-phone .hud-action-btn span { display: none; }
+.device-phone .hud-btn-back span,
+.device-phone .hud-btn-channels span { display: inline; }
+.device-phone .player-drawer {
+  position: fixed;
+  z-index: 12020;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: 100%;
+  height: min(82dvh, 720px);
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.device-phone .drawer-scrim {
+  position: fixed;
+  z-index: 12010;
+  inset: 0;
+}
+.device-phone .drawer-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .drawer-item { min-width: 0; width: 100%; }
+.device-phone .player-engine-picker {
+  position: fixed;
+  z-index: 12030;
+  left: 10px;
+  right: 10px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: none;
+  max-height: 72dvh;
+  overflow-y: auto;
+}
+.device-phone .player-close,
+.device-phone .player-menu-btn,
+.device-phone .player-external-btn {
+  min-width: 42px;
+  min-height: 42px;
+}
+
+/* Avoid content hiding behind persistent navigation and system gesture area. */
+.device-phone .main { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+.device-phone .overlay,
+.device-phone .chromium-dialog-overlay {
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+@media (max-width: 430px) {
+  .device-phone .grid,
+  .device-phone .grid-channels,
+  .device-phone .grid-movies,
+  .device-phone .grid-countries,
+  .device-phone .grid-themes,
+  .device-phone .grid-movies-banners,
+  .device-phone .apps-grid,
+  .device-phone .playlist-grid,
+  .device-phone .playlists-grid { gap: 8px; }
+  .device-phone .topbar-phone .topbar-right { max-width: 48%; }
+  .device-phone .topbar-phone .brand-mark { width: 32px; height: 32px; }
+  .device-phone .topbar-phone .brand-name { font-size: 15px; }
+  .device-phone .player-info-right { display: none; }
+}
+@media (max-width: 340px) {
+  .device-phone .grid-channels,
+  .device-phone .grid-movies,
+  .device-phone .grid-countries,
+  .device-phone .grid-themes,
+  .device-phone .grid-movies-banners,
+  .device-phone .apps-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .device-phone .chromium-browser:not(.chromium-browser-standalone) {
+    height: calc(100dvh - 98px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .device-phone .player-info { max-height: 28dvh; }
+  .device-phone .player-drawer { height: 88dvh; }
+}
+
+
+/* Phone player: compact 3:6 portrait canvas, tap to expand into 6:3 landscape. */
+.device-phone .player-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+}
+.device-phone .player-overlay:not(.phone-wide-mode) .player-stage {
+  position: relative;
+  width: min(100vw, 50dvh);
+  height: min(100dvh, 200vw);
+  aspect-ratio: 1 / 2;
+  flex: 0 0 auto;
+  margin: auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+.device-phone .player-overlay:not(.phone-wide-mode) .player-video,
+.device-phone .player-overlay:not(.phone-wide-mode) .player-native-hint {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.device-phone .player-expand-toggle {
+  position: absolute;
+  z-index: 120;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(10,14,24,.78);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.device-phone .player-overlay.phone-wide-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  border-radius: 0;
+}
+.device-phone .player-overlay.phone-wide-mode .player-stage {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 2 / 1;
+  margin: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.device-phone .player-overlay.phone-wide-mode .player-video,
+.device-phone .player-overlay.phone-wide-mode .player-embed-frame,
+.device-phone .player-overlay.phone-wide-mode .player-native-hint {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.device-phone .player-overlay.phone-wide-mode .player-info {
+  max-width: min(94vw, 1100px);
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+.device-phone .player-overlay.phone-wide-mode .player-expand-toggle {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+}
+@media (orientation: portrait) {
+  .device-phone .player-overlay.phone-wide-mode {
+    /* Fallback for devices/WebViews that do not grant orientation lock. */
+    width: 100vw;
+    height: 100dvh;
+  }
+  .device-phone .player-overlay.phone-wide-mode .player-stage {
+    width: 100vw;
+    height: 100dvh;
+  }
+}
+
+
+/* VYORA phone navigation: four frequent destinations, everything else in a drawer. */
+.device-phone .phone-menu-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;border:1px solid var(--line-bright);border-radius:12px;color:var(--text);background:var(--surface-2,rgba(255,255,255,.07))}
+.device-phone .phone-tab-shell{z-index:10050!important;padding:5px max(7px,env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left))}
+.device-phone .phone-menu-panel{width:100%;min-width:0}
+.device-phone .phone-tab-shell .topnav{display:flex!important;flex-direction:row;align-items:stretch;justify-content:space-around;gap:3px}
+.device-phone .phone-tab-shell .topnav-btn:nth-child(n+5){display:none!important}
+.device-phone .phone-tab-shell .topnav-btn{flex:1 1 0!important;min-width:0!important;max-width:none;width:auto!important;min-height:52px;padding:5px 2px;overflow:hidden;text-overflow:ellipsis}
+.device-phone .phone-tab-shell.menu-open{position:fixed!important;inset:0!important;z-index:20000!important;display:block!important;width:100vw!important;height:100dvh!important;min-height:100dvh!important;padding:0!important;background:rgba(0,0,0,.58);backdrop-filter:blur(5px);overflow:hidden}
+.device-phone .phone-tab-shell.menu-open .phone-menu-panel{position:absolute;top:0;bottom:0;left:0;width:min(84vw,340px);height:100%;padding:max(18px,env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;background:var(--panel,#101827);border-right:1px solid var(--line-bright);box-shadow:18px 0 48px rgba(0,0,0,.38)}
+.device-phone .phone-tab-shell.menu-open .topnav{display:flex!important;flex-direction:column!important;align-items:stretch;justify-content:flex-start;gap:7px;width:100%;height:auto;max-height:none;min-height:0;overflow:visible!important}
+.device-phone .phone-tab-shell.menu-open .topnav-btn,.device-phone .phone-tab-shell.menu-open .topnav-btn:nth-child(n+5){display:flex!important;flex:0 0 auto!important;width:100%!important;max-width:none;min-width:0!important;min-height:48px;justify-content:flex-start;flex-direction:row;gap:12px;padding:10px 13px;border-radius:12px;font-size:14px;text-align:left}
+.device-phone .allsitehub-section .allsitehub-card{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:10px;padding:13px}
+.device-phone .allsitehub-section .allsitehub-card .app-card-body{min-width:0}
+.device-phone .allsitehub-section .allsitehub-card .app-card-title{overflow-wrap:anywhere}
+.device-phone .allsitehub-section .allsitehub-card .app-card-launch{display:inline-flex;width:100%;min-height:42px;justify-content:center;align-items:center;gap:8px;white-space:nowrap;font-size:12px}
+.device-phone .player-expand-toggle{display:none!important}
+
+
+/* Keep Home, Movies, Live TV and Apps in the dock; secondary pages stay in Menu. */
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(3),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(4) { display: none !important; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { display: flex !important; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1) { order: 1; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2) { order: 3; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5) { order: 2; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { order: 4; }
+
+
+/* Phone navigation: keep the header quiet and reveal secondary actions on demand. */
+.device-phone .topbar-phone { position: relative; z-index: 10070; }
+.device-phone .topbar-phone .phone-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border: 1px solid var(--line-bright);
+  border-radius: 12px;
+  color: var(--text, #fff);
+  background: rgba(255,255,255,.06);
+}
+.device-phone .topbar-phone .topbar-right { max-width: none; }
+.device-phone .phone-tab-shell .phone-menu-panel { display: flex; flex-direction: column; gap: 12px; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(n+5) { display: none !important; }
+.device-phone .phone-tab-shell:not(.menu-open) .phone-utility-actions { display: none; }
+.device-phone .phone-tab-shell.menu-open {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10060 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: calc(64px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) !important;
+  overflow-y: auto !important;
+  border: 0;
+  border-radius: 0;
+  background: rgba(5, 8, 16, .985);
+}
+.device-phone .phone-tab-shell.menu-open .phone-menu-panel { width: 100%; max-height: 100%; overflow-y: auto; }
+.device-phone .phone-tab-shell.menu-open .topnav {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-height: none;
+  min-height: 0;
+  overflow: visible !important;
+}
+.device-phone .phone-tab-shell.menu-open .topnav-btn {
+  display: flex !important;
+  width: 100% !important;
+  max-width: none;
+  min-height: 48px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-bright);
+  background: rgba(255,255,255,.045);
+  font-size: 13px;
+}
+.device-phone .phone-tab-shell.menu-open .phone-utility-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-bright);
+}
+.device-phone .phone-tab-shell.menu-open .phone-utility-actions > * {
+  display: inline-flex !important;
+  min-width: 0;
+  min-height: 46px;
+  justify-content: center;
+}
+.device-phone .channel-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 190px;
+  margin: 14px 0;
+  padding: 24px 16px;
+  border: 1px solid var(--line-bright);
+  border-radius: 16px;
+  background: rgba(255,255,255,.035);
+  text-align: center;
+}
+.device-phone .channel-loading-state .spinner { width: 30px; height: 30px; }
+.device-phone .channel-load-error .btn { margin-top: 4px; }
+
+
+/* Phone player cleanup: keep the video surface unobstructed. */
+.device-phone .player-info { display: none !important; }
+.device-phone .player-hud-actions .hud-action-group:first-child { display: none !important; }
+.device-phone .player-status.player-error { width: min(92vw, 420px); max-height: 78dvh; overflow-y: auto; padding: 18px; gap: 10px; }
+.device-phone .player-error-hint { display: none; }
+
+/* Phone dock: expose Browser alongside the four primary destinations. */
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(7),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) {
+  display: flex !important;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(3),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(4),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(6),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(9),
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(10) {
+  display: none !important;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(1) { order: 1; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(2) { order: 2; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(5) { order: 3; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(7) { order: 4; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn:nth-child(8) { order: 5; }
+.device-phone .phone-tab-shell:not(.menu-open) .topnav {
+  display: flex !important;
+  width: 100%;
+  gap: 2px;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 54px;
+  padding: 5px 1px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.device-phone .phone-tab-shell:not(.menu-open) .topnav-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Browser chrome is redesigned as a compact, touch-friendly phone toolbar. */
+.device-phone .chromium-browser {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow: hidden;
+}
+.device-phone .chromium-tabstrip {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  gap: 4px;
+  padding: 4px 6px 0;
+  overflow: hidden;
+}
+.device-phone .chromium-tabs-scroll {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  gap: 3px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .chromium-tab {
+  flex: 0 0 auto;
+  min-width: 74px;
+  max-width: 138px;
+  gap: 5px;
+  padding: 7px 7px;
+  font-size: 11px;
+  border-radius: 8px 8px 0 0;
+}
+.device-phone .chromium-tab-title {
+  min-width: 0;
+  max-width: 62px;
+}
+.device-phone .chromium-tab-dup { display: none !important; }
+.device-phone .chromium-tab-close {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+.device-phone .chromium-newtab-btn {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}
+.device-phone .chromium-tabstrip-controls {
+  flex: 0 0 auto;
+  margin-left: 0;
+  gap: 2px;
+}
+.device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+  width: 29px;
+  min-width: 29px;
+  height: 30px;
+  min-height: 30px;
+  padding: 4px;
+}
+.device-phone .chromium-toolbar {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+  padding: 7px 8px;
+  flex-wrap: initial;
+}
+.device-phone .chromium-nav-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.device-phone .chromium-nav-buttons::-webkit-scrollbar,
+.device-phone .chromium-actions::-webkit-scrollbar { display: none; }
+.device-phone .chromium-nav-buttons .chromium-tool-btn {
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 5px;
+}
+.device-phone .chromium-nav-buttons .chromium-tool-btn:nth-child(4),
+.device-phone .chromium-nav-buttons .chromium-tool-btn:nth-child(5) {
+  display: none;
+}
+.device-phone .chromium-engine-select {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+.device-phone .chromium-engine-trigger {
+  min-width: 0;
+  min-height: 38px;
+  height: 38px;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 9px;
+}
+.device-phone .chromium-engine-trigger-name { font-size: 11px; }
+.device-phone .chromium-omnibox-form {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+.device-phone .chromium-omnibox {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 10px;
+}
+.device-phone .chromium-omnibox-engine-tag,
+.device-phone .chromium-omnibox-ssl { display: none; }
+.device-phone .chromium-omnibox-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px;
+}
+.device-phone .chromium-omnibox-go {
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  margin-left: 2px;
+}
+.device-phone .chromium-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 0 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.device-phone .chromium-actions > .chromium-tool-btn,
+.device-phone .chromium-actions .chromium-badge-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 6px;
+  justify-content: center;
+}
+.device-phone .chromium-actions .install-app-btn {
+  flex-basis: 36px;
+  width: 36px;
+  min-width: 36px;
+}
+.device-phone .chromium-actions .install-app-btn .chromium-btn-label { display: none; }
+.device-phone .chromium-actions .chromium-zoom-group,
+.device-phone .chromium-actions .chromium-scroll-group { display: none !important; }
+.device-phone .chromium-actions > * { flex-shrink: 0; }
+.device-phone .chromium-find-bar {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+}
+.device-phone .chromium-bookmarks-bar {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+    width: 27px;
+    min-width: 27px;
+    padding: 3px;
+  }
+  .device-phone .chromium-tab { min-width: 66px; max-width: 112px; padding-left: 5px; padding-right: 5px; }
+  .device-phone .chromium-tab-title { max-width: 42px; }
+  .device-phone .chromium-engine-trigger-name { display: none; }
+  .device-phone .phone-tab-shell:not(.menu-open) .topnav-btn { font-size: 9px; }
+}
+
+
+/* Final phone player bounds: use the containing viewport, not 100vw (which
+   can include system/scrollbar width). Keep every control and video surface in
+   the visible Android screen in both portrait and landscape. */
+.device-phone .player-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  transform: none;
+  contain: layout paint;
+}
+.device-phone .player-stage {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+.device-phone .player-stage .player-video,
+.device-phone .player-stage .player-embed-frame,
+.device-phone .player-stage video,
+.device-phone .player-stage iframe {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border: 0;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+.device-phone .player-expand-toggle {
+  position: absolute !important;
+  right: max(12px, env(safe-area-inset-right)) !important;
+  bottom: max(14px, env(safe-area-inset-bottom)) !important;
+  z-index: 80 !important;
+  max-width: calc(100% - 24px);
+}
+.device-phone .player-close {
+  position: absolute !important;
+  top: max(10px, env(safe-area-inset-top)) !important;
+  right: max(10px, env(safe-area-inset-right)) !important;
+  z-index: 90 !important;
+}
+.device-phone .player-info {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: max(14px, env(safe-area-inset-left)) !important;
+  padding-right: max(14px, env(safe-area-inset-right)) !important;
+  padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
+}
+.device-phone .player-status,
+.device-phone .player-error,
+.device-phone .player-auto-recover {
+  box-sizing: border-box;
+  width: min(100%, 440px);
+  max-width: calc(100% - 24px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.device-phone .player-drawer {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: calc(100dvh - env(safe-area-inset-top)) !important;
+  box-sizing: border-box !important;
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
+.device-phone .player-engine-picker,
+.device-phone .player-external-picker-popover {
+  max-width: calc(100vw - 20px) !important;
+  box-sizing: border-box !important;
+}
+@media (orientation: landscape) {
+  .device-phone .player-info { max-height: 38dvh !important; }
+  .device-phone .player-expand-toggle { bottom: max(10px, env(safe-area-inset-bottom)) !important; }
+}
+
+
+/* VYORA phone polish: browser chrome, directory tiles and app launch controls. */
+.device-phone .chromium-browser {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: calc(100dvh - 118px) !important;
+  max-height: calc(100dvh - 118px) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+.device-phone .chromium-tabstrip {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+  padding: 5px 6px 0 !important;
+  overflow: hidden !important;
+}
+.device-phone .chromium-tabs-scroll {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-tabs-scroll::-webkit-scrollbar { display: none !important; }
+.device-phone .chromium-tabstrip-controls {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  gap: 3px !important;
+}
+.device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+}
+.device-phone .chromium-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  gap: 6px !important;
+  padding: 7px 8px !important;
+  overflow: visible !important;
+}
+.device-phone .chromium-nav-buttons {
+  grid-column: 1 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 5px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-nav-buttons .chromium-tool-btn {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+}
+.device-phone .chromium-engine-select {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.device-phone .chromium-engine-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: space-between !important;
+  min-height: 40px !important;
+  height: 40px !important;
+}
+.device-phone .chromium-omnibox-form {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.device-phone .chromium-omnibox {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  height: 42px !important;
+}
+.device-phone .chromium-omnibox-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  font-size: 16px !important;
+}
+.device-phone .chromium-actions {
+  grid-column: 1 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  gap: 5px !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-actions > .chromium-tool-btn,
+.device-phone .chromium-actions .chromium-badge-btn {
+  flex: 0 0 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+}
+.device-phone .speeddial-engines-bar {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-engine-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 92px !important;
+  padding: 9px 5px !important;
+  overflow: hidden !important;
+}
+.device-phone .speeddial-engine-btn .engine-label {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.device-phone .speeddial-engine-more-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: rgba(56,189,248,.12);
+}
+.device-phone .speeddial-section,
+.device-phone .speeddial-header { min-width: 0 !important; max-width: 100% !important; }
+.device-phone .speeddial-category-chips {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  flex-wrap: nowrap !important;
+  scrollbar-width: none !important;
+}
+.device-phone .speeddial-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-card {
+  min-width: 0 !important;
+  padding: 10px !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-card-info { min-width: 0 !important; }
+.device-phone .speeddial-card-title,
+.device-phone .speeddial-card-url {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.device-phone .allsitehub-section .apps-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 218px !important;
+  height: 100% !important;
+  padding: 11px !important;
+  gap: 8px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-badge {
+  width: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  flex: 0 0 42px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-body {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-title {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  min-height: 2.5em !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-desc {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 10px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-launch {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  height: auto !important;
+  margin: auto 0 0 !important;
+  padding: 8px 5px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+}
+.device-phone .apps-section .apps-grid,
+.device-phone .apps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+.device-phone .apps-grid > .featured-app-card {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  min-width: 0 !important;
+  padding: 14px !important;
+  gap: 10px !important;
+}
+.device-phone .apps-grid > .app-card:not(.featured-app-card) {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 205px !important;
+  height: 100% !important;
+  padding: 11px !important;
+  gap: 8px !important;
+}
+.device-phone .apps-grid .app-card-body {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.device-phone .apps-grid .app-card-title {
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
+}
+.device-phone .apps-grid .app-card-desc {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+}
+.device-phone .apps-grid .app-card-launch {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  height: auto !important;
+  margin: auto 0 0 !important;
+  padding: 9px 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+.device-phone .apps-grid > .featured-app-card .app-card-launch {
+  align-self: stretch !important;
+}
+@media (max-width: 380px) {
+  .device-phone .allsitehub-section .apps-grid,
+  .device-phone .apps-section .apps-grid,
+  .device-phone .apps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  .device-phone .allsitehub-section .allsitehub-card,
+  .device-phone .apps-grid > .app-card:not(.featured-app-card) {
+    min-height: 196px !important;
+    padding: 9px !important;
+  }
+  .device-phone .allsitehub-section .allsitehub-card .app-card-launch,
+  .device-phone .apps-grid .app-card-launch {
+    font-size: 10px !important;
+    padding: 8px 4px !important;
+  }
+}
+@media (max-width: 340px) {
+  .device-phone .allsitehub-section .apps-grid,
+  .device-phone .apps-section .apps-grid,
+  .device-phone .apps-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+
+/* Browser toolbar: compact, predictable rows on narrow phone screens. */
+.device-phone .chromium-toolbar {
+  display: grid !important;
+  grid-template-columns: auto minmax(84px, 1fr);
+  grid-template-areas:
+    "nav engine"
+    "omnibox omnibox"
+    "actions actions";
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  flex-wrap: initial;
+}
+.device-phone .chromium-toolbar .chromium-nav-buttons { grid-area: nav; gap: 3px; min-width: 0; }
+.device-phone .chromium-toolbar .chromium-engine-select { grid-area: engine; justify-self: end; min-width: 0; max-width: 100%; }
+.device-phone .chromium-toolbar .chromium-omnibox-form {
+  grid-area: omnibox;
+  order: initial;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.device-phone .chromium-toolbar .chromium-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 0 3px;
+  scrollbar-width: none;
+}
+.device-phone .chromium-toolbar .chromium-actions::-webkit-scrollbar { display: none; }
+.device-phone .chromium-toolbar .chromium-tool-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  height: 34px;
+  padding: 5px;
+}
+.device-phone .chromium-toolbar .chromium-nav-buttons .chromium-tool-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+.device-phone .chromium-toolbar .chromium-engine-trigger {
+  max-width: 100%;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+.device-phone .chromium-toolbar .chromium-omnibox { width: 100%; min-width: 0; }
+.device-phone .chromium-toolbar .chromium-omnibox-input { min-width: 0; width: 100%; font-size: 15px; }
+
+/* Installed web-app tiles are compact launchers, not oversized feature cards. */
+.device-phone .apps-grid > .installed-app-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 122px !important;
+  height: 100% !important;
+  padding: 9px !important;
+  gap: 6px !important;
+}
+.device-phone .apps-grid > .installed-app-card .app-card-badge {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+}
+.device-phone .apps-grid > .installed-app-card .app-card-body {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+.device-phone .apps-grid > .installed-app-card .app-badge-tag { margin: 0 0 3px !important; font-size: 9px !important; }
+.device-phone .apps-grid > .installed-app-card .app-card-title {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+.device-phone .apps-grid > .installed-app-card .app-card-desc { display: none !important; }
+.device-phone .apps-grid > .installed-app-card .app-card-launch {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 5px 7px !important;
+  font-size: 11px !important;
+}
+.device-phone .apps-grid > .installed-app-card .app-del-btn {
+  top: 5px !important;
+  right: 5px !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  font-size: 10px !important;
+}
+@media (max-width: 360px) {
+  .device-phone .chromium-toolbar { gap: 5px; padding: 6px; }
+  .device-phone .apps-grid > .installed-app-card { min-height: 116px !important; padding: 8px !important; }
+}
+
+
+/* Final phone layout: installed web apps stay compact and never stretch to fill tall grid rows. */
+.device-phone .apps-section .apps-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: minmax(132px, auto) !important;
+  align-items: start !important;
+  align-content: start !important;
+  gap: 10px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  align-items: center !important;
+  justify-content: start !important;
+  gap: 7px 9px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 132px !important;
+  height: auto !important;
+  max-height: 158px !important;
+  padding: 10px !important;
+  overflow: hidden !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-badge {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-body {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  flex: none !important;
+  gap: 3px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-badge-tag {
+  margin: 0 0 3px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-title {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-desc { display: none !important; }
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-launch {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 5px 7px !important;
+  font-size: 11px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-del-btn {
+  top: 5px !important;
+  right: 5px !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  font-size: 10px !important;
+}
+@media (max-width: 360px) {
+  .device-phone .apps-section .apps-grid { gap: 8px !important; }
+  .device-phone .apps-section .apps-grid > .installed-app-card { min-height: 124px !important; max-height: 148px !important; padding: 8px !important; }
+}

@@ -1,0 +1,50 @@
+name: VYORA full stream source live audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "25 2 * * *"
+  push:
+    branches:
+      - feature/android-phone-app
+      - feature/android-tv-app
+    paths:
+      - "scripts/audit-streams.mjs"
+      - "scripts/build-data.mjs"
+      - "server/data/**"
+      - ".github/workflows/stream-live-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vyora-stream-audit-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  audit-all-sources:
+    name: Probe every catalogued stream source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Generate current channel catalog
+        run: |
+          npm ci
+          npm run data
+      - name: Validate audit runner
+        run: node --check scripts/audit-streams.mjs
+      - name: Live-probe all channel stream URLs
+        run: |
+          node scripts/audit-streams.mjs --confirm-network --concurrency 4 --timeout-ms 8000 --delay-ms 100
+      - name: Upload complete audit report and checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyora-stream-audit
+          path: reports/stream-audit/
+          if-no-files-found: warn
+          retention-days: 7

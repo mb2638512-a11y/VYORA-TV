@@ -5,9 +5,10 @@
  */
 
 type AndroidBridge = {
+  isTvDevice?(): boolean
   play(url: string, referer: string, ua: string, title: string, logo: string): void
   playMulti?(candidates: string, title: string, logo: string): void
-  stop(): void
+  stop?(): void
   setVolume(volume: number): void
   getVolume(): number
   speak(text: string): void
@@ -16,6 +17,8 @@ type AndroidBridge = {
   openExternal(url: string): void
   launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
   setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
+  openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop', standalone?: boolean): boolean
+  openInstalledApp?(initialUrl: string, displayMode: 'auto' | 'mobile' | 'desktop'): boolean
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -44,7 +47,7 @@ export function nativePlay(url: string, referer = '', ua = '', title = '', logo 
  * black screen.
  */
 export function nativePlayMulti(
-  candidates: Array<{ url: string; referer?: string; ua?: string }>,
+  candidates: Array<{ url: string; referer?: string; ua?: string; hls?: boolean; dash?: boolean }>,
   title = '',
   logo = '',
 ) {
@@ -58,12 +61,23 @@ export function nativePlayMulti(
   bridge?.play(first.url, first.referer || '', first.ua || '', title, logo)
 }
 
+export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto', standalone = false): boolean {
+  if (typeof bridge?.openBrowser !== 'function') return false
+  return bridge.openBrowser(initialUrl, engineId, displayMode, standalone) === true
+}
+
+export function nativeOpenInstalledApp(initialUrl = '', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto'): boolean {
+  if (typeof bridge?.openInstalledApp !== 'function') return false
+  return bridge.openInstalledApp(initialUrl, displayMode) === true
+}
+
 export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
   bridge?.setBrowserDisplayMode?.(mode)
 }
 
 export function nativeStop() {
-  bridge?.stop()
+  // Browser/test bridge stubs may expose only a subset of the native API.
+  if (typeof bridge?.stop === 'function') bridge.stop()
 }
 
 export function speak(text: string) {

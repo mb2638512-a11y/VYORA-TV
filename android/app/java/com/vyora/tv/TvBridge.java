@@ -29,6 +29,12 @@ public class TvBridge {
         this.act = act;
     }
 
+    /** True only on Android TV / Leanback hardware; used to select the TV UI. */
+    @JavascriptInterface
+    public boolean isTvDevice() {
+        return act.getPackageManager().hasSystemFeature("android.software.leanback");
+    }
+
     @JavascriptInterface
     public void play(final String url, final String referer, final String ua, final String title, final String logo) {
         act.runOnUiThread(new Runnable() {
@@ -203,6 +209,48 @@ public class TvBridge {
             return false;
         }
         return started.get();
+    }
+
+    /** Open the full native Android WebView browser, outside the app's iframe shell. */
+    @JavascriptInterface
+    public boolean openBrowser(final String initialUrl, final String engineId, final String displayMode, final boolean standalone) {
+        // Return the real launch result to JavaScript. Previously this method
+        // returned void, so the UI assumed the browser had opened even when
+        // Android rejected the Activity launch and had no way to fall back.
+        final CountDownLatch done = new CountDownLatch(1);
+        final AtomicBoolean started = new AtomicBoolean(false);
+        act.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(act, BrowserActivity.class);
+                intent.putExtra("initialUrl", initialUrl == null ? "" : initialUrl);
+                intent.putExtra("engineId", engineId == null ? "google0" : engineId);
+                intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
+                intent.putExtra("standaloneMode", standalone);
+                act.startActivity(intent);
+                started.set(true);
+            } catch (Throwable error) {
+                Log.e(TAG, "Could not open native browser", error);
+                Toast.makeText(act, "VYORA Browser could not be opened", Toast.LENGTH_LONG).show();
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            if (!done.await(4, TimeUnit.SECONDS)) {
+                Log.e(TAG, "Timed out waiting for native browser launch");
+                return false;
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        return started.get();
+    }
+
+    /** Dedicated launcher for installed web apps; always opens without browser chrome. */
+    @JavascriptInterface
+    public boolean openInstalledApp(final String initialUrl, final String displayMode) {
+        return openBrowser(initialUrl, "google0", displayMode, true);
     }
 
     @JavascriptInterface

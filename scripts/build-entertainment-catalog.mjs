@@ -761,7 +761,19 @@ async function buildCatalog() {
     fs.writeFileSync(path.join(directory, 'index.json'), indexJson, 'utf8')
   }
 
-  console.log('[catalog] SUCCESS! Generated full entertainment catalog.')
+  // Fail the build if a dataset was not actually persisted. Counts printed above are
+  // not enough: the APK must contain the same non-empty JSON arrays as the index.
+  for (const [filename, payload] of Object.entries(datasets)) {
+    for (const directory of [SERVER_VOD, WEB_VOD, WEB_DIST_VOD, ANDROID_VOD]) {
+      const target = path.join(directory, filename)
+      const written = fs.readFileSync(target, 'utf8')
+      const parsed = JSON.parse(written)
+      if (!Array.isArray(parsed) || parsed.length !== payload.length || fs.statSync(target).size < 3) {
+        throw new Error(`[catalog] Persist verification failed: ${target}; expected ${payload.length} records, got ${Array.isArray(parsed) ? parsed.length : 'non-array'}`)
+      }
+    }
+  }
+  console.log('[catalog] SUCCESS! Generated and verified full entertainment catalog.')
 }
 
 buildCatalog().catch(err => {

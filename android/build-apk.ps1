@@ -40,6 +40,13 @@ foreach ($p in @("$bt\aapt2.exe", "$bt\d8.bat", "$bt\zipalign.exe", "$bt\apksign
 if (Test-Path $build) { Remove-Item $build -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $build | Out-Null
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+# The CI pipeline builds TV first, then phone. Clean stale APKs only once,
+# before the first variant, so the second variant does not delete the first.
+# Preserve the CI test keystore and any non-APK diagnostics in android/out.
+if ($Variant -eq 'tv') {
+  Get-ChildItem -Path $outDir -Filter 'Vyora-*.apk' -File -ErrorAction SilentlyContinue |
+    Remove-Item -Force
+}
 
 # ---------------------------------------------------------------- assets
 $webDist = Join-Path $root 'web\dist'
@@ -86,6 +93,18 @@ Write-Host '[3/7] app resources compiled'
 # ---------------------------------------------------------------- aapt2 link
 $genDir = Join-Path $build 'gen'
 New-Item -ItemType Directory -Force -Path $genDir | Out-Null
+# The custom aapt2/javac pipeline does not run AGP's BuildConfig generator.
+# Emit the same flavor constant that Gradle supplies for the selected APK.
+$buildConfigDir = Join-Path $genDir 'com\vyora\tv'
+New-Item -ItemType Directory -Force -Path $buildConfigDir | Out-Null
+$buildConfigPath = Join-Path $buildConfigDir 'BuildConfig.java'
+$buildConfigSource = @"
+package com.vyora.tv;
+public final class BuildConfig {
+  public static final String FLAVOR = "$Variant";
+}
+"@
+[System.IO.File]::WriteAllText($buildConfigPath, $buildConfigSource, [System.Text.UTF8Encoding]::new($false))
 $baseApk = Join-Path $build 'base.apk'
 $linkArgs = @(
   'link',

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CustomPlaylist } from '../types'
 import { authXtream, fetchXtreamChannels, importM3UPlaylist } from '../lib/api'
 import { Icon } from './Icon'
+import { CURATED_PLAYLISTS } from './playlistCatalog'
 
 export function PlaylistsModal({
   activePlaylistId,
@@ -9,6 +10,7 @@ export function PlaylistsModal({
   onSelectPlaylist,
   onSavePlaylist,
   onDeletePlaylist,
+  onTogglePlaylist,
   onClose,
   t,
 }: {
@@ -17,10 +19,25 @@ export function PlaylistsModal({
   onSelectPlaylist: (playlist: CustomPlaylist | null) => void
   onSavePlaylist: (playlist: CustomPlaylist) => void
   onDeletePlaylist: (id: string) => void
+  onTogglePlaylist: (id: string, enabled: boolean) => void
   onClose: () => void
   t: (key: string) => string
 }) {
-  const [tab, setTab] = useState<'list' | 'xtream' | 'm3u'>('list')
+  const [tab, setTab] = useState<'list' | 'xtream' | 'm3u' | 'catalog'>('list')
+  const [catalogFilter, setCatalogFilter] = useState('All')
+  const [catalogBusy, setCatalogBusy] = useState<string | null>(null)
+  const [catalogMessage, setCatalogMessage] = useState('')
+
+  const importCurated = async (item: (typeof CURATED_PLAYLISTS)[number]) => {
+    setCatalogBusy(item.id); setCatalogMessage('')
+    try {
+      const res = await importM3UPlaylist(item.url)
+      if (!res.ok || !res.total) throw new Error(res.error || 'No entries found in this playlist.')
+      const playlist: CustomPlaylist = { id: 'catalog-' + item.id, name: item.name, type: 'm3u', url: item.url, channelsCount: res.total, addedAt: Date.now(), enabled: true }
+      onSavePlaylist(playlist); onSelectPlaylist(playlist); setTab('list')
+    } catch (error: any) { setCatalogMessage(item.name + ': ' + (error?.message || 'Import failed.')) }
+    finally { setCatalogBusy(null) }
+  }
 
   // Xtream Form State
   const [xtreamName, setXtreamName] = useState('')
@@ -217,7 +234,27 @@ export function PlaylistsModal({
         >
           <Icon name="plus" size={15} /> {t('addM3U')}
         </button>
+        <button className={`chip ${tab === 'catalog' ? 'active' : ''}`} data-focusable onClick={() => setTab('catalog')}>
+          <Icon name="globe" size={15} /> Public Catalog ({CURATED_PLAYLISTS.length})
+        </button>
       </div>
+
+      {tab === 'catalog' && (
+        <div className="playlist-form-container">
+          <div className="form-explainer"><h3>Public M3U Playlist Catalog</h3><p>33 external playlists: TV shows, movie genres, public live TV, categories and countries. Select one to import it into VYORA. Sources can change or become unavailable; playback and regional rights vary.</p></div>
+          <div className="chips" style={{ marginBottom: '16px', flexWrap: 'wrap' }}>
+            {['All','TV Shows','Movies','Live TV','TV Category','Country'].map(group => <button key={group} className={`chip ${catalogFilter === group ? 'active' : ''}`} data-focusable onClick={() => setCatalogFilter(group)}>{group}</button>)}
+          </div>
+          {catalogMessage && <div className="result-banner result-error">{catalogMessage}</div>}
+          <div className="playlists-list-grid">
+            {CURATED_PLAYLISTS.filter(item => catalogFilter === 'All' || item.group === catalogFilter).map(item => { const saved = playlists.some(pl => pl.id === 'catalog-' + item.id); return <div className="playlist-card" key={item.id}>
+              <div className="playlist-card-header"><span className="badge badge-m3u">{item.group}</span>{saved && <span className="badge badge-active">Added to My Playlists</span>}</div>
+              <div className="playlist-card-title">{item.name}</div><div className="playlist-card-desc">External M3U playlist · imported on demand</div>
+              <div className="playlist-card-actions"><button className="btn btn-primary btn-sm" data-focusable disabled={catalogBusy !== null} onClick={() => void importCurated(item)}><Icon name={catalogBusy === item.id ? 'refresh' : 'download'} size={14} /> {catalogBusy === item.id ? 'Importing…' : saved ? 'Import Again & Open' : 'Add to My Playlists'}</button><button className="btn btn-ghost btn-sm" data-focusable onClick={() => { void navigator.clipboard?.writeText(item.url); setCatalogMessage('URL copied: ' + item.name) }}>Copy URL</button></div>
+            </div> })}
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: SAVED PLAYLISTS */}
       {tab === 'list' && (
@@ -269,6 +306,7 @@ export function PlaylistsModal({
                   >
                     {pl.type === 'xtream' ? 'Xtream Codes' : 'M3U URL'}
                   </span>
+                  {pl.enabled === false ? <span className="badge">Inactive</span> : <span className="badge badge-active">Enabled</span>}
                   {isActive ? (
                     <span className="badge badge-active">
                       <Icon name="check" size={12} /> {t('active')}
@@ -296,10 +334,15 @@ export function PlaylistsModal({
                   ) : null}
                 </div>
                 <div className="playlist-card-actions">
+                  <button className="btn btn-ghost btn-sm" data-focusable onClick={() => onTogglePlaylist(pl.id, pl.enabled === false)}>
+                    <Icon name={pl.enabled === false ? 'check' : 'pause'} size={14} /> {pl.enabled === false ? 'Enable' : 'Disable'}
+                  </button>
                   {isActive ? (
                     <button className="btn btn-ghost btn-sm" disabled style={{ opacity: 0.8 }}>
                       <Icon name="check" size={14} /> Selected
                     </button>
+                  ) : pl.enabled === false ? (
+                    <button className="btn btn-ghost btn-sm" disabled><Icon name="pause" size={14} /> Inactive</button>
                   ) : (
                     <button
                       className="btn btn-primary btn-sm"
