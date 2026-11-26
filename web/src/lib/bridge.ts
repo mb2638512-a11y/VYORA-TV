@@ -17,7 +17,8 @@ type AndroidBridge = {
   openExternal(url: string): void
   launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
   setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
-  openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop'): void
+  openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop', standalone?: boolean): boolean
+  openInstalledApp?(initialUrl: string, displayMode: 'auto' | 'mobile' | 'desktop'): boolean
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
