@@ -213,7 +213,7 @@ public class TvBridge {
 
     /** Open the full native Android WebView browser, outside the app's iframe shell. */
     @JavascriptInterface
-    public boolean openBrowser(final String initialUrl, final String engineId, final String displayMode) {
+    public boolean openBrowser(final String initialUrl, final String engineId, final String displayMode, final boolean standalone) {
         // Return the real launch result to JavaScript. Previously this method
         // returned void, so the UI assumed the browser had opened even when
         // Android rejected the Activity launch and had no way to fall back.
@@ -225,6 +225,7 @@ public class TvBridge {
                 intent.putExtra("initialUrl", initialUrl == null ? "" : initialUrl);
                 intent.putExtra("engineId", engineId == null ? "google0" : engineId);
                 intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
+                intent.putExtra("standaloneMode", standalone);
                 act.startActivity(intent);
                 started.set(true);
             } catch (Throwable error) {
