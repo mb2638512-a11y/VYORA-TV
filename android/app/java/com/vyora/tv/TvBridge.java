@@ -220,6 +220,7 @@ public class TvBridge {
                 intent.putExtra("initialUrl", initialUrl == null ? "" : initialUrl);
                 intent.putExtra("engineId", engineId == null ? "google0" : engineId);
                 intent.putExtra("displayMode", displayMode == null ? "auto" : displayMode);
+                intent.putExtra("standaloneMode", standalone);
                 act.startActivity(intent);
             } catch (Throwable error) {
                 Log.e(TAG, "Could not open native browser", error);
