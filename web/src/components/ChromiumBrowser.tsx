@@ -456,7 +456,7 @@ export default function ChromiumBrowser({
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
   useEffect(() => {
     if (nativeBrowserLaunched.current) return
-    const opened = nativeOpenBrowser(initialUrl?.trim() || '', normalizeBrowserEngineId(initialEngine), initialDisplayMode)
+    const opened = nativeOpenBrowser(initialUrl?.trim() || '', normalizeBrowserEngineId(initialEngine), initialDisplayMode, standalone)
     if (opened) {
       nativeBrowserLaunched.current = true
       onClose()
