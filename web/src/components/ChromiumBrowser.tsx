@@ -2919,7 +2919,7 @@ export default function ChromiumBrowser({
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="search" size={16} />
-                <span>${BROWSER_ENGINES_LIST.length} search destinations · ${BROWSER_ENGINE_CATEGORIES.length} categories</span>
+                <span>{BROWSER_ENGINES_LIST.length} search destinations · {BROWSER_ENGINE_CATEGORIES.length} categories</span>
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="plus" size={16} />
