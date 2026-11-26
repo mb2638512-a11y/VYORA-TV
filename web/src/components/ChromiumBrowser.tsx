@@ -4,7 +4,7 @@ import { nativeInstallApk, setBrowserDisplayMode, nativeOpenBrowser } from '../l
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
 import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId } from '../lib/browserEngines'
-export { BROWSER_ENGINES, BROWSER_ENGINES_LIST } from '../lib/browserEngines'
+export { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES } from '../lib/browserEngines'
 
 export type ChromiumBrowserProps = {
   initialUrl?: string
@@ -2742,7 +2742,7 @@ export default function ChromiumBrowser({
                 </div>
                 <div>
                   <h2>Vyora Browser</h2>
-                  <p className="muted">Choose a search engine or jump to a favourite</p>
+                  <p className="muted">{BROWSER_ENGINES_LIST.length} search destinations across {BROWSER_ENGINE_CATEGORIES.length} categories · Choose one or jump to a favourite</p>
                 </div>
               </div>
             </div>
@@ -2769,6 +2769,18 @@ export default function ChromiumBrowser({
                   </button>
                 )
               })}
+              <button
+                type="button"
+                className="speeddial-engine-btn speeddial-engine-more"
+                onClick={() => { setEngineMenuOpen(true); setEngineSearch(''); setEngineCategory('all') }}
+                aria-label={`Browse all ${BROWSER_ENGINES_LIST.length} search destinations`}
+                title={`Browse all ${BROWSER_ENGINES_LIST.length} search destinations`}
+                data-focusable
+              >
+                <span className="speeddial-engine-more-icon"><Icon name="search" size={20} /></span>
+                <span className="engine-label">All {BROWSER_ENGINES_LIST.length}</span>
+                <span className="speeddial-engine-via">{BROWSER_ENGINE_CATEGORIES.length} categories</span>
+              </button>
             </div>
 
             <form className="speeddial-search-form" onSubmit={handleSpeedDialSearchSubmit}>
@@ -2907,7 +2919,7 @@ export default function ChromiumBrowser({
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="search" size={16} />
-                <span>Five independent search engines</span>
+                <span>${BROWSER_ENGINES_LIST.length} search destinations · ${BROWSER_ENGINE_CATEGORIES.length} categories</span>
               </div>
               <div className="speeddial-feat-item">
                 <Icon name="plus" size={16} />
