@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from './Icon'
-import { nativeInstallApk, setBrowserDisplayMode, nativeOpenBrowser } from '../lib/bridge'
+import { nativeInstallApk, setBrowserDisplayMode, nativeOpenBrowser, nativeOpenInstalledApp } from '../lib/bridge'
 import { fetchDownloads, startDownload, deleteDownload, logoUrl, apiOrigin, API } from '../lib/api'
 import type { BrowserEngineId, DownloadItem, InstalledApp } from '../types'
 import { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, normalizeBrowserEngineId } from '../lib/browserEngines'
@@ -456,12 +456,14 @@ export default function ChromiumBrowser({
   const [initialSession] = useState(() => getInitialBrowserSession(initialUrl, initialEngine, standalone))
   useEffect(() => {
     if (nativeBrowserLaunched.current) return
-    const opened = nativeOpenBrowser(initialUrl?.trim() || '', normalizeBrowserEngineId(initialEngine), initialDisplayMode, standalone)
+    const opened = standalone
+      ? nativeOpenInstalledApp(initialUrl?.trim() || '', initialDisplayMode)
+      : nativeOpenBrowser(initialUrl?.trim() || '', normalizeBrowserEngineId(initialEngine), initialDisplayMode, false)
     if (opened) {
       nativeBrowserLaunched.current = true
       onClose()
     }
-  }, [initialUrl, initialEngine, initialDisplayMode, onClose])
+  }, [initialUrl, initialEngine, initialDisplayMode, standalone, onClose])
 
 
   const [tabs, setTabs] = useState<Tab[]>(() => initialSession.tabs)
