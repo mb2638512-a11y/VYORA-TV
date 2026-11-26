@@ -1458,3 +1458,334 @@
   .device-phone .player-info { max-height: 38dvh !important; }
   .device-phone .player-expand-toggle { bottom: max(10px, env(safe-area-inset-bottom)) !important; }
 }
+
+
+/* VYORA phone polish: browser chrome, directory tiles and app launch controls. */
+.device-phone .chromium-browser {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: calc(100dvh - 118px) !important;
+  max-height: calc(100dvh - 118px) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+.device-phone .chromium-tabstrip {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+  padding: 5px 6px 0 !important;
+  overflow: hidden !important;
+}
+.device-phone .chromium-tabs-scroll {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-tabs-scroll::-webkit-scrollbar { display: none !important; }
+.device-phone .chromium-tabstrip-controls {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  gap: 3px !important;
+}
+.device-phone .chromium-tabstrip-controls .chromium-ctrl-btn {
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+}
+.device-phone .chromium-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  gap: 6px !important;
+  padding: 7px 8px !important;
+  overflow: visible !important;
+}
+.device-phone .chromium-nav-buttons {
+  grid-column: 1 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 5px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-nav-buttons .chromium-tool-btn {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+}
+.device-phone .chromium-engine-select {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.device-phone .chromium-engine-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: space-between !important;
+  min-height: 40px !important;
+  height: 40px !important;
+}
+.device-phone .chromium-omnibox-form {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.device-phone .chromium-omnibox {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  height: 42px !important;
+}
+.device-phone .chromium-omnibox-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  font-size: 16px !important;
+}
+.device-phone .chromium-actions {
+  grid-column: 1 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  gap: 5px !important;
+  scrollbar-width: none !important;
+}
+.device-phone .chromium-actions > .chromium-tool-btn,
+.device-phone .chromium-actions .chromium-badge-btn {
+  flex: 0 0 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+}
+.device-phone .speeddial-engines-bar {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-engine-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 92px !important;
+  padding: 9px 5px !important;
+  overflow: hidden !important;
+}
+.device-phone .speeddial-engine-btn .engine-label {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.device-phone .speeddial-engine-more-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: rgba(56,189,248,.12);
+}
+.device-phone .speeddial-section,
+.device-phone .speeddial-header { min-width: 0 !important; max-width: 100% !important; }
+.device-phone .speeddial-category-chips {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  flex-wrap: nowrap !important;
+  scrollbar-width: none !important;
+}
+.device-phone .speeddial-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-card {
+  min-width: 0 !important;
+  padding: 10px !important;
+  gap: 8px !important;
+}
+.device-phone .speeddial-card-info { min-width: 0 !important; }
+.device-phone .speeddial-card-title,
+.device-phone .speeddial-card-url {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.device-phone .allsitehub-section .apps-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 218px !important;
+  height: 100% !important;
+  padding: 11px !important;
+  gap: 8px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-badge {
+  width: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  flex: 0 0 42px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-body {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-title {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  min-height: 2.5em !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-desc {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 10px !important;
+}
+.device-phone .allsitehub-section .allsitehub-card .app-card-launch {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  height: auto !important;
+  margin: auto 0 0 !important;
+  padding: 8px 5px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+}
+.device-phone .apps-section .apps-grid,
+.device-phone .apps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+.device-phone .apps-grid > .featured-app-card {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  min-width: 0 !important;
+  padding: 14px !important;
+  gap: 10px !important;
+}
+.device-phone .apps-grid > .app-card:not(.featured-app-card) {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 205px !important;
+  height: 100% !important;
+  padding: 11px !important;
+  gap: 8px !important;
+}
+.device-phone .apps-grid .app-card-body {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.device-phone .apps-grid .app-card-title {
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
+}
+.device-phone .apps-grid .app-card-desc {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+}
+.device-phone .apps-grid .app-card-launch {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  height: auto !important;
+  margin: auto 0 0 !important;
+  padding: 9px 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+.device-phone .apps-grid > .featured-app-card .app-card-launch {
+  align-self: stretch !important;
+}
+@media (max-width: 380px) {
+  .device-phone .allsitehub-section .apps-grid,
+  .device-phone .apps-section .apps-grid,
+  .device-phone .apps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  .device-phone .allsitehub-section .allsitehub-card,
+  .device-phone .apps-grid > .app-card:not(.featured-app-card) {
+    min-height: 196px !important;
+    padding: 9px !important;
+  }
+  .device-phone .allsitehub-section .allsitehub-card .app-card-launch,
+  .device-phone .apps-grid .app-card-launch {
+    font-size: 10px !important;
+    padding: 8px 4px !important;
+  }
+}
+@media (max-width: 340px) {
+  .device-phone .allsitehub-section .apps-grid,
+  .device-phone .apps-section .apps-grid,
+  .device-phone .apps-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
