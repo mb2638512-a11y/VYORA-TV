@@ -247,6 +247,12 @@ public class TvBridge {
         return started.get();
     }
 
+    /** Dedicated launcher for installed web apps; always opens without browser chrome. */
+    @JavascriptInterface
+    public boolean openInstalledApp(final String initialUrl, final String displayMode) {
+        return openBrowser(initialUrl, "google0", displayMode, true);
+    }
+
     @JavascriptInterface
     public void setBrowserDisplayMode(final String mode) {
         act.runOnUiThread(() -> act.setBrowserDisplayMode(mode));
