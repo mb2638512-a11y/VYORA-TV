@@ -16,6 +16,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -104,6 +105,56 @@ public class BrowserActivity extends Activity {
     private int activeIndex = 0;
     private boolean tv = false;
     private String initialMode = "auto";
+    private boolean standaloneMode = false;
+    private View fullscreenCustomView;
+    private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private int savedSystemUiVisibility;
+    private int savedRequestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+
+    private void enterImmersiveMode() {
+        View decor = getWindow().getDecorView();
+        decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+    }
+
+    private void showFullscreenCustomView(View view, WebChromeClient.CustomViewCallback callback) {
+        if (view == null) return;
+        if (fullscreenCustomView != null) {
+            hideFullscreenCustomView();
+            return;
+        }
+        fullscreenCustomView = view;
+        fullscreenCallback = callback;
+        savedSystemUiVisibility = getWindow().getDecorView().getSystemUiVisibility();
+        savedRequestedOrientation = getRequestedOrientation();
+        ViewGroup decor = (ViewGroup) getWindow().getDecorView();
+        decor.addView(view, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (!tv) setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        enterImmersiveMode();
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+        view.requestFocus();
+    }
+
+    private void hideFullscreenCustomView() {
+        if (fullscreenCustomView == null) return;
+        View view = fullscreenCustomView;
+        fullscreenCustomView = null;
+        ViewParent parent = view.getParent();
+        if (parent instanceof ViewGroup) ((ViewGroup) parent).removeView(view);
+        if (fullscreenCallback != null) {
+            WebChromeClient.CustomViewCallback callback = fullscreenCallback;
+            fullscreenCallback = null;
+            callback.onCustomViewHidden();
+        }
+        getWindow().getDecorView().setSystemUiVisibility(savedSystemUiVisibility);
+        setRequestedOrientation(savedRequestedOrientation);
+    }
 
     private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
     private int controlHeight() { return dp(tv ? 54 : 44); }
@@ -123,6 +174,8 @@ public class BrowserActivity extends Activity {
         hostBlocker.start();
         initialMode = getIntent().getStringExtra("displayMode");
         if (initialMode == null) initialMode = "auto";
+        standaloneMode = getIntent().getBooleanExtra("standaloneMode", false);
+        if (standaloneMode) enterImmersiveMode();
         loadEngines();
         buildLayout();
         prepareBrowserSession(() -> restoreOrCreateSession(getIntent().getStringExtra("initialUrl"),
@@ -172,7 +225,7 @@ public class BrowserActivity extends Activity {
         toolbar.addView(address,new LinearLayout.LayoutParams(0,controlHeight(),1f));
         goButton=button("Go","Go to address");
         toolbar.addView(goButton,new LinearLayout.LayoutParams(dp(tv?64:48),controlHeight()));
-        root.addView(toolbar,new LinearLayout.LayoutParams(-1,-2));
+        if (!standaloneMode) root.addView(toolbar,new LinearLayout.LayoutParams(-1,-2));
 
         LinearLayout second = new LinearLayout(this); second.setOrientation(LinearLayout.HORIZONTAL);
         second.setGravity(Gravity.CENTER_VERTICAL); second.setPadding(dp(7),dp(4),dp(7),dp(4)); second.setBackgroundColor(BAR);
@@ -194,11 +247,11 @@ public class BrowserActivity extends Activity {
         second.addView(closeButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
         second.addView(protectionButton,new LinearLayout.LayoutParams(dp(tv?120:88),controlHeight()));
         second.addView(privateButton,new LinearLayout.LayoutParams(dp(tv?116:84),controlHeight()));
-        root.addView(second,new LinearLayout.LayoutParams(-1,-2));
+        if (!standaloneMode) root.addView(second,new LinearLayout.LayoutParams(-1,-2));
 
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100); progress.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
-        root.addView(progress,new LinearLayout.LayoutParams(-1,dp(3)));
+        if (!standaloneMode) root.addView(progress,new LinearLayout.LayoutParams(-1,dp(3)));
         webFrame=new FrameLayout(this); webFrame.setBackgroundColor(Color.WHITE);
         root.addView(webFrame,new LinearLayout.LayoutParams(-1,0,1f));
         setContentView(root);
@@ -419,6 +472,12 @@ public class BrowserActivity extends Activity {
             }
         });
         tab.web.setWebChromeClient(new WebChromeClient() {
+            @Override public void onShowCustomView(View view, CustomViewCallback callback) {
+                showFullscreenCustomView(view, callback);
+            }
+            @Override public void onHideCustomView() {
+                hideFullscreenCustomView();
+            }
             @Override public void onProgressChanged(WebView view,int value) {
                 if(current()==tab) { progress.setProgress(value); progress.setVisibility(value>=100?View.GONE:View.VISIBLE); }
             }
@@ -621,6 +680,10 @@ public class BrowserActivity extends Activity {
     @Override protected void onPause() { saveSession(); for(BrowserTab t:tabs) if(t.web!=null) t.web.onPause(); super.onPause(); }
     @Override protected void onResume() { super.onResume(); for(BrowserTab t:tabs) if(t.web!=null) t.web.onResume(); }
     @Override public void onBackPressed() {
+        if (fullscreenCustomView != null) {
+            hideFullscreenCustomView();
+            return;
+        }
         BrowserTab tab=current();
         if(tab!=null && tab.web!=null && tab.web.canGoBack()) { tab.web.goBack(); return; }
         if(tabs.size()>1) { closeCurrentTab(); return; }
