@@ -561,3 +561,24 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Browser toolbar: compact, predictable rows on narrow phone screens. */
+.device-phone .chromium-toolbar{display:grid!important;grid-template-columns:auto minmax(84px,1fr);grid-template-areas:"nav engine" "omnibox omnibox" "actions actions";align-items:center;gap:7px;width:100%;min-width:0;padding:7px 8px;flex-wrap:initial}
+.device-phone .chromium-toolbar .chromium-nav-buttons{grid-area:nav;gap:3px;min-width:0}
+.device-phone .chromium-toolbar .chromium-engine-select{grid-area:engine;justify-self:end;min-width:0;max-width:100%}
+.device-phone .chromium-toolbar .chromium-omnibox-form{grid-area:omnibox;order:initial;display:block;width:100%;min-width:0;max-width:100%}
+.device-phone .chromium-toolbar .chromium-actions{grid-area:actions;display:flex;flex-wrap:nowrap;gap:5px;width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;padding:1px 0 3px;scrollbar-width:none}
+.device-phone .chromium-toolbar .chromium-actions::-webkit-scrollbar{display:none}
+.device-phone .chromium-toolbar .chromium-tool-btn,.device-phone .chromium-toolbar .chromium-nav-buttons .chromium-tool-btn{flex:0 0 34px;width:34px;min-width:34px;min-height:34px;height:34px;padding:5px}
+.device-phone .chromium-toolbar .chromium-engine-trigger{max-width:100%;min-height:34px;padding:5px 8px}
+.device-phone .chromium-toolbar .chromium-omnibox,.device-phone .chromium-toolbar .chromium-omnibox-input{width:100%;min-width:0}
+.device-phone .chromium-toolbar .chromium-omnibox-input{font-size:15px}
+.device-phone .apps-grid>.installed-app-card{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:space-between!important;min-width:0!important;width:100%!important;min-height:122px!important;height:100%!important;padding:9px!important;gap:6px!important}
+.device-phone .apps-grid>.installed-app-card .app-card-badge{width:36px!important;height:36px!important;min-width:36px!important;margin:0!important;border-radius:10px!important}
+.device-phone .apps-grid>.installed-app-card .app-card-body{flex:1 1 auto!important;min-width:0!important;width:100%!important}
+.device-phone .apps-grid>.installed-app-card .app-badge-tag{margin:0 0 3px!important;font-size:9px!important}
+.device-phone .apps-grid>.installed-app-card .app-card-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;overflow-wrap:anywhere!important;margin:0!important;font-size:12px!important;line-height:1.2!important}
+.device-phone .apps-grid>.installed-app-card .app-card-desc{display:none!important}
+.device-phone .apps-grid>.installed-app-card .app-card-launch{width:100%!important;min-width:0!important;min-height:32px!important;height:32px!important;margin:0!important;padding:5px 7px!important;font-size:11px!important}
+.device-phone .apps-grid>.installed-app-card .app-del-btn{top:5px!important;right:5px!important;width:20px!important;height:20px!important;min-height:20px!important;font-size:10px!important}
+@media(max-width:360px){.device-phone .chromium-toolbar{gap:5px;padding:6px}.device-phone .apps-grid>.installed-app-card{min-height:116px!important;padding:8px!important}}
