@@ -18,6 +18,7 @@ type AndroidBridge = {
   launchPlayer?(url: string, title: string, pkg: string, referer?: string, ua?: string): boolean
   setBrowserDisplayMode?(mode: 'auto' | 'mobile' | 'desktop'): void
   openBrowser?(initialUrl: string, engineId: string, displayMode: 'auto' | 'mobile' | 'desktop', standalone?: boolean): boolean
+  openInstalledApp?(initialUrl: string, displayMode: 'auto' | 'mobile' | 'desktop'): boolean
   installApk?(urlOrPath: string): void
   exitApp(): void
 }
@@ -63,6 +64,11 @@ export function nativePlayMulti(
 export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto', standalone = false): boolean {
   if (typeof bridge?.openBrowser !== 'function') return false
   return bridge.openBrowser(initialUrl, engineId, displayMode, standalone) === true
+}
+
+export function nativeOpenInstalledApp(initialUrl = '', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto'): boolean {
+  if (typeof bridge?.openInstalledApp !== 'function') return false
+  return bridge.openInstalledApp(initialUrl, displayMode) === true
 }
 
 export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
