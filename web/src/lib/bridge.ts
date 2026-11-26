@@ -66,6 +66,11 @@ export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', display
   return true
 }
 
+export function nativeOpenInstalledApp(initialUrl = '', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto'): boolean {
+  if (typeof bridge?.openInstalledApp !== 'function') return false
+  return bridge.openInstalledApp(initialUrl, displayMode) === true
+}
+
 export function setBrowserDisplayMode(mode: 'auto' | 'mobile' | 'desktop') {
   bridge?.setBrowserDisplayMode?.(mode)
 }
