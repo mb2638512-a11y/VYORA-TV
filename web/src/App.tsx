@@ -42,7 +42,7 @@ import { VodPlayerOverlay } from './components/VodPlayerOverlay'
 import { SearchOverlay } from './components/SearchOverlay'
 import { SettingsOverlay, type Settings } from './components/SettingsOverlay'
 import { PlaylistsModal } from './components/PlaylistsModal'
-import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BrandLogo, faviconFor } from './components/ChromiumBrowser'
+import ChromiumBrowser, { BROWSER_ENGINES, BROWSER_ENGINES_LIST, BROWSER_ENGINE_CATEGORIES, BrandLogo, faviconFor } from './components/ChromiumBrowser'
 import { AllSiteHub, ALLSITEHUB_CATEGORIES, ALLSITEHUB_SITE_COUNT } from './components/AllSiteHub'
 
 /**
@@ -1954,8 +1954,8 @@ export default function App() {
                       <h3 className="app-card-title">{t('chromiumBrowser')}</h3>
                       <p className="app-card-desc">{t('chromiumDesc')}</p>
                       <div className="app-card-pills">
-                        <span className="pill">5 Search Engines</span>
-                        <span className="pill">Dual-Lane Proxy</span>
+                        <span className="pill">{BROWSER_ENGINES_LIST.length} Search Destinations</span>
+                        <span className="pill">{BROWSER_ENGINE_CATEGORIES.length} Categories</span><span className="pill">Dual-Lane Proxy</span>
                         <span className="pill">TV Zoom</span>
                         <span className="pill">Web App Installer</span>
                       </div>
