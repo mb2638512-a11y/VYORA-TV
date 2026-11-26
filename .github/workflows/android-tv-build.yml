@@ -47,14 +47,25 @@ jobs:
           echo "Generated VOD file sizes:"
           wc -c server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
           git status --short --untracked-files=all -- server/data/vod web/public/data/vod android/app/assets/data/vod
-          git add -f server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
-          if git diff --cached --quiet; then
-            echo "Generated VOD catalog is already up to date."
-          else
+          # Rebase-free sync: generated catalog files may be refreshed by another
+          # phone/TV build at the same time. Reset to the latest remote tip while
+          # keeping generated working-tree files, then retry a raced push.
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --mixed "origin/${GITHUB_REF_NAME}"
+            git add -f server/data/vod/*.json web/public/data/vod/*.json android/app/assets/data/vod/*.json
+            if git diff --cached --quiet; then
+              echo "Generated VOD catalog is already up to date."
+              exit 0
+            fi
             git commit -m "chore: refresh generated VOD catalog [skip ci]"
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "Branch changed during generated-catalog push; retrying (attempt ${attempt}/3)."
+          done
+          echo "Could not sync generated VOD catalog after three attempts."
+          exit 1
       - run: npx tsc --noEmit -p web/tsconfig.json
       - run: npm --workspace web run build
       - name: Bundle latest web platform into Android TV app
