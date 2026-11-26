@@ -60,7 +60,7 @@ export function nativePlayMulti(
   bridge?.play(first.url, first.referer || '', first.ua || '', title, logo)
 }
 
-export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto'): boolean {
+export function nativeOpenBrowser(initialUrl = '', engineId = 'google0', displayMode: 'auto' | 'mobile' | 'desktop' = 'auto', standalone = false): boolean {
   if (typeof bridge?.openBrowser !== 'function') return false
   bridge.openBrowser(initialUrl, engineId, displayMode)
   return true
