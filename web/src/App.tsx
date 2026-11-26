@@ -1702,7 +1702,7 @@ export default function App() {
 
             <section className="row home-engines-row">
               <div className="home-engines-header">
-                <span className="home-engines-title"><Icon name="search" size={20} /> 5 Search Engines</span>
+                <span className="home-engines-title"><Icon name="search" size={20} /> {BROWSER_ENGINES_LIST.length} Search Destinations</span>
                 <span className="muted">Launch Chromium Browser with your chosen engine</span>
               </div>
               <div className="home-engines-strip">
@@ -3055,7 +3055,7 @@ export default function App() {
                   <h3 className="app-card-title">{t('chromiumBrowser')}</h3>
                   <p className="app-card-desc">{t('chromiumDesc')}</p>
                   <div className="app-card-pills">
-                    <span className="pill">5 Search Engines</span>
+                    <span className="pill">{BROWSER_ENGINES_LIST.length} Search Destinations</span>
                     <span className="pill">Dual-Lane Proxy</span>
                     <span className="pill">TV Zoom</span>
                     <span className="pill">Web App Installer</span>
