@@ -157,7 +157,7 @@ public class BrowserActivity extends Activity {
     }
 
     private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
-    private int controlHeight() { return dp(tv ? 54 : 44); }
+    private int controlHeight() { return dp(tv ? 54 : 36); }
     private int textSize() { return tv ? 18 : 14; }
 
     @Override public void onCreate(Bundle state) {
@@ -212,7 +212,7 @@ public class BrowserActivity extends Activity {
     private void buildLayout() {
         root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
         LinearLayout toolbar = new LinearLayout(this); toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setGravity(Gravity.CENTER_VERTICAL); toolbar.setPadding(dp(6),dp(5),dp(6),dp(5)); toolbar.setBackgroundColor(BAR);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL); toolbar.setPadding(dp(6),dp(4),dp(6),dp(4)); toolbar.setBaselineAligned(false); toolbar.setBackgroundColor(BAR);
         backButton=button("‹","Back"); forwardButton=button("›","Forward"); reloadButton=button("↻","Reload"); homeButton=button("⌂","Home");
         toolbar.addView(backButton, new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
         toolbar.addView(forwardButton, new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
@@ -228,14 +228,14 @@ public class BrowserActivity extends Activity {
         if (!standaloneMode) root.addView(toolbar,new LinearLayout.LayoutParams(-1,-2));
 
         LinearLayout second = new LinearLayout(this); second.setOrientation(LinearLayout.HORIZONTAL);
-        second.setGravity(Gravity.CENTER_VERTICAL); second.setPadding(dp(7),dp(4),dp(7),dp(4)); second.setBackgroundColor(BAR);
+        second.setGravity(Gravity.CENTER_VERTICAL); second.setPadding(dp(6),dp(3),dp(6),dp(3)); second.setBaselineAligned(false); second.setBackgroundColor(BAR);
         enginePicker=new AutoCompleteTextView(this); enginePicker.setSingleLine(true); enginePicker.setTextSize(textSize());
-        enginePicker.setTextColor(FG); enginePicker.setHintTextColor(MUTED); enginePicker.setHint("Search provider");
+        enginePicker.setTextColor(FG); enginePicker.setHintTextColor(MUTED); enginePicker.setHint("Search"); enginePicker.setBackgroundColor(Color.rgb(30,40,62)); enginePicker.setPadding(dp(8),0,dp(8),0);
         enginePicker.setThreshold(0); enginePicker.setDropDownHeight(dp(440));
         ArrayList<String> names=new ArrayList<>(); for(Engine e:engines) names.add(e.name+(e.requiresAuth?" • account":""));
         ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_dropdown_item_1line,names);
         enginePicker.setAdapter(adapter);
-        second.addView(enginePicker,new LinearLayout.LayoutParams(dp(tv?260:155),controlHeight()));
+        second.addView(enginePicker,new LinearLayout.LayoutParams(dp(tv?220:104),controlHeight()));
         HorizontalScrollView tabsScroll=new HorizontalScrollView(this); tabsScroll.setHorizontalScrollBarEnabled(false);
         tabStrip=new LinearLayout(this); tabStrip.setOrientation(LinearLayout.HORIZONTAL); tabStrip.setGravity(Gravity.CENTER_VERTICAL);
         tabsScroll.addView(tabStrip);
@@ -245,8 +245,8 @@ public class BrowserActivity extends Activity {
         protectionButton=button("Shield on","Allow or protect this site; long press for global protection");
         second.addView(addButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
         second.addView(closeButton,new LinearLayout.LayoutParams(controlHeight(),controlHeight()));
-        second.addView(protectionButton,new LinearLayout.LayoutParams(dp(tv?120:88),controlHeight()));
-        second.addView(privateButton,new LinearLayout.LayoutParams(dp(tv?116:84),controlHeight()));
+        second.addView(protectionButton,new LinearLayout.LayoutParams(dp(tv?120:68),controlHeight()));
+        second.addView(privateButton,new LinearLayout.LayoutParams(dp(tv?116:68),controlHeight()));
         if (!standaloneMode) root.addView(second,new LinearLayout.LayoutParams(-1,-2));
 
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
