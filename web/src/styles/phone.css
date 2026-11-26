@@ -582,3 +582,87 @@
 .device-phone .apps-grid>.installed-app-card .app-card-launch{width:100%!important;min-width:0!important;min-height:32px!important;height:32px!important;margin:0!important;padding:5px 7px!important;font-size:11px!important}
 .device-phone .apps-grid>.installed-app-card .app-del-btn{top:5px!important;right:5px!important;width:20px!important;height:20px!important;min-height:20px!important;font-size:10px!important}
 @media(max-width:360px){.device-phone .chromium-toolbar{gap:5px;padding:6px}.device-phone .apps-grid>.installed-app-card{min-height:116px!important;padding:8px!important}}
+
+
+/* Final phone layout: installed web apps stay compact and never stretch to fill tall grid rows. */
+.device-phone .apps-section .apps-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: minmax(132px, auto) !important;
+  align-items: start !important;
+  align-content: start !important;
+  gap: 10px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  align-items: center !important;
+  justify-content: start !important;
+  gap: 7px 9px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 132px !important;
+  height: auto !important;
+  max-height: 158px !important;
+  padding: 10px !important;
+  overflow: hidden !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-badge {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-body {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  flex: none !important;
+  gap: 3px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-badge-tag {
+  margin: 0 0 3px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-title {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-desc { display: none !important; }
+.device-phone .apps-section .apps-grid > .installed-app-card .app-card-launch {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 5px 7px !important;
+  font-size: 11px !important;
+}
+.device-phone .apps-section .apps-grid > .installed-app-card .app-del-btn {
+  top: 5px !important;
+  right: 5px !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  font-size: 10px !important;
+}
+@media (max-width: 360px) {
+  .device-phone .apps-section .apps-grid { gap: 8px !important; }
+  .device-phone .apps-section .apps-grid > .installed-app-card { min-height: 124px !important; max-height: 148px !important; padding: 8px !important; }
+}
